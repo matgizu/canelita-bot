@@ -1,0 +1,118 @@
+import { Router } from "express";
+import { prisma } from "../db";
+import { events } from "../events";
+import { getSession, setAutomation } from "../sessions";
+import { sendInParts } from "../whatsapp/client";
+import { sanitizeOutput } from "../bot/blocklist";
+
+export const apiRouter = Router();
+
+apiRouter.get("/conversations", async (_req, res) => {
+  const conversations = await prisma.conversation.findMany({
+    orderBy: { lastInboundAt: "desc" },
+    take: 100,
+  });
+  res.json(conversations);
+});
+
+apiRouter.get("/conversations/stream/events", (req, res) => {
+  res.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.flushHeaders();
+  res.write(`event: hello\ndata: ${JSON.stringify({ at: Date.now() })}\n\n`);
+
+  const off = events.onDashboard((e) => {
+    res.write(`event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`);
+  });
+
+  const ping = setInterval(() => {
+    res.write(`: ping\n\n`);
+  }, 25_000);
+
+  req.on("close", () => {
+    clearInterval(ping);
+    off();
+  });
+});
+
+apiRouter.get("/conversations/:waId", async (req, res) => {
+  const conv = await prisma.conversation.findUnique({
+    where: { waId: req.params.waId },
+    include: {
+      messages: { orderBy: { createdAt: "asc" }, take: 500 },
+      orders: { orderBy: { createdAt: "desc" } },
+    },
+  });
+  if (!conv) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json(conv);
+});
+
+apiRouter.patch("/conversations/:waId/automation", async (req, res) => {
+  const enabled = !!req.body?.enabled;
+  const session = setAutomation(req.params.waId, enabled);
+  await prisma.conversation
+    .upsert({
+      where: { waId: req.params.waId },
+      create: { waId: req.params.waId, automationEnabled: enabled },
+      update: { automationEnabled: enabled },
+    })
+    .catch((e) => console.error("[automation]", e.message));
+
+  events.emitDashboard({
+    type: "automation_toggle",
+    waId: req.params.waId,
+    enabled,
+    at: Date.now(),
+  });
+  res.json({ waId: session.waId, automationEnabled: session.automationEnabled });
+});
+
+apiRouter.post("/conversations/:waId/send", async (req, res) => {
+  const text = String(req.body?.text ?? "").trim();
+  if (!text) {
+    res.status(400).json({ error: "missing_text" });
+    return;
+  }
+  const sanitized = sanitizeOutput(text);
+  const waId = req.params.waId;
+  await sendInParts(waId, sanitized);
+
+  const session = getSession(waId);
+  session.lastOutboundAt = Date.now();
+
+  try {
+    const conv = await prisma.conversation.upsert({
+      where: { waId },
+      create: { waId, automationEnabled: session.automationEnabled },
+      update: { lastOutboundAt: new Date() },
+    });
+    await prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        direction: "outbound",
+        type: "manual",
+        body: sanitized,
+      },
+    });
+  } catch (e: any) {
+    console.error("[send.persist]", e.message);
+  }
+
+  events.emitDashboard({
+    type: "message",
+    waId,
+    direction: "outbound",
+    body: sanitized,
+    messageType: "manual",
+    at: Date.now(),
+  });
+
+  res.json({ ok: true });
+});
