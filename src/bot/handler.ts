@@ -1,7 +1,7 @@
 import { askClaude } from "../claude/client";
 import { events } from "../events";
 import { prisma } from "../db";
-import { getSession, setAutomation } from "../sessions";
+import { getOrLoadSession, getSession, setAutomation } from "../sessions";
 import { notify, notifyPhoto } from "../telegram";
 import { findCombo, formatCOP } from "../products";
 import {
@@ -44,7 +44,7 @@ export interface InboundEvent {
 }
 
 export async function handleInbound(ev: InboundEvent): Promise<void> {
-  const session = getSession(ev.waId);
+  const session = await getOrLoadSession(ev.waId);
   session.lastInboundAt = Date.now();
   if (ev.customerName && !session.customerName) {
     session.customerName = ev.customerName;
