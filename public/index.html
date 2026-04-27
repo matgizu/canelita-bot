@@ -651,12 +651,26 @@ function renderHeader() {
     </button>`;
 }
 
+function remarketingContent(type, body) {
+  const text = (body || '').replace(/^\[remarketing:[^\]]*\]\n?/, '');
+  const isTestimonials = type === 'remarketing:testimonials';
+  const imgs = isTestimonials
+    ? `<div class="bubble" style="color:var(--muted);font-size:0.8em;padding:6px 10px">🖼 Fotos de testimonios enviadas</div>`
+    : '';
+  return imgs + `<div class="bubble" style="margin-top:${isTestimonials?'4':'0'}px">${x(text)}</div>`;
+}
+
 function bubbleHtml(m) {
-  if (m.type && (m.type.startsWith('remarketing') || m.type === 'remarketing')) {
-    return `<div class="msystem">🔔 Remarketing: ${m.type.split(':')[1] || ''}</div>`;
-  }
   const out = m.direction === 'outbound';
   const t   = new Date(m.createdAt).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+
+  if (m.type && m.type.startsWith('remarketing')) {
+    return `
+    <div class="mw outbound">
+      ${remarketingContent(m.type, m.body)}
+      <div class="mtime">${t}<span class="mtag">remarketing</span></div>
+    </div>`;
+  }
 
   const isAudio = (m.type === 'audio' || m.type === 'voice') && m.mediaUrl;
 
@@ -684,8 +698,16 @@ function appendBubble(d) {
   const out = d.direction === 'outbound';
   const t   = new Date(d.at).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
   const div = document.createElement('div');
-  div.className = `mw ${out?'outbound':'inbound'}`;
-  div.innerHTML = `<div class="bubble">${x(d.body)}</div><div class="mtime">${t}</div>`;
+
+  if (d.messageType && d.messageType.startsWith('remarketing')) {
+    div.className = 'mw outbound';
+    div.innerHTML = remarketingContent(d.messageType, d.body)
+      + `<div class="mtime">${t}<span class="mtag">remarketing</span></div>`;
+  } else {
+    div.className = `mw ${out?'outbound':'inbound'}`;
+    div.innerHTML = `<div class="bubble">${x(d.body)}</div><div class="mtime">${t}</div>`;
+  }
+
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }

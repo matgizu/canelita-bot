@@ -82,20 +82,6 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
 
   if (!session.automationEnabled) return;
 
-  const isFirst = session.history.length === 0 && session.state === "GREETING";
-  if (isFirst) {
-    const imgs = config.greeting.imageUrls;
-    if (imgs.length > 0) {
-      const url = imgs[Math.floor(Math.random() * imgs.length)];
-      await sendImageUrl(ev.waId, url);
-    }
-    await replyHardcoded(session, HARDCODED_GREETING, HARDCODED_GREETING_JSON);
-    pushHistory(session, "user", text);
-    transitionTo(session, "INTEREST");
-    scheduleGreetingRemarketing(ev.waId);
-    return;
-  }
-
   enqueueInbound(
     ev.waId,
     text,
@@ -111,6 +97,19 @@ async function processCombined(
   imageMediaId?: string,
 ): Promise<void> {
   if (!session.automationEnabled) return;
+
+  if (session.history.length === 0 && session.state === "GREETING") {
+    const imgs = config.greeting.imageUrls;
+    if (imgs.length > 0) {
+      const url = imgs[Math.floor(Math.random() * imgs.length)];
+      await sendImageUrl(session.waId, url);
+    }
+    await replyHardcoded(session, HARDCODED_GREETING, HARDCODED_GREETING_JSON);
+    pushHistory(session, "user", combined);
+    transitionTo(session, "INTEREST");
+    scheduleGreetingRemarketing(session.waId);
+    return;
+  }
 
   const reactionEmoji = reactionFor(combined);
 
