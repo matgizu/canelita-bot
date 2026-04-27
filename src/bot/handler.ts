@@ -31,7 +31,7 @@ import {
   buildObjectionResponse,
   detectObjection,
 } from "./objections";
-import { cancelRemarketing, scheduleRemarketing } from "./remarketing";
+import { cancelRemarketing, scheduleGreetingRemarketing, scheduleRemarketing } from "./remarketing";
 import { detectSpecialCase, TELEGRAM_TEMPLATES } from "./specialCases";
 
 export interface InboundEvent {
@@ -92,6 +92,7 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
     await replyHardcoded(session, HARDCODED_GREETING, HARDCODED_GREETING_JSON);
     pushHistory(session, "user", text);
     transitionTo(session, "INTEREST");
+    scheduleGreetingRemarketing(ev.waId);
     return;
   }
 

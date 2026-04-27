@@ -68,6 +68,7 @@ export const HARDCODED_GREETING_JSON = JSON.stringify({
 });
 
 export const REMARKETING_MESSAGES = {
+  testimonials2h: `Reina, ¿pudiste ver bien la info? 💛\n\nMira los resultados que están teniendo nuestras clientas con Canelita... el bronceado queda natural y divino.\n\nRecuerda: envío GRATIS a toda Colombia y pagas solo cuando lo recibes. Sin riesgo ✨\n\n¿Te lo mandamos hoy?`,
   confirmOrder30min: `¿Sigues por ahí reina? 💛 Te dejé tu pedido apartado, cuando quieras lo confirmamos y te lo despachamos hoy mismo.`,
   addressCollection1h: `Hola de nuevo ✨ Vi que quedamos a mitad del pedido. Si tienes los datos a mano lo cerramos en 1 minuto y queda en camino.`,
   paymentMethod2h: `Hola reina, solo nos falta el último pasito para cerrar tu pedido. Si lo dejamos para mañana ya no alcanzo a despachar hoy 💛`,
@@ -75,6 +76,7 @@ export const REMARKETING_MESSAGES = {
 };
 
 export const REMARKETING_DELAYS = {
+  testimonials: 2 * 60 * 60 * 1000,
   confirmOrder: 30 * 60 * 1000,
   addressCollection: 60 * 60 * 1000,
   paymentMethod: 2 * 60 * 60 * 1000,

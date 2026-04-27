@@ -1,6 +1,6 @@
-import { sendInParts } from "../whatsapp/client";
+import { config } from "../config";
+import { sendImageUrl, sendText } from "../whatsapp/client";
 import { Session, REMARKETING_DELAYS, REMARKETING_MESSAGES, State } from "./flow";
-import { sanitizeOutput } from "./blocklist";
 import { events } from "../events";
 import { prisma } from "../db";
 
@@ -22,14 +22,26 @@ export function cancelRemarketing(waId: string) {
   clearTimers(waId);
 }
 
+// Llamado justo después de enviar el greeting.
+// Si la persona no responde en 2h, manda testimonios + mensaje.
+export function scheduleGreetingRemarketing(waId: string) {
+  clearTimers(waId);
+  const timer = setTimeout(
+    () => sendTestimonialsRemarketing(waId),
+    REMARKETING_DELAYS.testimonials,
+  );
+  trackers.set(waId, { timers: [timer] });
+}
+
+// Llamado después de que Claude responde (estados INTEREST en adelante).
 export function scheduleRemarketing(session: Session) {
   clearTimers(session.waId);
   const timers: NodeJS.Timeout[] = [];
 
-  const stagedMessage = stagedFor(session.state);
-  if (stagedMessage) {
+  const staged = stagedFor(session.state);
+  if (staged) {
     timers.push(
-      setTimeout(() => sendRemarketing(session.waId, stagedMessage.text, "stage"), stagedMessage.delay),
+      setTimeout(() => sendRemarketing(session.waId, staged.text, "stage"), staged.delay),
     );
   }
 
@@ -56,16 +68,47 @@ function stagedFor(state: State): { text: string; delay: number } | null {
   }
 }
 
-async function sendRemarketing(waId: string, text: string, kind: string) {
-  const clean = sanitizeOutput(text);
-  await sendInParts(waId, clean);
+async function sendTestimonialsRemarketing(waId: string) {
+  const imgs = config.greeting.imageUrls;
+
+  // Enviar cada imagen con 1s de pausa entre ellas
+  for (const url of imgs) {
+    await sendImageUrl(waId, url);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  const text = REMARKETING_MESSAGES.testimonials2h;
+  await sendText(waId, text);
+
+  const label = `[remarketing: testimonios x${imgs.length}]\n${text}`;
+
   events.emitDashboard({
-    type: "message",
-    waId,
-    direction: "outbound",
-    body: clean,
-    messageType: `remarketing:${kind}`,
-    at: Date.now(),
+    type: "message", waId, direction: "outbound",
+    body: label, messageType: "remarketing:testimonials", at: Date.now(),
+  });
+
+  try {
+    const conv = await prisma.conversation.findUnique({ where: { waId } });
+    if (conv) {
+      await prisma.message.create({
+        data: {
+          conversationId: conv.id,
+          direction: "outbound",
+          type: "remarketing:testimonials",
+          body: label,
+        },
+      });
+    }
+  } catch (e: any) {
+    console.error("[remarketing.testimonials]", e.message);
+  }
+}
+
+async function sendRemarketing(waId: string, text: string, kind: string) {
+  await sendText(waId, text);
+  events.emitDashboard({
+    type: "message", waId, direction: "outbound",
+    body: text, messageType: `remarketing:${kind}`, at: Date.now(),
   });
   try {
     const conv = await prisma.conversation.findUnique({ where: { waId } });
@@ -75,7 +118,7 @@ async function sendRemarketing(waId: string, text: string, kind: string) {
           conversationId: conv.id,
           direction: "outbound",
           type: `remarketing:${kind}`,
-          body: clean,
+          body: text,
         },
       });
     }
