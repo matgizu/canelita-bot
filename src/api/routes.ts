@@ -39,7 +39,7 @@ apiRouter.get("/conversations/stream/events", (req, res) => {
 
   const ping = setInterval(() => {
     res.write(`: ping\n\n`);
-  }, 25_000);
+  }, 15_000);
 
   req.on("close", () => {
     clearInterval(ping);

@@ -492,16 +492,29 @@ async function loadDetail(waId) {
 }
 
 /* ─────────────────────────────────────
-   SSE
+   SSE — conexión en tiempo real
 ───────────────────────────────────── */
+let sseRetry = 1000;
+let sseEs    = null;
+let pollTimer = null;
+
 function connectSSE() {
   const dot = document.getElementById('sse-dot');
   const lbl = document.getElementById('sse-lbl');
-  const es  = new EventSource('/api/conversations/stream/events');
+
+  if (sseEs) { try { sseEs.close(); } catch(_) {} }
+
+  const es = new EventSource('/api/conversations/stream/events');
+  sseEs = es;
 
   es.addEventListener('hello', () => {
     dot.className = 'sse-dot live';
     lbl.textContent = 'En vivo';
+    sseRetry = 1000;
+    // Al reconectar, sincroniza todo
+    loadConvs();
+    if (selected) loadDetail(selected);
+    stopPolling();
   });
 
   es.addEventListener('message', e => {
@@ -511,9 +524,10 @@ function connectSSE() {
       c = { waId: d.waId, customerName: null, state: 'GREETING', automationEnabled: true };
       convs.unshift(c);
     }
-    c._preview    = d.body;
+    c._preview      = d.body;
     c.lastInboundAt = new Date(d.at).toISOString();
     renderSidebar();
+    renderStats();
     if (d.waId === selected) appendBubble(d);
   });
 
@@ -542,10 +556,26 @@ function connectSSE() {
 
   es.onerror = () => {
     dot.className = 'sse-dot';
-    lbl.textContent = 'Reconectando…';
+    lbl.textContent = `Reconectando en ${Math.round(sseRetry/1000)}s…`;
     es.close();
-    setTimeout(connectSSE, 3500);
+    sseEs = null;
+    setTimeout(connectSSE, sseRetry);
+    sseRetry = Math.min(sseRetry * 2, 30_000); // backoff: 1s→2s→4s→…→30s
+    startPolling();
   };
+}
+
+// Polling de respaldo mientras SSE está caído
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(() => {
+    loadConvs();
+    if (selected) loadDetail(selected);
+  }, 30_000);
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
 /* ─────────────────────────────────────
