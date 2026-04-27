@@ -98,6 +98,19 @@ export function reactionFor(text: string): string | null {
 
 export type MediaType = "image" | "video" | "document" | "audio";
 
+export async function sendImageUrl(to: string, url: string, caption?: string): Promise<void> {
+  try {
+    await http.post(`/${phoneId}/messages`, {
+      messaging_product: "whatsapp",
+      to,
+      type: "image",
+      image: { link: url, ...(caption ? { caption } : {}) },
+    });
+  } catch (e: any) {
+    console.error("[wa.sendImageUrl]", e.response?.data ?? e.message);
+  }
+}
+
 export async function uploadMedia(
   buffer: Buffer,
   mimeType: string,

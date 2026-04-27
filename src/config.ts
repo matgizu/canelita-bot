@@ -35,6 +35,10 @@ export const config = {
   shipping: {
     defaultCost: Number(optional("SHIPPING_COST_DEFAULT", "0")),
   },
+
+  greeting: {
+    imageUrl: optional("GREETING_IMAGE_URL"),
+  },
 };
 
 export type AppConfig = typeof config;

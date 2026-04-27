@@ -8,7 +8,13 @@ import { config } from "./config";
 
 const app = express();
 
-app.use(express.static(path.resolve(__dirname, "..", "public")));
+app.use(express.static(path.resolve(__dirname, "..", "public"), {
+  setHeaders: (res, filePath) => {
+    if (filePath.includes("/assets/")) {
+      res.setHeader("Cache-Control", "public, max-age=86400");
+    }
+  },
+}));
 
 app.use("/webhook", webhookRouter);
 

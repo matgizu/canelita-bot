@@ -8,10 +8,12 @@ import {
   getMediaUrl,
   markAsRead,
   reactionFor,
+  sendImageUrl,
   sendInParts,
   sendReaction,
   sendText,
 } from "../whatsapp/client";
+import { config } from "../config";
 import { transcribeAudio } from "../whatsapp/transcribe";
 import { sanitizeOutput } from "./blocklist";
 import {
@@ -82,11 +84,12 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
 
   const isFirst = session.history.length === 0 && session.state === "GREETING";
   if (isFirst) {
+    if (config.greeting.imageUrl) {
+      await sendImageUrl(ev.waId, config.greeting.imageUrl);
+    }
     await replyHardcoded(session, HARDCODED_GREETING, HARDCODED_GREETING_JSON);
     pushHistory(session, "user", text);
     transitionTo(session, "INTEREST");
-    // No llamar a Claude aquí — el greeting ya cubrió todo.
-    // Claude responderá al PRÓXIMO mensaje del cliente.
     return;
   }
 
