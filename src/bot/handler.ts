@@ -228,16 +228,15 @@ function transitionTo(session: Session, to: State) {
 }
 
 async function replyHardcoded(session: Session, text: string, historyJson: string) {
-  const sanitized = sanitizeOutput(text);
-  await sendInParts(session.waId, sanitized);
+  await sendText(session.waId, text);
   pushHistory(session, "assistant", historyJson);
-  await persistOutbound(session, sanitized, session.state);
+  await persistOutbound(session, text, session.state);
   session.lastOutboundAt = Date.now();
   events.emitDashboard({
     type: "message",
     waId: session.waId,
     direction: "outbound",
-    body: sanitized,
+    body: text,
     messageType: "text",
     at: Date.now(),
   });

@@ -44,9 +44,22 @@ export function isValidTransition(from: State, to: State): boolean {
   return TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-export const HARDCODED_GREETING = `¡Hola reina! ✨ Soy Sofía, gracias por escribirnos a Canelita Hollywood 💛
+export const HARDCODED_GREETING = `¡Hola reina! 🌴 Soy Sofía de Canelita Hollywood.
 
-Cuéntame, ¿viste el autobronceador en Instagram o Facebook? Te paso toda la info y resolvemos cualquier dudita.`;
+Canelita es un autobronceador corporal que te broncea SIN sol, sin playa y sin camas bronceadoras.
+
+✔ El color se ve en 45 min y te dura hasta 10 días
+✔ No se cae con el agua
+✔ Disimula venitas, estrías y celulitis
+✔ Hidrata tu piel y huele a coco 💛
+✔ Libre de parabenos y colorantes
+
+Viene en 2 tonos: *Natural* (pieles claras) e *Intenso* (pieles trigueñas).
+
+Una unidad: $69.900 con envío GRATIS a toda Colombia.
+Pagas cuando lo recibes, sin anticipos.
+
+¿Lo viste para ti o para regalar?`;
 
 export const HARDCODED_GREETING_JSON = JSON.stringify({
   message: HARDCODED_GREETING,

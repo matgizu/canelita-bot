@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canelita Hollywood — Dashboard</title>
+  <style>
+    :root {
+      --brand: #f59e0b;
+      --brand-light: #fff8e6;
+      --brand-border: #fde68a;
+      --sidebar: #111827;
+      --sidebar-hover: #1f2937;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --green: #10b981;
+      --red: #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #header {
+      height: 54px; background: var(--sidebar);
+      display: flex; align-items: center; padding: 0 20px; gap: 24px;
+      flex-shrink: 0; border-bottom: 1px solid #1f2937;
+    }
+    .brand { color: var(--brand); font-weight: 700; font-size: 15px; }
+    .stats-bar { display: flex; gap: 24px; margin-left: auto; }
+    .stat { display: flex; flex-direction: column; align-items: center; }
+    .stat-val { font-size: 18px; font-weight: 700; color: #fff; line-height: 1; }
+    .stat-lbl { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+    .sse-pill {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #9ca3af; margin-left: 16px;
+    }
+    .sse-dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; flex-shrink: 0; }
+    .sse-dot.live { background: var(--green); animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Layout ── */
+    #layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 290px; background: var(--sidebar);
+      display: flex; flex-direction: column; flex-shrink: 0;
+      border-right: 1px solid #1f2937;
+    }
+    .search-box { padding: 10px 12px; }
+    .search-box input {
+      width: 100%; padding: 8px 12px; background: #1f2937;
+      border: 1px solid #374151; border-radius: 8px;
+      color: #fff; font-size: 12px; outline: none;
+    }
+    .search-box input::placeholder { color: #6b7280; }
+    .search-box input:focus { border-color: var(--brand); }
+    #conv-list { flex: 1; overflow-y: auto; }
+    #conv-list::-webkit-scrollbar { width: 3px; }
+    #conv-list::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+    .conv-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 11px 14px; cursor: pointer;
+      border-bottom: 1px solid #1f2937;
+      transition: background .12s;
+    }
+    .conv-item:hover { background: var(--sidebar-hover); }
+    .conv-item.active { background: #1e2a3a; border-left: 3px solid var(--brand); padding-left: 11px; }
+    .ava {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--brand); color: #fff;
+      font-weight: 700; font-size: 15px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ci-body { flex: 1; min-width: 0; }
+    .ci-name {
+      font-size: 12.5px; font-weight: 600; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .bot-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .bot-dot.on  { background: var(--green); }
+    .bot-dot.off { background: var(--red); }
+    .ci-preview {
+      font-size: 11px; color: #9ca3af;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
+    }
+    .ci-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .ci-time { font-size: 10px; color: #6b7280; }
+    .sbadge {
+      font-size: 9px; font-weight: 600; padding: 2px 6px;
+      border-radius: 10px; text-transform: uppercase; letter-spacing: .3px;
+    }
+
+    /* ── Chat area ── */
+    #chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    #empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; color: var(--muted); gap: 10px;
+    }
+    #empty-state div:first-child { font-size: 44px; }
+
+    #chat-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #chat-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 18px; background: var(--card);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+      min-width: 0;
+    }
+    #chat-header .ava { width: 34px; height: 34px; font-size: 13px; flex-shrink: 0; }
+    .ch-info { flex: 1; min-width: 0; overflow: hidden; }
+    .ch-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ch-sub  { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-top: 2px; white-space: nowrap; overflow: hidden; }
+
+    #messages {
+      flex: 1; overflow-y: auto; padding: 14px 18px;
+      display: flex; flex-direction: column; gap: 6px; background: var(--bg);
+    }
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+
+    .mw { display: flex; flex-direction: column; }
+    .mw.inbound  { align-items: flex-start; }
+    .mw.outbound { align-items: flex-end; }
+    .bubble {
+      max-width: 68%; padding: 9px 13px; border-radius: 16px;
+      font-size: 13px; line-height: 1.45; word-break: break-word;
+    }
+    .mw.inbound  .bubble { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+    .mw.outbound .bubble { background: var(--brand-light); border: 1px solid var(--brand-border); border-bottom-right-radius: 3px; }
+    .mtime { font-size: 10px; color: var(--muted); margin-top: 2px; padding: 0 3px; }
+    .mtag  { background: #f3f4f6; padding: 1px 5px; border-radius: 6px; margin-left: 4px; font-size: 9px; }
+    .msystem {
+      align-self: center; font-size: 11px; color: var(--muted);
+      background: #f3f4f6; padding: 3px 12px; border-radius: 20px; margin: 2px 0;
+    }
+
+    #composer {
+      display: flex; gap: 8px; padding: 10px 14px;
+      background: var(--card); border-top: 1px solid var(--border);
+      align-items: flex-end; flex-shrink: 0;
+    }
+    #msg-input {
+      flex: 1; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 13px; resize: none; outline: none;
+      font-family: inherit; max-height: 100px; min-height: 38px;
+    }
+    #msg-input:focus { border-color: var(--brand); }
+    #send-btn {
+      padding: 9px 18px; background: var(--brand); color: #fff;
+      border: none; border-radius: 10px; font-size: 13px;
+      font-weight: 600; cursor: pointer; height: 38px; flex-shrink: 0;
+    }
+    #send-btn:hover    { background: #d97706; }
+    #send-btn:disabled { opacity: .5; cursor: default; }
+
+    /* ── Info panel ── */
+    #info-panel {
+      width: 295px; background: var(--card);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+    }
+    #info-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 13px; text-align: center; padding: 20px;
+    }
+    #info-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .tab {
+      flex: 1; padding: 11px; text-align: center; font-size: 12px;
+      font-weight: 600; cursor: pointer; color: var(--muted);
+      border-bottom: 2px solid transparent; transition: all .12s;
+    }
+    .tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+    .tab-pane { flex: 1; overflow-y: auto; padding: 14px 16px; }
+    .tab-pane::-webkit-scrollbar { width: 3px; }
+    .tab-pane::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+
+    .isec { margin-bottom: 18px; }
+    .isec-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--muted); margin-bottom: 8px;
+    }
+    .irow { display: flex; gap: 6px; margin-bottom: 7px; align-items: flex-start; }
+    .ilbl { font-size: 11px; color: var(--muted); min-width: 78px; flex-shrink: 0; padding-top: 1px; }
+    .ival { font-size: 12px; font-weight: 500; word-break: break-all; }
+
+    .toggle-btn {
+      padding: 6px 12px; border-radius: 8px; white-space: nowrap;
+      font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid;
+      transition: all .12s; flex-shrink: 0;
+    }
+    .toggle-btn.on  { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+    .toggle-btn.off { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+    /* full-width variant used only inside the info panel */
+    .toggle-btn.full { width: 100%; text-align: left; }
+
+    .cart-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; background: #fafafa;
+      border: 1px solid var(--border); border-radius: 8px; margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    .order-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .order-top  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .order-id   { font-size: 11px; font-weight: 700; color: var(--muted); }
+    .order-status { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #fef3c7; color: #92400e; }
+    .order-total  { font-size: 16px; font-weight: 700; }
+    .order-meta   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* State badge palette */
+    .s-GREETING          { background:#f3f4f6; color:#6b7280; }
+    .s-INTEREST          { background:#dbeafe; color:#1d4ed8; }
+    .s-VARIANT_SELECTION { background:#ede9fe; color:#5b21b6; }
+    .s-QUANTITY          { background:#fef3c7; color:#92400e; }
+    .s-OBJECTION_HANDLING{ background:#fee2e2; color:#b91c1c; }
+    .s-CONFIRM_ORDER     { background:#ffedd5; color:#c2410c; }
+    .s-ADDRESS_COLLECTION{ background:#cffafe; color:#0e7490; }
+    .s-PAYMENT_METHOD    { background:#d1fae5; color:#065f46; }
+    .s-CLOSED            { background:#f3f4f6; color:#374151; }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header id="header">
+  <div class="brand">🌴 Canelita Hollywood</div>
+  <div class="stats-bar">
+    <div class="stat"><span class="stat-val" id="st-total">—</span><span class="stat-lbl">Conversaciones</span></div>
+    <div class="stat"><span class="stat-val" id="st-bots">—</span><span class="stat-lbl">Bot activo</span></div>
+    <div class="stat"><span class="stat-val" id="st-open">—</span><span class="stat-lbl">En proceso</span></div>
+    <div class="stat"><span class="stat-val" id="st-closed">—</span><span class="stat-lbl">Cerrados</span></div>
+  </div>
+  <div class="sse-pill">
+    <div class="sse-dot" id="sse-dot"></div>
+    <span id="sse-lbl">Conectando…</span>
+  </div>
+</header>
+
+<!-- Layout -->
+<div id="layout">
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="search-box">
+      <input type="search" id="search" placeholder="🔍 Nombre o número…" oninput="doFilter(this.value)">
+    </div>
+    <div id="conv-list"></div>
+  </aside>
+
+  <!-- Chat -->
+  <main id="chat-area">
+    <div id="empty-state">
+      <div>💬</div>
+      <div style="font-size:14px">Selecciona una conversación</div>
+    </div>
+    <div id="chat-view" hidden>
+      <div id="chat-header"></div>
+      <div id="messages"></div>
+      <div id="composer">
+        <textarea id="msg-input" rows="1"
+          placeholder="Mensaje manual (Enter para enviar, Shift+Enter nueva línea)…"
+          onkeydown="onKey(event)" oninput="grow(this)"></textarea>
+        <button id="send-btn" onclick="sendMsg()">Enviar</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Info panel -->
+  <aside id="info-panel">
+    <div id="info-empty">← Selecciona una conversación</div>
+    <div id="info-content" hidden>
+      <div class="tabs">
+        <div class="tab active" id="tab-btn-info"   onclick="switchTab('info')">Cliente</div>
+        <div class="tab"        id="tab-btn-orders" onclick="switchTab('orders')">Pedidos</div>
+      </div>
+      <div id="tab-info"   class="tab-pane"></div>
+      <div id="tab-orders" class="tab-pane" hidden></div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+/* ─────────────────────────────────────
+   STATE
+───────────────────────────────────── */
+let convs    = [];
+let selected = null;
+let detail   = null;
+let q        = '';
+let tab      = 'info';
+
+/* ─────────────────────────────────────
+   BOOT
+───────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConvs();
+  connectSSE();
+});
+
+/* ─────────────────────────────────────
+   API
+───────────────────────────────────── */
+async function loadConvs() {
+  try {
+    const data = await fetch('/api/conversations').then(r => r.json());
+    convs = data;
+    renderSidebar();
+    renderStats();
+  } catch(e) { console.error('loadConvs', e); }
+}
+
+async function loadDetail(waId) {
+  try {
+    detail = await fetch(`/api/conversations/${waId}`).then(r => r.json());
+    renderChat();
+    renderInfoPanel();
+  } catch(e) { console.error('loadDetail', e); }
+}
+
+/* ─────────────────────────────────────
+   SSE
+───────────────────────────────────── */
+function connectSSE() {
+  const dot = document.getElementById('sse-dot');
+  const lbl = document.getElementById('sse-lbl');
+  const es  = new EventSource('/api/conversations/stream/events');
+
+  es.addEventListener('hello', () => {
+    dot.className = 'sse-dot live';
+    lbl.textContent = 'En vivo';
+  });
+
+  es.addEventListener('message', e => {
+    const d = JSON.parse(e.data);
+    let c = convs.find(x => x.waId === d.waId);
+    if (!c) {
+      c = { waId: d.waId, customerName: null, state: 'GREETING', automationEnabled: true };
+      convs.unshift(c);
+    }
+    c._preview    = d.body;
+    c.lastInboundAt = new Date(d.at).toISOString();
+    renderSidebar();
+    if (d.waId === selected) appendBubble(d);
+  });
+
+  es.addEventListener('state_change', e => {
+    const d = JSON.parse(e.data);
+    const c = convs.find(x => x.waId === d.waId);
+    if (c) c.state = d.to;
+    renderSidebar();
+    renderStats();
+    if (d.waId === selected) renderHeader();
+  });
+
+  es.addEventListener('order_created', e => {
+    const d = JSON.parse(e.data);
+    renderStats();
+    if (d.waId === selected) loadDetail(d.waId);
+  });
+
+  es.addEventListener('automation_toggle', e => {
+    const d = JSON.parse(e.data);
+    const c = convs.find(x => x.waId === d.waId);
+    if (c) c.automationEnabled = d.enabled;
+    renderSidebar();
+    if (d.waId === selected) { renderHeader(); renderInfoTab(); }
+  });
+
+  es.onerror = () => {
+    dot.className = 'sse-dot';
+    lbl.textContent = 'Reconectando…';
+    es.close();
+    setTimeout(connectSSE, 3500);
+  };
+}
+
+/* ─────────────────────────────────────
+   RENDER — SIDEBAR
+───────────────────────────────────── */
+function doFilter(v) { q = v.toLowerCase(); renderSidebar(); }
+
+function renderSidebar() {
+  const list   = document.getElementById('conv-list');
+  const items  = q
+    ? convs.filter(c =>
+        (c.customerName||'').toLowerCase().includes(q) ||
+        c.waId.includes(q))
+    : convs;
+
+  if (!items.length) {
+    list.innerHTML = `<div style="padding:24px;text-align:center;color:#6b7280;font-size:12px">Sin conversaciones</div>`;
+    return;
+  }
+  list.innerHTML = items.map(c => `
+    <div class="conv-item${c.waId===selected?' active':''}" onclick="selectConv('${c.waId}')">
+      <div class="ava">${initial(c)}</div>
+      <div class="ci-body">
+        <div class="ci-name">
+          ${x(c.customerName || phone(c.waId))}
+          <span class="bot-dot ${c.automationEnabled?'on':'off'}"></span>
+        </div>
+        <div class="ci-preview">${x(c._preview || '—')}</div>
+      </div>
+      <div class="ci-meta">
+        <span class="ci-time">${ago(c.lastInboundAt)}</span>
+        <span class="sbadge s-${c.state}">${slabel(c.state)}</span>
+      </div>
+    </div>`).join('');
+}
+
+/* ─────────────────────────────────────
+   RENDER — CHAT
+───────────────────────────────────── */
+async function selectConv(waId) {
+  selected = waId;
+  renderSidebar();
+  document.getElementById('empty-state').hidden = true;
+  document.getElementById('chat-view').hidden   = false;
+  document.getElementById('info-empty').hidden  = true;
+  document.getElementById('info-content').hidden = false;
+  await loadDetail(waId);
+}
+
+function renderChat() {
+  if (!detail) return;
+  renderHeader();
+  const msgs = detail.messages || [];
+  const box  = document.getElementById('messages');
+  box.innerHTML = msgs.map(bubbleHtml).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderHeader() {
+  const c = convs.find(x => x.waId === selected) || detail;
+  if (!c) return;
+  document.getElementById('chat-header').innerHTML = `
+    <div class="ava">${initial(c)}</div>
+    <div class="ch-info">
+      <div class="ch-name">${x(c.customerName || phone(c.waId))}</div>
+      <div class="ch-sub">
+        ${phone(c.waId)}
+        <span class="sbadge s-${c.state}">${slabel(c.state)}</span>
+      </div>
+    </div>
+    <button class="toggle-btn ${c.automationEnabled?'on':'off'}" onclick="toggleBot('${c.waId}')">
+      ${c.automationEnabled ? '🤖 Bot activo' : '🔇 Bot pausado'}
+    </button>`;
+}
+
+function bubbleHtml(m) {
+  if (m.type && (m.type.startsWith('remarketing') || m.type === 'remarketing')) {
+    return `<div class="msystem">🔔 Remarketing: ${m.type.split(':')[1] || ''}</div>`;
+  }
+  const out  = m.direction === 'outbound';
+  const t    = new Date(m.createdAt).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  const tag  = m.type && m.type !== 'text'
+    ? `<span class="mtag">${m.type}</span>` : '';
+  return `
+    <div class="mw ${out?'outbound':'inbound'}">
+      <div class="bubble">${x(m.body)}</div>
+      <div class="mtime">${t}${tag}</div>
+    </div>`;
+}
+
+function appendBubble(d) {
+  const box = document.getElementById('messages');
+  if (!box) return;
+  const out = d.direction === 'outbound';
+  const t   = new Date(d.at).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  const div = document.createElement('div');
+  div.className = `mw ${out?'outbound':'inbound'}`;
+  div.innerHTML = `<div class="bubble">${x(d.body)}</div><div class="mtime">${t}</div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ─────────────────────────────────────
+   RENDER — INFO PANEL
+───────────────────────────────────── */
+function renderInfoPanel() { renderInfoTab(); renderOrdersTab(); }
+
+function renderInfoTab() {
+  if (!detail) return;
+  const d    = detail;
+  const conv = convs.find(x => x.waId === selected) || d;
+  const cart = Array.isArray(d.cart) ? d.cart : [];
+  document.getElementById('tab-info').innerHTML = `
+    <div class="isec">
+      <div class="isec-title">Bot</div>
+      <button class="toggle-btn full ${conv.automationEnabled?'on':'off'}" onclick="toggleBot('${d.waId}')">
+        ${conv.automationEnabled
+          ? '🤖 Activo — pausar bot'
+          : '🔇 Pausado — activar bot'}
+      </button>
+    </div>
+
+    <div class="isec">
+      <div class="isec-title">Contacto</div>
+      ${row('Nombre',    d.customerName)}
+      ${row('Completo',  d.fullName)}
+      ${row('Cédula',    d.idNumber)}
+      ${row('WhatsApp',  phone(d.waId))}
+      ${row('Cel alterno', d.altPhone)}
+    </div>
+
+    <div class="isec">
+      <div class="isec-title">Envío</div>
+      ${row('Ciudad',     d.city)}
+      ${row('Depto.',     d.department)}
+      ${row('Dirección',  d.address)}
+      ${row('Referencia', d.reference)}
+    </div>
+
+    ${cart.length ? `
+    <div class="isec">
+      <div class="isec-title">Carrito</div>
+      ${cart.map(i => `
+        <div class="cart-row">
+          <span style="font-weight:600">Canelita ${i.variant==='natural'?'Natural':'Intenso'}</span>
+          <span style="color:var(--muted)">${i.quantity} u.</span>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="isec">
+      <div class="isec-title">Sesión</div>
+      ${row('Estado',    `<span class="sbadge s-${d.state}">${slabel(d.state)}</span>`)}
+      ${row('Objeciones', d.objectionCount ?? 0)}
+      ${row('Creado',    d.createdAt ? new Date(d.createdAt).toLocaleDateString('es-CO') : '—')}
+    </div>`;
+}
+
+function renderOrdersTab() {
+  if (!detail) return;
+  const orders = detail.orders || [];
+  const pane   = document.getElementById('tab-orders');
+  if (!orders.length) {
+    pane.innerHTML = `<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px">Sin pedidos aún</div>`;
+    return;
+  }
+  pane.innerHTML = orders.map(o => {
+    const items = (Array.isArray(o.cart) ? o.cart : [])
+      .map(i => `${i.quantity}x ${i.variant==='natural'?'Natural':'Intenso'}`)
+      .join(', ');
+    return `
+      <div class="order-card">
+        <div class="order-top">
+          <span class="order-id">Pedido #${o.id}</span>
+          <span class="order-status">${o.status}</span>
+        </div>
+        <div class="order-total">${cop(o.total)}</div>
+        <div class="order-meta">${o.paymentMethod==='cod'?'📦 Contraentrega':'💳 Pago anticipado'}</div>
+        <div class="order-meta" style="margin-top:4px">${items}</div>
+        ${o.city ? `<div class="order-meta">📍 ${o.city}${o.department?', '+o.department:''}</div>` : ''}
+        ${o.fullName  ? `<div class="order-meta">👤 ${o.fullName}</div>` : ''}
+        ${o.address   ? `<div class="order-meta">🏠 ${o.address}</div>` : ''}
+        ${o.createdAt ? `<div class="order-meta" style="margin-top:6px">🕐 ${new Date(o.createdAt).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'})}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function switchTab(name) {
+  tab = name;
+  document.getElementById('tab-btn-info').classList.toggle('active',   name==='info');
+  document.getElementById('tab-btn-orders').classList.toggle('active', name==='orders');
+  document.getElementById('tab-info').hidden   = name !== 'info';
+  document.getElementById('tab-orders').hidden = name !== 'orders';
+}
+
+/* ─────────────────────────────────────
+   STATS
+───────────────────────────────────── */
+function renderStats() {
+  document.getElementById('st-total').textContent  = convs.length;
+  document.getElementById('st-bots').textContent   = convs.filter(c => c.automationEnabled).length;
+  document.getElementById('st-open').textContent   = convs.filter(c => !['GREETING','CLOSED'].includes(c.state)).length;
+  document.getElementById('st-closed').textContent = convs.filter(c => c.state === 'CLOSED').length;
+}
+
+/* ─────────────────────────────────────
+   ACTIONS
+───────────────────────────────────── */
+async function sendMsg() {
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text || !selected) return;
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  try {
+    await fetch(`/api/conversations/${selected}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    input.value = '';
+    input.style.height = 'auto';
+  } catch { alert('Error enviando mensaje'); }
+  btn.disabled = false;
+  input.focus();
+}
+
+async function toggleBot(waId) {
+  const c = convs.find(x => x.waId === waId);
+  if (!c) return;
+  const enabled = !c.automationEnabled;
+  try {
+    await fetch(`/api/conversations/${waId}/automation`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled })
+    });
+    c.automationEnabled = enabled;
+    renderSidebar();
+    renderStats();
+    if (waId === selected) { renderHeader(); renderInfoTab(); }
+  } catch { alert('Error cambiando estado del bot'); }
+}
+
+/* ─────────────────────────────────────
+   HELPERS
+───────────────────────────────────── */
+function x(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+function initial(c) {
+  return ((c.customerName || c.waId || '?').charAt(0)).toUpperCase();
+}
+function phone(waId) {
+  if (!waId) return '—';
+  const m = waId.match(/^57(\d{3})(\d{3})(\d{4})$/);
+  return m ? `+57 ${m[1]} ${m[2]} ${m[3]}` : `+${waId}`;
+}
+function ago(iso) {
+  if (!iso) return '';
+  const d = Date.now() - new Date(iso).getTime();
+  if (d < 60e3)  return 'ahora';
+  if (d < 3600e3) return `${Math.floor(d/60e3)}m`;
+  if (d < 86400e3) return `${Math.floor(d/3600e3)}h`;
+  return new Date(iso).toLocaleDateString('es-CO', { day:'numeric', month:'short' });
+}
+function cop(n) { return '$' + Number(n).toLocaleString('es-CO'); }
+function slabel(s) {
+  return { GREETING:'Saludo', INTEREST:'Interés', VARIANT_SELECTION:'Variante',
+    QUANTITY:'Cantidad', OBJECTION_HANDLING:'Objeción', CONFIRM_ORDER:'Confirmar',
+    ADDRESS_COLLECTION:'Datos', PAYMENT_METHOD:'Pago', CLOSED:'Cerrado' }[s] || s;
+}
+function row(lbl, val) {
+  return `<div class="irow">
+    <span class="ilbl">${lbl}</span>
+    <span class="ival">${val || '—'}</span>
+  </div>`;
+}
+function onKey(e)  { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } }
+function grow(el)  { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+</script>
+</body>
+</html>

@@ -1,10 +1,13 @@
 import "dotenv/config";
+import path from "node:path";
 import express from "express";
 import { apiRouter } from "./api/routes";
 import { webhookRouter } from "./api/webhook";
 import { config } from "./config";
 
 const app = express();
+
+app.use(express.static(path.resolve(__dirname, "..", "public")));
 
 app.use("/webhook", webhookRouter);
 
