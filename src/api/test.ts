@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { askClaude } from "../claude/client";
 import { sanitizeOutput } from "../bot/blocklist";
+import { config } from "../config";
 import {
   HARDCODED_GREETING,
   HARDCODED_GREETING_JSON,
@@ -31,7 +32,9 @@ testRouter.post("/message", async (req, res) => {
     pushHistory(session, "user", text);
     pushHistory(session, "assistant", HARDCODED_GREETING_JSON);
     session.state = "INTEREST";
-    res.json({ messages: [HARDCODED_GREETING], state: session.state, cartUpdate: null });
+    const imgs = config.greeting.imageUrls;
+    const imageUrl = imgs.length > 0 ? imgs[Math.floor(Math.random() * imgs.length)] : null;
+    res.json({ messages: [HARDCODED_GREETING], state: session.state, cartUpdate: null, imageUrl });
     return;
   }
 

@@ -942,6 +942,7 @@ async function testSend() {
     const data = await res.json();
     typing.remove();
 
+    if (data.imageUrl) appendTestImage(data.imageUrl);
     (data.messages || []).forEach(m => appendTestMsg('sofia', m));
     document.getElementById('test-state-badge').textContent = data.state || '';
 
@@ -982,6 +983,15 @@ function appendTestTyping() {
   box.appendChild(wrap);
   box.scrollTop = box.scrollHeight;
   return wrap;
+}
+
+function appendTestImage(url) {
+  const box  = document.getElementById('test-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'tm-wrap sofia';
+  wrap.innerHTML = `<img src="${url}" style="max-width:220px;border-radius:12px;border:1px solid #e5e7eb" onerror="this.style.display='none'">`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
 }
 
 function appendTestSystem(msg) {
