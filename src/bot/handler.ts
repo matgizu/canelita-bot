@@ -84,8 +84,10 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
 
   const isFirst = session.history.length === 0 && session.state === "GREETING";
   if (isFirst) {
-    if (config.greeting.imageUrl) {
-      await sendImageUrl(ev.waId, config.greeting.imageUrl);
+    const imgs = config.greeting.imageUrls;
+    if (imgs.length > 0) {
+      const url = imgs[Math.floor(Math.random() * imgs.length)];
+      await sendImageUrl(ev.waId, url);
     }
     await replyHardcoded(session, HARDCODED_GREETING, HARDCODED_GREETING_JSON);
     pushHistory(session, "user", text);

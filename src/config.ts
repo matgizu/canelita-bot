@@ -37,7 +37,10 @@ export const config = {
   },
 
   greeting: {
-    imageUrl: optional("GREETING_IMAGE_URL"),
+    imageUrls: optional("GREETING_IMAGE_URLS")
+      .split(",")
+      .map((u) => u.trim())
+      .filter(Boolean),
   },
 };
 
