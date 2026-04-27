@@ -71,7 +71,7 @@ export const REMARKETING_DELAYS = {
 };
 
 export const TIMING = {
-  debounceMs: 10_000,
+  debounceMs: 30_000,
   greetingExtraDelayMs: 3_000,
   defaultExtraDelayMs: 20_000,
   perPartBaseMs: 600,
