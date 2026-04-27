@@ -1,7 +1,9 @@
+import axios from "axios";
 import { Router } from "express";
 import multer from "multer";
 import { prisma } from "../db";
 import { events } from "../events";
+import { config } from "../config";
 import { getSession, setAutomation } from "../sessions";
 import { mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
 import { sanitizeOutput } from "../bot/blocklist";
@@ -162,3 +164,34 @@ apiRouter.post(
     res.json({ ok: true, type, mediaId });
   },
 );
+
+// Proxy para reproducir audios/imágenes de WhatsApp en el dashboard
+// sin exponer el token al frontend
+apiRouter.get("/media/:mediaId", async (req, res) => {
+  try {
+    const apiVersion = config.whatsapp.apiVersion;
+    const token      = config.whatsapp.token;
+    const metaUrl    = `https://graph.facebook.com/${apiVersion}/${req.params.mediaId}`;
+
+    const meta = await axios.get(metaUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10_000,
+    });
+
+    const fileUrl = meta.data?.url;
+    if (!fileUrl) { res.status(404).json({ error: "not_found" }); return; }
+
+    const file = await axios.get(fileUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "stream",
+      timeout: 30_000,
+    });
+
+    res.setHeader("Content-Type", String(file.headers["content-type"] || "audio/ogg"));
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    (file.data as NodeJS.ReadableStream).pipe(res);
+  } catch (e: any) {
+    console.error("[media.proxy]", e.message);
+    res.status(502).json({ error: "fetch_failed" });
+  }
+});

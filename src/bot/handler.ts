@@ -294,6 +294,7 @@ async function persistInbound(session: Session, ev: InboundEvent, finalText: str
         type: ev.type,
         body: finalText || (ev.type === "image" ? "[imagen]" : ev.type === "audio" ? "[audio]" : ""),
         whatsappMsgId: ev.whatsappMsgId,
+        mediaUrl: ev.mediaId ?? null,
       },
     });
   } catch (e: any) {

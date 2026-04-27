@@ -138,6 +138,14 @@
     .mw.outbound .bubble { background: var(--brand-light); border: 1px solid var(--brand-border); border-bottom-right-radius: 3px; }
     .mtime { font-size: 10px; color: var(--muted); margin-top: 2px; padding: 0 3px; }
     .mtag  { background: #f3f4f6; padding: 1px 5px; border-radius: 6px; margin-left: 4px; font-size: 9px; }
+    .audio-player {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 12px; min-width: 220px;
+    }
+    .mw.inbound  .audio-player { background: var(--card); border: 1px solid var(--border); }
+    .mw.outbound .audio-player { background: var(--brand-light); border: 1px solid var(--brand-border); }
+    .audio-player audio { width: 180px; height: 32px; }
+    .audio-player audio::-webkit-media-controls-panel { background: transparent; }
     .msystem {
       align-self: center; font-size: 11px; color: var(--muted);
       background: #f3f4f6; padding: 3px 12px; border-radius: 20px; margin: 2px 0;
@@ -617,13 +625,25 @@ function bubbleHtml(m) {
   if (m.type && (m.type.startsWith('remarketing') || m.type === 'remarketing')) {
     return `<div class="msystem">🔔 Remarketing: ${m.type.split(':')[1] || ''}</div>`;
   }
-  const out  = m.direction === 'outbound';
-  const t    = new Date(m.createdAt).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
-  const tag  = m.type && m.type !== 'text'
+  const out = m.direction === 'outbound';
+  const t   = new Date(m.createdAt).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+
+  const isAudio = (m.type === 'audio' || m.type === 'voice') && m.mediaUrl;
+
+  const content = isAudio
+    ? `<div class="audio-player">
+        🎤
+        <audio controls preload="none" src="/api/media/${m.mediaUrl}"></audio>
+       </div>
+       ${m.body && m.body !== '[audio]' ? `<div class="bubble" style="margin-top:4px">${x(m.body)}</div>` : ''}`
+    : `<div class="bubble">${x(m.body)}</div>`;
+
+  const tag = !isAudio && m.type && m.type !== 'text'
     ? `<span class="mtag">${m.type}</span>` : '';
+
   return `
     <div class="mw ${out?'outbound':'inbound'}">
-      <div class="bubble">${x(m.body)}</div>
+      ${content}
       <div class="mtime">${t}${tag}</div>
     </div>`;
 }
