@@ -24,6 +24,8 @@ testRouter.post("/message", async (req, res) => {
   const text = String(req.body?.text ?? "").trim();
   if (!text) { res.status(400).json({ error: "missing text" }); return; }
 
+  await new Promise((r) => setTimeout(r, 10_000));
+
   const isFirst = session.history.length === 0 && session.state === "GREETING";
   if (isFirst) {
     pushHistory(session, "user", text);
