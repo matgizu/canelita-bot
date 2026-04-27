@@ -229,6 +229,92 @@
     .s-CLOSED            { background:#f3f4f6; color:#374151; }
 
     [hidden] { display: none !important; }
+
+    /* ── Test overlay ── */
+    #test-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #test-panel {
+      width: 420px; max-width: 96vw; height: 640px; max-height: 90vh;
+      background: var(--card); border-radius: 16px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    #test-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px; background: var(--sidebar);
+      flex-shrink: 0;
+    }
+    #test-header .ava { background: #374151; width: 34px; height: 34px; font-size: 13px; }
+    .test-title { flex: 1; color: #fff; font-size: 13px; font-weight: 600; }
+    .test-subtitle { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+    #test-state-badge { font-size: 10px; }
+    #test-reset {
+      padding: 5px 10px; background: #374151; color: #d1d5db;
+      border: none; border-radius: 6px; font-size: 11px; cursor: pointer;
+    }
+    #test-reset:hover { background: #4b5563; }
+    #test-close {
+      width: 28px; height: 28px; background: #374151; color: #9ca3af;
+      border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #test-close:hover { background: #ef4444; color: #fff; }
+    #test-messages {
+      flex: 1; overflow-y: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 8px;
+      background: #f0f0f0;
+    }
+    #test-messages::-webkit-scrollbar { width: 3px; }
+    #test-messages::-webkit-scrollbar-thumb { background: #d1d5db; }
+    .tm-wrap { display: flex; flex-direction: column; }
+    .tm-wrap.user   { align-items: flex-end; }
+    .tm-wrap.sofia  { align-items: flex-start; }
+    .tm-bubble {
+      max-width: 80%; padding: 9px 13px; border-radius: 16px;
+      font-size: 13px; line-height: 1.45; word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .tm-wrap.user  .tm-bubble { background: #dcf8c6; border-bottom-right-radius: 3px; }
+    .tm-wrap.sofia .tm-bubble { background: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 3px; }
+    .tm-meta { font-size: 10px; color: #9ca3af; margin-top: 2px; padding: 0 3px; }
+    .tm-system {
+      align-self: center; font-size: 10px; color: #9ca3af;
+      background: #e5e7eb; padding: 3px 10px; border-radius: 20px;
+    }
+    .tm-typing {
+      align-self: flex-start;
+    }
+    .tm-typing .tm-bubble {
+      background: #fff; border: 1px solid #e5e7eb; color: #9ca3af;
+      font-style: italic;
+    }
+    #test-composer {
+      display: flex; gap: 8px; padding: 10px 12px;
+      background: var(--card); border-top: 1px solid var(--border);
+      align-items: flex-end; flex-shrink: 0;
+    }
+    #test-input {
+      flex: 1; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 13px; resize: none;
+      outline: none; font-family: inherit; max-height: 80px; min-height: 38px;
+    }
+    #test-input:focus { border-color: var(--brand); }
+    #test-send {
+      padding: 9px 16px; background: #25d366; color: #fff;
+      border: none; border-radius: 10px; font-size: 13px;
+      font-weight: 600; cursor: pointer; height: 38px; flex-shrink: 0;
+    }
+    #test-send:hover    { background: #1da851; }
+    #test-send:disabled { opacity: .5; cursor: default; }
+    #test-btn {
+      padding: 6px 14px; background: #1f2937; color: #f59e0b;
+      border: 1px solid #374151; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 8px;
+    }
+    #test-btn:hover { background: #374151; }
   </style>
 </head>
 <body>
@@ -242,6 +328,7 @@
     <div class="stat"><span class="stat-val" id="st-open">—</span><span class="stat-lbl">En proceso</span></div>
     <div class="stat"><span class="stat-val" id="st-closed">—</span><span class="stat-lbl">Cerrados</span></div>
   </div>
+  <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
   <div class="sse-pill">
     <div class="sse-dot" id="sse-dot"></div>
     <span id="sse-lbl">Conectando…</span>
@@ -290,6 +377,28 @@
     </div>
   </aside>
 
+</div>
+
+<!-- Test overlay -->
+<div id="test-overlay" hidden>
+  <div id="test-panel">
+    <div id="test-header">
+      <div class="ava" style="width:34px;height:34px;font-size:13px;border-radius:50%;background:#374151;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">S</div>
+      <div style="flex:1;min-width:0">
+        <div class="test-title">Sofía — Canelita Hollywood</div>
+        <div class="test-subtitle">Estado: <span id="test-state-badge">GREETING</span></div>
+      </div>
+      <button id="test-reset" onclick="resetTest()">↺ Reiniciar</button>
+      <button id="test-close" onclick="closeTest()">✕</button>
+    </div>
+    <div id="test-messages"></div>
+    <div id="test-composer">
+      <textarea id="test-input" rows="1"
+        placeholder="Escribe como si fueras el cliente…"
+        onkeydown="testKey(event)" oninput="grow(this)"></textarea>
+      <button id="test-send" onclick="testSend()">Enviar</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -667,6 +776,105 @@ function row(lbl, val) {
 }
 function onKey(e)  { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } }
 function grow(el)  { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+/* ─────────────────────────────────────
+   TEST CHAT
+───────────────────────────────────── */
+function openTest() {
+  document.getElementById('test-overlay').hidden = false;
+  document.getElementById('test-input').focus();
+}
+function closeTest() {
+  document.getElementById('test-overlay').hidden = true;
+}
+
+async function resetTest() {
+  await fetch('/api/test/reset', { method: 'DELETE' });
+  document.getElementById('test-messages').innerHTML = '';
+  document.getElementById('test-state-badge').textContent = 'GREETING';
+}
+
+async function testSend() {
+  const input = document.getElementById('test-input');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('test-send');
+  btn.disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+
+  appendTestMsg('user', text);
+
+  const typing = appendTestTyping();
+
+  try {
+    const res  = await fetch('/api/test/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    typing.remove();
+
+    (data.messages || []).forEach(m => appendTestMsg('sofia', m));
+    document.getElementById('test-state-badge').textContent = data.state || '';
+
+    if (data.special) {
+      appendTestSystem(`Caso especial detectado: ${data.special}`);
+    }
+    if (data.cartUpdate) {
+      const items = data.cartUpdate.map(i => `${i.quantity}x ${i.variant}`).join(', ');
+      appendTestSystem(`Carrito: ${items}`);
+    }
+  } catch(e) {
+    typing.remove();
+    appendTestSystem('Error conectando con el servidor');
+  }
+
+  btn.disabled = false;
+  input.focus();
+}
+
+function appendTestMsg(role, text) {
+  const box  = document.getElementById('test-messages');
+  const wrap = document.createElement('div');
+  wrap.className = `tm-wrap ${role}`;
+  const t = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  wrap.innerHTML = `
+    <div class="tm-bubble">${x(text)}</div>
+    <div class="tm-meta">${role === 'user' ? 'Tú' : 'Sofía'} · ${t}</div>`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+function appendTestTyping() {
+  const box  = document.getElementById('test-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'tm-wrap tm-typing';
+  wrap.innerHTML = `<div class="tm-bubble">Sofía está escribiendo…</div>`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+function appendTestSystem(msg) {
+  const box  = document.getElementById('test-messages');
+  const div  = document.createElement('div');
+  div.className = 'tm-system';
+  div.textContent = msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function testKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); testSend(); }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeTest();
+});
 </script>
 </body>
 </html>
