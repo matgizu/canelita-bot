@@ -25,6 +25,7 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 COPY --from=builder /app/dist ./dist
+COPY public ./public
 COPY bin/start.sh ./bin/start.sh
 RUN chmod +x ./bin/start.sh
 
