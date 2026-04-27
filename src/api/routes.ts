@@ -1,9 +1,15 @@
 import { Router } from "express";
+import multer from "multer";
 import { prisma } from "../db";
 import { events } from "../events";
 import { getSession, setAutomation } from "../sessions";
-import { sendInParts } from "../whatsapp/client";
+import { mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
 import { sanitizeOutput } from "../bot/blocklist";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 16 * 1024 * 1024 }, // 16 MB
+});
 
 export const apiRouter = Router();
 
@@ -116,3 +122,43 @@ apiRouter.post("/conversations/:waId/send", async (req, res) => {
 
   res.json({ ok: true });
 });
+
+apiRouter.post(
+  "/conversations/:waId/send-media",
+  upload.single("file"),
+  async (req, res) => {
+    if (!req.file) { res.status(400).json({ error: "no_file" }); return; }
+
+    const waId    = String(req.params.waId);
+    const caption = String(req.body?.caption ?? "").trim() || undefined;
+    const mime    = req.file.mimetype;
+    const type    = mimeToMediaType(mime);
+
+    const mediaId = await uploadMedia(req.file.buffer, mime, req.file.originalname);
+    if (!mediaId) { res.status(502).json({ error: "upload_failed" }); return; }
+
+    await sendMedia(waId, mediaId, type, caption);
+
+    const label = `[${type}: ${req.file.originalname}]${caption ? " " + caption : ""}`;
+
+    try {
+      const conv = await prisma.conversation.upsert({
+        where: { waId },
+        create: { waId },
+        update: { lastOutboundAt: new Date() },
+      });
+      await prisma.message.create({
+        data: { conversationId: conv.id, direction: "outbound", type, body: label },
+      });
+    } catch (e: any) {
+      console.error("[send-media.persist]", e.message);
+    }
+
+    events.emitDashboard({
+      type: "message", waId, direction: "outbound",
+      body: label, messageType: type, at: Date.now(),
+    });
+
+    res.json({ ok: true, type, mediaId });
+  },
+);

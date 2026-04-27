@@ -144,10 +144,10 @@
     }
 
     #composer {
-      display: flex; gap: 8px; padding: 10px 14px;
-      background: var(--card); border-top: 1px solid var(--border);
-      align-items: flex-end; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 6px; padding: 10px 14px;
+      background: var(--card); border-top: 1px solid var(--border); flex-shrink: 0;
     }
+    #composer-row { display: flex; gap: 8px; align-items: flex-end; }
     #msg-input {
       flex: 1; padding: 9px 12px; border: 1px solid var(--border);
       border-radius: 10px; font-size: 13px; resize: none; outline: none;
@@ -161,6 +161,36 @@
     }
     #send-btn:hover    { background: #d97706; }
     #send-btn:disabled { opacity: .5; cursor: default; }
+    #media-btn {
+      width: 38px; height: 38px; background: #f3f4f6; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 18px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #media-btn:hover { background: #e5e7eb; }
+    #media-preview {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: #f8f9fa; border-radius: 8px;
+      border: 1px solid var(--border); font-size: 12px;
+    }
+    #media-preview img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
+    #media-preview .mp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #media-preview .mp-size { color: var(--muted); flex-shrink: 0; }
+    #media-caption {
+      flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12px; outline: none; font-family: inherit;
+    }
+    #media-caption:focus { border-color: var(--brand); }
+    #media-send {
+      padding: 6px 14px; background: var(--brand); color: #fff;
+      border: none; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; flex-shrink: 0;
+    }
+    #media-send:disabled { opacity: .5; cursor: default; }
+    #media-cancel {
+      padding: 6px 10px; background: #f3f4f6; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 8px; font-size: 12px;
+      cursor: pointer; flex-shrink: 0;
+    }
 
     /* ── Info panel ── */
     #info-panel {
@@ -356,10 +386,24 @@
       <div id="chat-header"></div>
       <div id="messages"></div>
       <div id="composer">
-        <textarea id="msg-input" rows="1"
-          placeholder="Mensaje manual (Enter para enviar, Shift+Enter nueva línea)…"
-          onkeydown="onKey(event)" oninput="grow(this)"></textarea>
-        <button id="send-btn" onclick="sendMsg()">Enviar</button>
+        <div id="media-preview" hidden>
+          <img id="mp-thumb" src="" alt="" hidden>
+          <span class="mp-name" id="mp-name"></span>
+          <span class="mp-size" id="mp-size"></span>
+        </div>
+        <div id="media-send-row" hidden style="display:flex;gap:6px;align-items:center">
+          <input id="media-caption" type="text" placeholder="Pie de foto opcional…">
+          <button id="media-send" onclick="sendMediaFile()">Enviar</button>
+          <button id="media-cancel" onclick="cancelMedia()">✕</button>
+        </div>
+        <div id="composer-row">
+          <input type="file" id="file-input" accept="image/*,video/*" style="display:none" onchange="onFileSelected(event)">
+          <button id="media-btn" title="Enviar foto o video" onclick="document.getElementById('file-input').click()">📎</button>
+          <textarea id="msg-input" rows="1"
+            placeholder="Mensaje manual (Enter para enviar, Shift+Enter nueva línea)…"
+            onkeydown="onKey(event)" oninput="grow(this)"></textarea>
+          <button id="send-btn" onclick="sendMsg()">Enviar</button>
+        </div>
       </div>
     </div>
   </main>
@@ -776,6 +820,87 @@ function row(lbl, val) {
 }
 function onKey(e)  { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } }
 function grow(el)  { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+/* ── Media upload ── */
+let selectedFile = null;
+
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedFile = file;
+
+  const preview  = document.getElementById('media-preview');
+  const sendRow  = document.getElementById('media-send-row');
+  const nameEl   = document.getElementById('mp-name');
+  const sizeEl   = document.getElementById('mp-size');
+  const thumb    = document.getElementById('mp-thumb');
+  const msgInput = document.getElementById('msg-input');
+
+  nameEl.textContent = file.name;
+  sizeEl.textContent = formatBytes(file.size);
+
+  if (file.type.startsWith('image/')) {
+    thumb.src = URL.createObjectURL(file);
+    thumb.hidden = false;
+  } else {
+    thumb.hidden = true;
+  }
+
+  preview.hidden = false;
+  sendRow.hidden = false;
+  sendRow.style.display = 'flex';
+  msgInput.disabled = true;
+  document.getElementById('send-btn').disabled = true;
+  e.target.value = '';
+}
+
+function cancelMedia() {
+  selectedFile = null;
+  document.getElementById('media-preview').hidden = true;
+  document.getElementById('media-send-row').hidden = true;
+  document.getElementById('msg-input').disabled = false;
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('mp-thumb').src = '';
+  document.getElementById('media-caption').value = '';
+}
+
+async function sendMediaFile() {
+  if (!selectedFile || !selected) return;
+  const btn     = document.getElementById('media-send');
+  const caption = document.getElementById('media-caption').value.trim();
+  btn.disabled  = true;
+
+  const form = new FormData();
+  form.append('file', selectedFile, selectedFile.name);
+  if (caption) form.append('caption', caption);
+
+  try {
+    const res = await fetch(`/api/conversations/${selected}/send-media`, {
+      method: 'POST', body: form,
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const type = selectedFile.type.startsWith('image/') ? '🖼' : '🎥';
+      appendBubble({
+        direction: 'outbound',
+        type: data.type,
+        body: `${type} ${selectedFile.name}${caption ? '\n' + caption : ''}`,
+        createdAt: new Date().toISOString(),
+      });
+    } else {
+      alert('Error enviando archivo: ' + (data.error || 'desconocido'));
+    }
+  } catch { alert('Error de conexión'); }
+
+  cancelMedia();
+  btn.disabled = false;
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
 
 /* ─────────────────────────────────────
    TEST CHAT

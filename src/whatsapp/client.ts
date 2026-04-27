@@ -1,4 +1,5 @@
 import axios from "axios";
+import FormData from "form-data";
 import { config } from "../config";
 
 const baseURL = `https://graph.facebook.com/${config.whatsapp.apiVersion}`;
@@ -93,6 +94,64 @@ export function reactionFor(text: string): string | null {
     if (r.keyword.test(text)) return r.emoji;
   }
   return null;
+}
+
+export type MediaType = "image" | "video" | "document" | "audio";
+
+export async function uploadMedia(
+  buffer: Buffer,
+  mimeType: string,
+  filename: string,
+): Promise<string | null> {
+  try {
+    const form = new FormData();
+    form.append("messaging_product", "whatsapp");
+    form.append("type", mimeType);
+    form.append("file", buffer, { filename, contentType: mimeType });
+    const res = await axios.post(
+      `${baseURL}/${phoneId}/media`,
+      form,
+      {
+        headers: {
+          Authorization: `Bearer ${config.whatsapp.token}`,
+          ...form.getHeaders(),
+        },
+        timeout: 30_000,
+      },
+    );
+    return res.data?.id ?? null;
+  } catch (e: any) {
+    console.error("[wa.uploadMedia]", e.response?.data ?? e.message);
+    return null;
+  }
+}
+
+export async function sendMedia(
+  to: string,
+  mediaId: string,
+  type: MediaType,
+  caption?: string,
+): Promise<string | null> {
+  try {
+    const payload: Record<string, any> = {
+      messaging_product: "whatsapp",
+      to,
+      type,
+      [type]: { id: mediaId, ...(caption ? { caption } : {}) },
+    };
+    const res = await http.post(`/${phoneId}/messages`, payload);
+    return res.data?.messages?.[0]?.id ?? null;
+  } catch (e: any) {
+    console.error("[wa.sendMedia]", e.response?.data ?? e.message);
+    return null;
+  }
+}
+
+export function mimeToMediaType(mime: string): MediaType {
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("audio/")) return "audio";
+  return "document";
 }
 
 export function splitMessage(text: string): string[] {
