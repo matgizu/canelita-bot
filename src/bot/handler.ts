@@ -81,15 +81,12 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
   if (!session.automationEnabled) return;
 
   const isFirst = session.history.length === 0 && session.state === "GREETING";
-  if (isFirst && text) {
+  if (isFirst) {
     await replyHardcoded(session, HARDCODED_GREETING, HARDCODED_GREETING_JSON);
     pushHistory(session, "user", text);
-    enqueueInbound(
-      ev.waId,
-      "",
-      (combined, hi, mid) => processCombined(session, combined || text, hi, mid),
-      { hasImage, imageMediaId },
-    );
+    transitionTo(session, "INTEREST");
+    // No llamar a Claude aquí — el greeting ya cubrió todo.
+    // Claude responderá al PRÓXIMO mensaje del cliente.
     return;
   }
 

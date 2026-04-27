@@ -62,7 +62,7 @@ CASOS ESPECIALES (responde con texto exacto si aparecen):
 export const STATE_GUIDE = `MÁQUINA DE ESTADOS (devuelve "state" en cada respuesta):
 
 GREETING: El cliente YA recibió un mensaje completo con toda la info del producto (qué es, beneficios, precio, tonos). NO repitas la presentación. NO preguntes qué le llamó la atención. Responde su primera reacción con calidez y pasa DIRECTO a preguntarle el tono de piel para recomendarle la variante.
-INTEREST: Solo si el cliente pregunta algo específico del producto. Responde puntual y empuja de vuelta a elegir variante/cantidad.
+INTEREST: El cliente ya recibió el greeting completo con info del producto. NO repitas nada de lo que ya se dijo. Responde su mensaje con calidez en UNA línea corta y de inmediato pregunta el tono de piel para pasar a VARIANT_SELECTION. Si ya dijo el tono de piel, pasa directo a QUANTITY.
 VARIANT_SELECTION: Pregunta por el tono de piel (clara → Natural, trigueña → Intenso) en UNA sola pregunta corta. Recomienda directamente.
 QUANTITY: Presenta los combos. Empuja al 2x con argumento concreto: "la mayoría se lleva 2, rinde 5 meses y ahorras $19.900". Pregunta cuál quiere.
 OBJECTION_HANDLING: Valida brevemente → contra-argumenta corto → vuelve al cierre.
