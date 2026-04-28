@@ -15,6 +15,50 @@ const upload = multer({
 
 export const apiRouter = Router();
 
+apiRouter.get("/metrics", async (_req, res) => {
+  try {
+    const [
+      total,
+      closed,
+      repliedRows,
+      todayRows,
+    ] = await Promise.all([
+      prisma.conversation.count(),
+      prisma.conversation.count({ where: { state: "CLOSED" } }),
+      // Conversations where the customer sent ≥2 inbound messages (replied after greeting)
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*) AS count FROM (
+          SELECT "conversationId"
+          FROM "Message"
+          WHERE direction = 'inbound'
+          GROUP BY "conversationId"
+          HAVING COUNT(*) >= 2
+        ) sub
+      `,
+      // Conversations created today
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*) AS count FROM "Conversation"
+        WHERE "createdAt" >= CURRENT_DATE
+      `,
+    ]);
+
+    const replied = Number(repliedRows[0]?.count ?? 0);
+    const today   = Number(todayRows[0]?.count ?? 0);
+
+    res.json({
+      total,
+      closed,
+      replied,
+      today,
+      responseRate: total > 0 ? replied / total : 0,
+      closeRate:    total > 0 ? closed / total   : 0,
+    });
+  } catch (e: any) {
+    console.error("[metrics]", e.message);
+    res.status(500).json({ error: "metrics_error" });
+  }
+});
+
 apiRouter.get("/conversations", async (_req, res) => {
   const conversations = await prisma.conversation.findMany({
     orderBy: { lastInboundAt: "desc" },

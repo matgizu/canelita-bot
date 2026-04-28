@@ -45,6 +45,26 @@
     .sse-dot.live { background: var(--green); animation: blink 2s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
 
+    /* ── Metrics bar ── */
+    #metrics-bar {
+      background: #1a2234; border-bottom: 1px solid #1f2937;
+      display: flex; align-items: center; padding: 0 20px; gap: 32px;
+      height: 40px; flex-shrink: 0; overflow-x: auto;
+    }
+    .metric-item {
+      display: flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0;
+    }
+    .metric-label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
+    .metric-value {
+      font-size: 14px; font-weight: 700; border-radius: 6px;
+      padding: 2px 8px; line-height: 1.6;
+    }
+    .metric-value.green  { background: #064e3b; color: #34d399; }
+    .metric-value.orange { background: #451a03; color: #fb923c; }
+    .metric-value.red    { background: #450a0a; color: #f87171; }
+    .metric-value.gray   { background: #1f2937; color: #9ca3af; }
+    .metric-divider { width: 1px; height: 22px; background: #374151; flex-shrink: 0; }
+
     /* ── Layout ── */
     #layout { display: flex; flex: 1; overflow: hidden; }
 
@@ -373,6 +393,34 @@
   </div>
 </header>
 
+<!-- Metrics bar -->
+<div id="metrics-bar">
+  <div class="metric-item">
+    <span class="metric-label">Tasa de respuesta</span>
+    <span class="metric-value gray" id="m-response">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Tasa de cierre</span>
+    <span class="metric-value gray" id="m-close">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Hoy</span>
+    <span class="metric-value gray" id="m-today">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Respondieron</span>
+    <span class="metric-value gray" id="m-replied">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Cerradas</span>
+    <span class="metric-value gray" id="m-closed">…</span>
+  </div>
+</div>
+
 <!-- Layout -->
 <div id="layout">
 
@@ -468,6 +516,8 @@ let tab      = 'info';
 ───────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   await loadConvs();
+  await loadMetrics();
+  setInterval(loadMetrics, 60_000); // refresh every minute
   connectSSE();
 });
 
@@ -481,6 +531,36 @@ async function loadConvs() {
     renderSidebar();
     renderStats();
   } catch(e) { console.error('loadConvs', e); }
+}
+
+async function loadMetrics() {
+  try {
+    const d = await fetch('/api/metrics').then(r => r.json());
+
+    // Response rate: >45% green, 30-45% orange, <30% red
+    const rr  = d.responseRate ?? 0;
+    const rrPct = (rr * 100).toFixed(1) + '%';
+    const rrColor = rr >= 0.45 ? 'green' : rr >= 0.30 ? 'orange' : 'red';
+    setMetric('m-response', rrPct, rrColor);
+
+    // Close rate: >12% green, otherwise red
+    const cr  = d.closeRate ?? 0;
+    const crPct = (cr * 100).toFixed(1) + '%';
+    const crColor = cr >= 0.12 ? 'green' : 'red';
+    setMetric('m-close', crPct, crColor);
+
+    // Plain numbers
+    setMetric('m-today',   d.today   ?? 0, 'gray');
+    setMetric('m-replied', d.replied ?? 0, 'gray');
+    setMetric('m-closed',  d.closed  ?? 0, 'gray');
+  } catch(e) { console.warn('loadMetrics', e); }
+}
+
+function setMetric(id, value, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = value;
+  el.className   = `metric-value ${color}`;
 }
 
 async function loadDetail(waId) {
