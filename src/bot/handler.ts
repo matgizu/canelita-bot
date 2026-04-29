@@ -3,6 +3,7 @@ import { events } from "../events";
 import { prisma } from "../db";
 import { getOrLoadSession, getSession, setAutomation } from "../sessions";
 import { notify, notifyPhoto } from "../telegram";
+import { notifyOwner } from "../owner";
 import { findCombo, formatCOP } from "../products";
 import {
   getMediaUrl,
@@ -162,9 +163,11 @@ async function processCombined(
   let claudeText = "";
   let nextState: State = session.state;
   let cartUpdate: CartItem[] | null = null;
+  let detectedObjectionType: string | null = null;
 
   if (objection && session.state !== "GREETING") {
     session.objectionCount += 1;
+    detectedObjectionType = objection.type;
     claudeText = buildObjectionResponse(objection);
     nextState = "OBJECTION_HANDLING";
 
@@ -217,7 +220,7 @@ async function processCombined(
     scheduleFullSequence(session);
   }
 
-  await persistOutbound(session, sanitized, nextState);
+  await persistOutbound(session, sanitized, nextState, detectedObjectionType ?? undefined);
 
   events.emitDashboard({
     type: "message",
@@ -340,7 +343,7 @@ async function persistInbound(session: Session, ev: InboundEvent, finalText: str
   }
 }
 
-async function persistOutbound(session: Session, body: string, state: State) {
+async function persistOutbound(session: Session, body: string, state: State, objectionType?: string) {
   try {
     const conv = await ensureConversation(session);
     await prisma.message.create({
@@ -350,6 +353,7 @@ async function persistOutbound(session: Session, body: string, state: State) {
         type: "text",
         body,
         rawState: state,
+        objectionType: objectionType ?? null,
       },
     });
     await prisma.conversation.update({
@@ -365,41 +369,68 @@ async function persistOutbound(session: Session, body: string, state: State) {
   }
 }
 
+// Exported for documentation — mirrors the upsert decision logic
+export function shouldCreateNewOrder(existing: { id: number; status: string } | null): boolean {
+  if (!existing) return true;
+  return existing.status === "CANCELLED";
+}
+
 async function persistOrderIfNeeded(session: Session) {
   if (!session.cart.length) return;
   const total = computeTotal(session.cart);
+
   try {
     const conv = await ensureConversation(session);
-    const order = await prisma.order.create({
-      data: {
-        conversationId: conv.id,
-        cart: session.cart as any,
-        total,
-        paymentMethod: session.pendingOrder?.paymentMethod ?? "cod",
-        status: "PENDING",
-        fullName: session.fullName,
-        idNumber: session.idNumber,
-        email: session.email,
-        address: session.address,
-        city: session.city,
-        department: session.department,
-        altPhone: session.altPhone,
-        reference: session.reference,
-      },
+
+    const existing = await prisma.order.findFirst({
+      where: { conversationId: conv.id, status: { not: "CANCELLED" } },
+      select: { id: true, status: true },
     });
-    events.emitDashboard({
-      type: "order_created",
-      waId: session.waId,
-      orderId: order.id,
+
+    const orderData = {
+      cart:          session.cart as any,
       total,
-      at: Date.now(),
-    });
-    notify(
-      TELEGRAM_TEMPLATES.newOrder(
-        session.waId,
-        orderSummary(session, total),
-      ),
-    );
+      paymentMethod: session.pendingOrder?.paymentMethod ?? "cod",
+      fullName:      session.fullName      ?? null,
+      idNumber:      session.idNumber      ?? null,
+      email:         session.email         ?? null,
+      address:       session.address       ?? null,
+      city:          session.city          ?? null,
+      department:    session.department    ?? null,
+      altPhone:      session.altPhone      ?? null,
+      reference:     session.reference     ?? null,
+    };
+
+    let order: { id: number };
+
+    if (shouldCreateNewOrder(existing)) {
+      order = await prisma.order.create({
+        data: { conversationId: conv.id, status: "PENDING", ...orderData },
+        select: { id: true },
+      });
+
+      events.emitDashboard({
+        type: "order_created",
+        waId: session.waId,
+        orderId: order.id,
+        total,
+        at: Date.now(),
+      });
+
+      await notifyOwner(
+        `🛒 *Nuevo pedido*\n\n${orderSummary(session, total)}`,
+      );
+
+      notify(
+        TELEGRAM_TEMPLATES.newOrder(session.waId, orderSummary(session, total)),
+      );
+    } else {
+      order = await prisma.order.update({
+        where: { id: existing!.id },
+        data: orderData,
+        select: { id: true },
+      });
+    }
   } catch (e: any) {
     console.error("[handler.persistOrder]", e.message);
   }
