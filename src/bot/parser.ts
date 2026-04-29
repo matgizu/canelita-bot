@@ -1,6 +1,11 @@
 import { State, STATES } from "./flow";
 import type { CartItem } from "./flow";
 
+export interface ReminderEntry {
+  note: string;
+  daysFromNow: number;
+}
+
 export interface SessionFields {
   fullName?: string;
   idNumber?: string;
@@ -17,6 +22,7 @@ export interface ClaudeReply {
   state: State;
   cartUpdate: CartItem[] | null;
   fields: SessionFields | null;
+  reminder: ReminderEntry | null;
 }
 
 const VALID_STATES = new Set(STATES);
@@ -53,6 +59,7 @@ export function parseClaudeReply(
         state: isValidState(direct.state) ? direct.state : fallbackState,
         cartUpdate: normalizeCartUpdate(direct.cartUpdate),
         fields: normalizeFields(direct.fields),
+        reminder: normalizeReminder(direct.reminder),
       };
     }
   } catch {}
@@ -67,6 +74,7 @@ export function parseClaudeReply(
           state: isValidState(parsed.state) ? parsed.state : fallbackState,
           cartUpdate: normalizeCartUpdate(parsed.cartUpdate),
           fields: normalizeFields(parsed.fields),
+          reminder: normalizeReminder(parsed.reminder),
         };
       }
     } catch {}
@@ -86,6 +94,7 @@ export function parseClaudeReply(
           : fallbackState,
       cartUpdate: null,
       fields: null,
+      reminder: null,
     };
   }
 
@@ -96,6 +105,7 @@ export function parseClaudeReply(
       state: fallbackState,
       cartUpdate: null,
       fields: null,
+      reminder: null,
     };
   }
 
@@ -104,6 +114,7 @@ export function parseClaudeReply(
     state: fallbackState,
     cartUpdate: null,
     fields: null,
+    reminder: null,
   };
 }
 
@@ -125,6 +136,17 @@ function normalizeFields(raw: unknown): SessionFields | null {
     if (v) { f[k] = v; any = true; }
   }
   return any ? f : null;
+}
+
+function normalizeReminder(raw: unknown): ReminderEntry | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const note = typeof r.note === "string" && r.note.trim() ? r.note.trim() : null;
+  const days = typeof r.daysFromNow === "number" && r.daysFromNow > 0
+    ? Math.ceil(r.daysFromNow)
+    : null;
+  if (!note || !days) return null;
+  return { note, daysFromNow: days };
 }
 
 function extractJsonBlock(s: string): string | null {

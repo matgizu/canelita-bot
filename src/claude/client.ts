@@ -55,6 +55,7 @@ export async function askClaude(
       state: session.state,
       cartUpdate: null,
       fields: null,
+      reminder: null,
     };
   }
 }

@@ -76,12 +76,13 @@ CLOSED: Confirma el pedido, tiempo de entrega (2-4 días hábiles), efectivo exa
 export const OUTPUT_FORMAT = `FORMATO DE SALIDA OBLIGATORIO:
 Responde SIEMPRE y SOLO con un JSON válido en una sola línea, sin markdown, sin texto antes ni después:
 
-{"message":"texto que ve el cliente","state":"ESTADO_NUEVO","cartUpdate":[{"variant":"natural|intenso","quantity":N}] o null,"fields":{"fullName":null,"idNumber":null,"email":null,"city":null,"department":null,"address":null,"reference":null,"altPhone":null}}
+{"message":"texto que ve el cliente","state":"ESTADO_NUEVO","cartUpdate":[{"variant":"natural|intenso","quantity":N}] o null,"fields":{"fullName":null,"idNumber":null,"email":null,"city":null,"department":null,"address":null,"reference":null,"altPhone":null},"reminder":null}
 
 - "message": el texto de WhatsApp que verá el cliente. Puede tener saltos de línea con \\n.
 - "state": uno de GREETING, INTEREST, VARIANT_SELECTION, QUANTITY, OBJECTION_HANDLING, CONFIRM_ORDER, ADDRESS_COLLECTION, PAYMENT_METHOD, CLOSED.
 - "cartUpdate": null si no hubo cambio en carrito; arreglo de items si sí (reemplaza el carrito completo).
-- "fields": SIEMPRE incluido. Pon null en cada campo si no fue mencionado. Si el cliente dio un dato, extráelo aquí aunque ya estuviera en el contexto.`;
+- "fields": SIEMPRE incluido. Pon null en cada campo si no fue mencionado. Si el cliente dio un dato, extráelo aquí aunque ya estuviera en el contexto.
+- "reminder": null por defecto. Si el cliente menciona una fecha futura específica en que volverá a escribir o dar respuesta (ej: "el jueves te cuento", "el fin de semana te aviso", "cuando me paguen te escribo"), pon {"note":"resumen corto","daysFromNow":N} donde N es el número estimado de días hasta ese momento. Si no hay compromiso temporal claro, deja null.`;
 
 export const FEW_SHOT_EXAMPLES = `EJEMPLOS DE CONVERSACIÓN — IMPORTANTE: el saludo ya fue enviado automáticamente con toda la info del producto. Tú respondes desde el PRIMER MENSAJE DEL CLIENTE en adelante.
 

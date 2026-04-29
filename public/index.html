@@ -644,11 +644,13 @@
     <div id="info-empty">← Selecciona una conversación</div>
     <div id="info-content" hidden>
       <div class="tabs">
-        <div class="tab active" id="tab-btn-info"   onclick="switchTab('info')">Cliente</div>
-        <div class="tab"        id="tab-btn-orders" onclick="switchTab('orders')">Pedidos</div>
+        <div class="tab active" id="tab-btn-info"      onclick="switchTab('info')">Cliente</div>
+        <div class="tab"        id="tab-btn-orders"    onclick="switchTab('orders')">Pedidos</div>
+        <div class="tab"        id="tab-btn-reminders" onclick="switchTab('reminders')">🔔</div>
       </div>
-      <div id="tab-info"   class="tab-pane"></div>
-      <div id="tab-orders" class="tab-pane" hidden></div>
+      <div id="tab-info"      class="tab-pane"></div>
+      <div id="tab-orders"    class="tab-pane" hidden></div>
+      <div id="tab-reminders" class="tab-pane" hidden></div>
     </div>
   </aside>
 
@@ -1142,12 +1144,45 @@ function renderOrdersTab() {
   }).join('');
 }
 
+async function loadRemindersTab() {
+  const pane = document.getElementById('tab-reminders');
+  pane.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px">Cargando…</div>';
+  try {
+    const reminders = await fetch('/api/reminders').then(r => r.json());
+    if (!reminders.length) {
+      pane.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px">Sin recordatorios pendientes</div>';
+      return;
+    }
+    pane.innerHTML = reminders.map(r => `
+      <div class="order-card" style="margin-bottom:10px">
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:4px">🕐 ${new Date(r.dueAt).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'})}</div>
+        <div style="font-size:13px;font-weight:600">${x(r.waId ? '+'+r.waId : '—')}</div>
+        <div style="font-size:12px;color:#374151;margin-top:4px">${x(r.note)}</div>
+        <button onclick="dismissReminder(${r.id},this)" style="margin-top:8px;font-size:11px;padding:4px 10px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer">
+          Descartar
+        </button>
+      </div>`).join('');
+  } catch(e) {
+    console.warn('loadRemindersTab', e);
+    pane.innerHTML = '<div style="text-align:center;color:var(--red);font-size:13px;padding:24px">Error cargando</div>';
+  }
+}
+
+async function dismissReminder(id, btn) {
+  btn.disabled = true;
+  await fetch(`/api/reminders/${id}/dismiss`, { method: 'PATCH' });
+  btn.closest('.order-card').remove();
+}
+
 function switchTab(name) {
   tab = name;
-  document.getElementById('tab-btn-info').classList.toggle('active',   name==='info');
-  document.getElementById('tab-btn-orders').classList.toggle('active', name==='orders');
-  document.getElementById('tab-info').hidden   = name !== 'info';
-  document.getElementById('tab-orders').hidden = name !== 'orders';
+  document.getElementById('tab-btn-info').classList.toggle('active',      name==='info');
+  document.getElementById('tab-btn-orders').classList.toggle('active',    name==='orders');
+  document.getElementById('tab-btn-reminders').classList.toggle('active', name==='reminders');
+  document.getElementById('tab-info').hidden      = name !== 'info';
+  document.getElementById('tab-orders').hidden    = name !== 'orders';
+  document.getElementById('tab-reminders').hidden = name !== 'reminders';
+  if (name === 'reminders') loadRemindersTab();
 }
 
 /* ─────────────────────────────────────

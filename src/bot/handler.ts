@@ -182,6 +182,12 @@ async function processCombined(
       : session.state;
     cartUpdate = reply.cartUpdate;
     if (reply.fields) applyFields(session, reply.fields);
+    if (reply.reminder) {
+      const dueAt = new Date(Date.now() + reply.reminder.daysFromNow * 24 * 60 * 60 * 1000);
+      prisma.reminder
+        .create({ data: { waId: session.waId, note: reply.reminder.note, dueAt } })
+        .catch((e: any) => console.error("[reminder.create]", e.message));
+    }
   }
 
   const sanitized = sanitizeOutput(claudeText);
