@@ -43,6 +43,10 @@ export const config = {
       .map((u) => u.trim())
       .filter(Boolean),
   },
+
+  owner: {
+    waNumber: optional("OWNER_WA_NUMBER", "+573124743435"),
+  },
 };
 
 export type AppConfig = typeof config;
