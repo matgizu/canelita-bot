@@ -1149,7 +1149,7 @@ async function loadRemindersTab() {
   pane.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px">Cargando…</div>';
   try {
     const reminders = await fetch('/api/reminders').then(r => r.json());
-    if (!reminders.length) {
+    if (!Array.isArray(reminders) || !reminders.length) {
       pane.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px">Sin recordatorios pendientes</div>';
       return;
     }
@@ -1158,7 +1158,7 @@ async function loadRemindersTab() {
         <div style="font-size:11px;color:#9ca3af;margin-bottom:4px">🕐 ${new Date(r.dueAt).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'})}</div>
         <div style="font-size:13px;font-weight:600">${x(r.waId ? '+'+r.waId : '—')}</div>
         <div style="font-size:12px;color:#374151;margin-top:4px">${x(r.note)}</div>
-        <button onclick="dismissReminder(${r.id},this)" style="margin-top:8px;font-size:11px;padding:4px 10px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer">
+        <button data-id="${Number.isInteger(r.id) ? r.id : 0}" onclick="dismissReminder(parseInt(this.dataset.id),this)" style="margin-top:8px;font-size:11px;padding:4px 10px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer">
           Descartar
         </button>
       </div>`).join('');
@@ -1170,8 +1170,13 @@ async function loadRemindersTab() {
 
 async function dismissReminder(id, btn) {
   btn.disabled = true;
-  await fetch(`/api/reminders/${id}/dismiss`, { method: 'PATCH' });
-  btn.closest('.order-card').remove();
+  try {
+    const res = await fetch(`/api/reminders/${id}/dismiss`, { method: 'PATCH' });
+    if (!res.ok) throw new Error('dismiss failed');
+    btn.closest('.order-card').remove();
+  } catch {
+    btn.disabled = false;
+  }
 }
 
 function switchTab(name) {

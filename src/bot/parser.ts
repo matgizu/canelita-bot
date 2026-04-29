@@ -142,7 +142,10 @@ function normalizeReminder(raw: unknown): ReminderEntry | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
   const note = typeof r.note === "string" && r.note.trim() ? r.note.trim() : null;
-  const days = typeof r.daysFromNow === "number" && r.daysFromNow > 0
+  const days = typeof r.daysFromNow === "number"
+    && Number.isFinite(r.daysFromNow)
+    && r.daysFromNow > 0
+    && r.daysFromNow <= 365
     ? Math.ceil(r.daysFromNow)
     : null;
   if (!note || !days) return null;
