@@ -1,6 +1,21 @@
 import axios from "axios";
 import FormData from "form-data";
 import { config } from "../config";
+import { prisma } from "../db";
+import { events } from "../events";
+
+// WhatsApp error code: message window expired (24h / 72h CTWA)
+const WINDOW_EXPIRED_CODES = new Set([131047, 131026]);
+
+async function markWindowExpired(waId: string): Promise<void> {
+  try {
+    await prisma.conversation.updateMany({
+      where: { waId },
+      data: { windowExpired: true },
+    });
+    events.emitDashboard({ type: "window_expired", waId, at: Date.now() });
+  } catch {}
+}
 
 const baseURL = `https://graph.facebook.com/${config.whatsapp.apiVersion}`;
 const phoneId = config.whatsapp.phoneNumberId;
@@ -24,7 +39,13 @@ export async function sendText(to: string, body: string): Promise<string | null>
     });
     return res.data?.messages?.[0]?.id ?? null;
   } catch (e: any) {
-    console.error("[wa.sendText]", e.response?.data ?? e.message);
+    const code = e.response?.data?.error?.code;
+    if (WINDOW_EXPIRED_CODES.has(code)) {
+      console.warn(`[wa.windowExpired] ${to}`);
+      markWindowExpired(to).catch(() => {});
+    } else {
+      console.error("[wa.sendText]", e.response?.data ?? e.message);
+    }
     return null;
   }
 }

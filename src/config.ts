@@ -14,6 +14,7 @@ export const config = {
   whatsapp: {
     token: required("WHATSAPP_TOKEN"),
     phoneNumberId: required("WHATSAPP_PHONE_NUMBER_ID"),
+    wabaId: optional("WHATSAPP_WABA_ID"),
     appSecret: required("META_APP_SECRET"),
     verifyToken: required("META_VERIFY_TOKEN"),
     apiVersion: optional("WHATSAPP_API_VERSION", "v21.0"),

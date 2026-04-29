@@ -34,6 +34,11 @@ export type DashboardEvent =
       waId: string;
       labels: string[];
       at: number;
+    }
+  | {
+      type: "window_expired";
+      waId: string;
+      at: number;
     };
 
 class TypedEmitter extends EventEmitter {

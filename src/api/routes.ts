@@ -7,6 +7,7 @@ import { config } from "../config";
 import { getSession, setAutomation } from "../sessions";
 import { mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
 import { sanitizeOutput } from "../bot/blocklist";
+import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -57,6 +58,93 @@ apiRouter.get("/metrics", async (_req, res) => {
     console.error("[metrics]", e.message);
     res.status(500).json({ error: "metrics_error" });
   }
+});
+
+/* ── Templates ─────────────────────────────────────────────────────────── */
+
+apiRouter.get("/templates", async (_req, res) => {
+  await syncFromMeta().catch(() => {});
+  const templates = await prisma.template.findMany({ orderBy: { createdAt: "desc" } });
+  res.json(templates);
+});
+
+apiRouter.post("/templates", async (req, res) => {
+  const { name, category = "MARKETING", language = "es", body } = req.body ?? {};
+  if (!name || !body) { res.status(400).json({ error: "name and body required" }); return; }
+
+  const safeName = String(name).toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 60);
+
+  try {
+    let metaId: string | undefined;
+    let status = "DRAFT";
+
+    if (config.whatsapp.wabaId) {
+      const metaRes = await submitToMeta(safeName, category, language, body);
+      metaId = metaRes.id;
+      status = metaRes.status ?? "PENDING";
+    }
+
+    const template = await prisma.template.upsert({
+      where: { name: safeName },
+      create: { name: safeName, category, language, body, metaId, status },
+      update: { category, language, body, metaId: metaId ?? undefined, status },
+    });
+    res.json(template);
+  } catch (e: any) {
+    const msg = e.response?.data?.error?.message ?? e.message;
+    res.status(400).json({ error: msg });
+  }
+});
+
+apiRouter.delete("/templates/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  await prisma.template.delete({ where: { id } }).catch(() => {});
+  res.json({ ok: true });
+});
+
+apiRouter.post("/conversations/:waId/send-template", async (req, res) => {
+  const { templateName, variables = [] } = req.body ?? {};
+  if (!templateName) { res.status(400).json({ error: "templateName required" }); return; }
+  const waId = req.params.waId;
+
+  const template = await prisma.template.findUnique({ where: { name: templateName } });
+  if (!template) { res.status(404).json({ error: "template_not_found" }); return; }
+  if (template.status !== "APPROVED") { res.status(400).json({ error: "template_not_approved" }); return; }
+
+  const msgId = await sendTemplate(waId, templateName, template.language, variables);
+  if (!msgId) { res.status(502).json({ error: "send_failed" }); return; }
+
+  // Reset window expired flag
+  await prisma.conversation
+    .updateMany({ where: { waId }, data: { windowExpired: false } })
+    .catch(() => {});
+
+  const session = getSession(waId);
+  session.lastOutboundAt = Date.now();
+
+  try {
+    const conv = await prisma.conversation.upsert({
+      where: { waId },
+      create: { waId },
+      update: { lastOutboundAt: new Date(), windowExpired: false },
+    });
+    await prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        direction: "outbound",
+        type: "template",
+        body: `[plantilla: ${templateName}]\n${template.body}`,
+      },
+    });
+  } catch {}
+
+  events.emitDashboard({
+    type: "message", waId, direction: "outbound",
+    body: `[plantilla: ${templateName}]\n${template.body}`,
+    messageType: "template", at: Date.now(),
+  });
+
+  res.json({ ok: true, msgId });
 });
 
 apiRouter.get("/conversations", async (_req, res) => {

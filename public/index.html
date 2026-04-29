@@ -374,6 +374,96 @@
     }
     #test-btn:hover { background: #374151; }
 
+    /* ── Window expired banner ── */
+    #window-expired-bar {
+      background: #7c2d12; color: #fed7aa; font-size: 12px; font-weight: 600;
+      padding: 8px 16px; display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0; border-bottom: 1px solid #9a3412;
+    }
+    #window-expired-bar span { flex: 1; }
+    #template-pick-btn {
+      padding: 5px 12px; background: #ea580c; color: #fff;
+      border: none; border-radius: 6px; font-size: 11px;
+      font-weight: 700; cursor: pointer;
+    }
+    #template-pick-btn:hover { background: #c2410c; }
+
+    /* ── Templates overlay ── */
+    #templates-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #templates-panel {
+      width: 680px; max-width: 97vw; height: 80vh;
+      background: var(--card); border-radius: 16px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    #templates-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; background: var(--sidebar); flex-shrink: 0;
+    }
+    #templates-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    #templates-close {
+      width: 30px; height: 30px; background: #374151; color: #9ca3af;
+      border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #templates-close:hover { background: #ef4444; color: #fff; }
+    #templates-body { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .tpl-card {
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .tpl-top { display: flex; align-items: center; gap: 8px; }
+    .tpl-name { font-size: 13px; font-weight: 700; flex: 1; font-family: monospace; color: var(--brand); }
+    .tpl-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+    }
+    .tpl-badge.APPROVED  { background: #d1fae5; color: #065f46; }
+    .tpl-badge.PENDING   { background: #fef3c7; color: #92400e; }
+    .tpl-badge.REJECTED  { background: #fee2e2; color: #991b1b; }
+    .tpl-badge.DRAFT     { background: #f3f4f6; color: #6b7280; }
+    .tpl-badge.SUBMITTED { background: #dbeafe; color: #1e40af; }
+    .tpl-body { font-size: 12px; color: var(--text); white-space: pre-wrap; background: #f9fafb; padding: 8px 10px; border-radius: 6px; }
+    .tpl-reason { font-size: 11px; color: var(--red); }
+    .tpl-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .tpl-send-btn {
+      padding: 5px 12px; background: #25d366; color: #fff;
+      border: none; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .tpl-send-btn:hover { background: #1da851; }
+    .tpl-del-btn {
+      padding: 5px 10px; background: #fee2e2; color: #991b1b;
+      border: none; border-radius: 6px; font-size: 11px; cursor: pointer;
+    }
+    .tpl-del-btn:hover { background: #fca5a5; }
+    #new-tpl-form {
+      border: 2px dashed var(--border); border-radius: 10px; padding: 14px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    #new-tpl-form input, #new-tpl-form select, #new-tpl-form textarea {
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 12px; outline: none; font-family: inherit;
+    }
+    #new-tpl-form input:focus, #new-tpl-form select:focus, #new-tpl-form textarea:focus { border-color: var(--brand); }
+    #new-tpl-form textarea { resize: vertical; min-height: 80px; }
+    #new-tpl-form .form-row { display: flex; gap: 8px; }
+    #new-tpl-form .form-row > * { flex: 1; }
+    #tpl-submit-btn {
+      padding: 8px 16px; background: var(--brand); color: #fff;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    #tpl-submit-btn:hover { opacity: .85; }
+    #tpl-submit-btn:disabled { opacity: .5; cursor: default; }
+    #templates-btn {
+      padding: 6px 14px; background: #1f2937; color: #a78bfa;
+      border: 1px solid #374151; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    #templates-btn:hover { background: #374151; }
+
     /* ── Labels ── */
     .labels-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
     .label-chip {
@@ -455,6 +545,7 @@
     <div class="stat"><span class="stat-val" id="st-open">—</span><span class="stat-lbl">En proceso</span></div>
     <div class="stat"><span class="stat-val" id="st-closed">—</span><span class="stat-lbl">Cerrados</span></div>
   </div>
+  <button id="templates-btn" onclick="openTemplates()">📋 Plantillas</button>
   <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
   <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
   <div class="sse-pill">
@@ -510,6 +601,10 @@
     </div>
     <div id="chat-view" hidden>
       <div id="chat-header"></div>
+      <div id="window-expired-bar" hidden>
+        <span>⏰ La ventana de conversación expiró (72 h). Solo puedes enviar plantillas aprobadas.</span>
+        <button id="template-pick-btn" onclick="openTemplates(true)">Enviar plantilla</button>
+      </div>
       <div id="messages"></div>
       <div id="composer">
         <div id="media-preview" hidden>
@@ -547,6 +642,34 @@
     </div>
   </aside>
 
+</div>
+
+<!-- Templates overlay -->
+<div id="templates-overlay" hidden>
+  <div id="templates-panel">
+    <div id="templates-header">
+      <h2>📋 Plantillas de mensaje</h2>
+      <button id="templates-close" onclick="closeTemplates()">✕</button>
+    </div>
+    <div id="templates-body">
+      <!-- New template form -->
+      <div id="new-tpl-form">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">➕ Nueva plantilla</div>
+        <div class="form-row">
+          <input id="tpl-name" type="text" placeholder="nombre_plantilla (sin espacios)" maxlength="60">
+          <select id="tpl-category">
+            <option value="MARKETING">Marketing</option>
+            <option value="UTILITY">Utilidad</option>
+          </select>
+        </div>
+        <textarea id="tpl-body" placeholder="Texto de la plantilla. Usa {{1}}, {{2}}… para variables.&#10;Ej: Hola {{1}}, tu pedido está en camino 💛"></textarea>
+        <div style="font-size:11px;color:var(--muted)">El nombre debe ser en minúsculas, sin espacios (usa _). Idioma: español (es).</div>
+        <button id="tpl-submit-btn" onclick="createTemplate()">Crear y enviar a Meta para aprobación</button>
+      </div>
+      <!-- Template list -->
+      <div id="tpl-list"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Orders overlay -->
@@ -733,6 +856,14 @@ function connectSSE() {
     if (d.waId === selected) { renderHeader(); renderInfoTab(); }
   });
 
+  es.addEventListener('window_expired', e => {
+    const d = JSON.parse(e.data);
+    const c = convs.find(x => x.waId === d.waId);
+    if (c) c.windowExpired = true;
+    if (detail && detail.waId === d.waId) detail.windowExpired = true;
+    if (d.waId === selected) updateWindowExpiredBar();
+  });
+
   es.onerror = () => {
     dot.className = 'sse-dot';
     lbl.textContent = `Reconectando en ${Math.round(sseRetry/1000)}s…`;
@@ -807,6 +938,7 @@ async function selectConv(waId) {
 function renderChat() {
   if (!detail) return;
   renderHeader();
+  updateWindowExpiredBar();
   const msgs = detail.messages || [];
   const box  = document.getElementById('messages');
   box.innerHTML = msgs.map(bubbleHtml).join('');
@@ -1080,6 +1212,129 @@ async function openOrders() {
 
 function closeOrders() {
   document.getElementById('orders-overlay').hidden = true;
+}
+
+/* ─────────────────────────────────────
+   TEMPLATES
+───────────────────────────────────── */
+let tplPickMode = false; // true when opened from expired banner
+
+async function openTemplates(pickMode = false) {
+  tplPickMode = pickMode;
+  document.getElementById('templates-overlay').hidden = false;
+  document.getElementById('tpl-submit-btn').textContent =
+    'Crear y enviar a Meta para aprobación';
+  await loadTemplates();
+}
+
+function closeTemplates() {
+  document.getElementById('templates-overlay').hidden = true;
+  tplPickMode = false;
+}
+
+async function loadTemplates() {
+  const list = document.getElementById('tpl-list');
+  list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">Cargando…</div>`;
+  try {
+    const templates = await fetch('/api/templates').then(r => r.json());
+    if (!templates.length) {
+      list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Sin plantillas aún. Crea una arriba.</div>`;
+      return;
+    }
+    list.innerHTML = templates.map(t => {
+      const canSend = t.status === 'APPROVED' && tplPickMode && selected;
+      const sendBtn = canSend
+        ? `<button class="tpl-send-btn" onclick="sendTplToConv('${t.name}')">📤 Enviar ahora</button>`
+        : '';
+      return `
+        <div class="tpl-card">
+          <div class="tpl-top">
+            <span class="tpl-name">${x(t.name)}</span>
+            <span class="tpl-badge ${t.status}">${t.status}</span>
+            <span style="font-size:10px;color:var(--muted)">${t.category} · ${t.language}</span>
+          </div>
+          <div class="tpl-body">${x(t.body)}</div>
+          ${t.rejectionReason ? `<div class="tpl-reason">⚠ ${x(t.rejectionReason)}</div>` : ''}
+          <div class="tpl-actions">
+            ${sendBtn}
+            <button class="tpl-del-btn" onclick="deleteTemplate(${t.id})">🗑 Eliminar</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--red)">Error cargando plantillas</div>`;
+  }
+}
+
+async function createTemplate() {
+  const name = document.getElementById('tpl-name').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const body = document.getElementById('tpl-body').value.trim();
+  const category = document.getElementById('tpl-category').value;
+  if (!name || !body) { alert('Nombre y texto son obligatorios'); return; }
+
+  const btn = document.getElementById('tpl-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+
+  try {
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, body, category, language: 'es' }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert('Error: ' + (data.error || 'desconocido')); return; }
+    document.getElementById('tpl-name').value = '';
+    document.getElementById('tpl-body').value = '';
+    await loadTemplates();
+  } catch(e) {
+    alert('Error de conexión');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Crear y enviar a Meta para aprobación';
+  }
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('¿Eliminar esta plantilla?')) return;
+  await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+  await loadTemplates();
+}
+
+async function sendTplToConv(templateName) {
+  if (!selected) return;
+  const res = await fetch(`/api/conversations/${selected}/send-template`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ templateName }),
+  });
+  const data = await res.json();
+  if (!res.ok) { alert('Error: ' + (data.error || 'no se pudo enviar')); return; }
+  closeTemplates();
+  // Reset expired flag locally
+  if (detail) detail.windowExpired = false;
+  const c = convs.find(c => c.waId === selected);
+  if (c) c.windowExpired = false;
+  updateWindowExpiredBar();
+}
+
+function isWindowExpired(conv) {
+  if (!conv) return false;
+  if (conv.windowExpired) return true;
+  const WINDOW_MS = 72 * 60 * 60 * 1000;
+  return Date.now() - new Date(conv.lastInboundAt).getTime() > WINDOW_MS;
+}
+
+function updateWindowExpiredBar() {
+  const bar     = document.getElementById('window-expired-bar');
+  const composer = document.getElementById('composer');
+  const expired  = isWindowExpired(detail || convs.find(c => c.waId === selected));
+  bar.hidden     = !expired;
+  if (composer) composer.style.opacity = expired ? '0.4' : '1';
+  const inp = document.getElementById('msg-input');
+  const btn = document.getElementById('send-btn');
+  if (inp) inp.disabled = expired;
+  if (btn) btn.disabled = expired;
 }
 
 /* ─────────────────────────────────────

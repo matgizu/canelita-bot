@@ -21,6 +21,7 @@ model Conversation {
   department        String?
   email             String?
   labels            String[]  @default([])
+  windowExpired     Boolean   @default(false)
   state             String    @default("GREETING")
   automationEnabled Boolean   @default(true)
   objectionCount    Int       @default(0)
@@ -35,6 +36,21 @@ model Conversation {
 
   @@index([state])
   @@index([automationEnabled])
+}
+
+model Template {
+  id              Int      @id @default(autoincrement())
+  name            String   @unique
+  category        String   @default("MARKETING")
+  language        String   @default("es")
+  body            String   @db.Text
+  metaId          String?
+  status          String   @default("DRAFT")
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
 }
 
 model Message {
