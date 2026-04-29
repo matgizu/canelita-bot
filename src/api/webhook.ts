@@ -66,52 +66,31 @@ function parseMessage(m: any, names: Map<string, string>): InboundEvent | null {
   const customerName = names.get(waId);
   const whatsappMsgId = m?.id;
 
+  // Parse CTWA referral if present
+  const referral = m.referral
+    ? {
+        sourceId:  m.referral.source_id   ?? undefined,
+        headline:  m.referral.headline    ?? undefined,
+        sourceUrl: m.referral.source_url  ?? undefined,
+        ctwaClid:  m.referral.ctwa_clid   ?? undefined,
+      }
+    : undefined;
+
   if (m.type === "text") {
-    return {
-      waId,
-      customerName,
-      whatsappMsgId,
-      type: "text",
-      text: m.text?.body ?? "",
-    };
+    return { waId, customerName, whatsappMsgId, type: "text", text: m.text?.body ?? "", referral };
   }
   if (m.type === "audio" || m.type === "voice") {
-    return {
-      waId,
-      customerName,
-      whatsappMsgId,
-      type: "audio",
-      mediaId: m.audio?.id ?? m.voice?.id,
-    };
+    return { waId, customerName, whatsappMsgId, type: "audio", mediaId: m.audio?.id ?? m.voice?.id, referral };
   }
   if (m.type === "image") {
-    return {
-      waId,
-      customerName,
-      whatsappMsgId,
-      type: "image",
-      mediaId: m.image?.id,
-      text: m.image?.caption ?? "",
-    };
+    return { waId, customerName, whatsappMsgId, type: "image", mediaId: m.image?.id, text: m.image?.caption ?? "", referral };
   }
   if (m.type === "interactive") {
     const reply =
       m.interactive?.button_reply?.title ??
       m.interactive?.list_reply?.title ??
       "";
-    return {
-      waId,
-      customerName,
-      whatsappMsgId,
-      type: "text",
-      text: reply,
-    };
+    return { waId, customerName, whatsappMsgId, type: "text", text: reply, referral };
   }
-  return {
-    waId,
-    customerName,
-    whatsappMsgId,
-    type: "other",
-    text: "",
-  };
+  return { waId, customerName, whatsappMsgId, type: "other", text: "", referral };
 }

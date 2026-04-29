@@ -42,6 +42,12 @@ export interface InboundEvent {
   text?: string;
   mediaId?: string;
   whatsappMsgId?: string;
+  referral?: {
+    sourceId?: string;
+    headline?: string;
+    sourceUrl?: string;
+    ctwaClid?: string;
+  };
 }
 
 export async function handleInbound(ev: InboundEvent): Promise<void> {
@@ -49,6 +55,12 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
   session.lastInboundAt = Date.now();
   if (ev.customerName && !session.customerName) {
     session.customerName = ev.customerName;
+  }
+
+  if (ev.referral && !session.adSource) {
+    session.adSource   = ev.referral.sourceId;
+    session.adHeadline = ev.referral.headline;
+    session.ctwaClid   = ev.referral.ctwaClid;
   }
 
   if (ev.whatsappMsgId) {
@@ -286,6 +298,9 @@ async function ensureConversation(session: Session) {
       automationEnabled: session.automationEnabled,
       customerName: session.customerName,
       cart: session.cart as any,
+      adSource:   session.adSource,
+      adHeadline: session.adHeadline,
+      ctwaClid:   session.ctwaClid,
     },
     update: {
       state: session.state,
@@ -299,6 +314,9 @@ async function ensureConversation(session: Session) {
       address: session.address ?? undefined,
       reference: session.reference ?? undefined,
       altPhone: session.altPhone ?? undefined,
+      adSource:   session.adSource   ?? undefined,
+      adHeadline: session.adHeadline ?? undefined,
+      ctwaClid:   session.ctwaClid   ?? undefined,
       cart: session.cart as any,
       lastInboundAt: new Date(session.lastInboundAt),
     },

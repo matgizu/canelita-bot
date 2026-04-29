@@ -74,6 +74,9 @@ export async function getOrLoadSession(waId: string): Promise<Session> {
         lastInboundAt: conv.lastInboundAt.getTime(),
         lastOutboundAt: conv.lastOutboundAt.getTime(),
         createdAt: conv.createdAt.getTime(),
+        adSource:   conv.adSource   ?? undefined,
+        adHeadline: conv.adHeadline ?? undefined,
+        ctwaClid:   conv.ctwaClid   ?? undefined,
       };
 
       sessions.set(waId, session);

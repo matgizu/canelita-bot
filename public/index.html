@@ -1087,6 +1087,8 @@ function renderInfoTab() {
       <div class="isec-title">Sesión</div>
       ${row('Estado',    `<span class="sbadge s-${d.state}">${slabel(d.state)}</span>`)}
       ${row('Objeciones', d.objectionCount ?? 0)}
+      ${d.adHeadline ? row('Anuncio', x(d.adHeadline)) : ''}
+      ${d.adSource   ? row('Ad ID',   x(d.adSource))   : ''}
       ${row('Creado',    d.createdAt ? new Date(d.createdAt).toLocaleDateString('es-CO') : '—')}
     </div>`;
 }

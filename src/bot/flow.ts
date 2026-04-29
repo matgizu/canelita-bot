@@ -94,6 +94,9 @@ export interface Session {
   altPhone?: string;
   idNumber?: string;
   email?: string;
+  adSource?: string;
+  adHeadline?: string;
+  ctwaClid?: string;
   address?: string;
   reference?: string;
   city?: string;
