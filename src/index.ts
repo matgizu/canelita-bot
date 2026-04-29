@@ -36,9 +36,11 @@ async function sendDailyReport(): Promise<void> {
     colMidnight.setUTCHours(5, 0, 0, 0);
     if (colMidnight > now) colMidnight.setUTCDate(colMidnight.getUTCDate() - 1);
 
-    const [orders, newConvs, closedConvs, objRows] = await Promise.all([
-      prisma.order.findMany({
+    const [orderAgg, newConvs, closedConvs, objRows] = await Promise.all([
+      prisma.order.aggregate({
         where: { createdAt: { gte: colMidnight }, status: { not: "CANCELLED" } },
+        _count: { id: true },
+        _sum:   { total: true },
       }),
       prisma.conversation.count({ where: { createdAt: { gte: colMidnight } } }),
       prisma.conversation.count({ where: { state: "CLOSED", updatedAt: { gte: colMidnight } } }),
@@ -53,19 +55,22 @@ async function sendDailyReport(): Promise<void> {
       `,
     ]);
 
+    // Conversations created today that received ≥2 inbound messages
     const repliedRows = await prisma.$queryRaw<[{ count: bigint }]>`
       SELECT COUNT(*) AS count FROM (
-        SELECT "conversationId"
-        FROM "Message"
-        WHERE direction = 'inbound'
-          AND "createdAt" >= ${colMidnight}
-        GROUP BY "conversationId"
+        SELECT m."conversationId"
+        FROM "Message" m
+        JOIN "Conversation" c ON c.id = m."conversationId"
+        WHERE m.direction = 'inbound'
+          AND c."createdAt" >= ${colMidnight}
+        GROUP BY m."conversationId"
         HAVING COUNT(*) >= 2
       ) sub
     `;
     const replied = Number(repliedRows[0]?.count ?? 0);
 
-    const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
+    const orderCount   = orderAgg._count.id ?? 0;
+    const totalRevenue = orderAgg._sum.total ?? 0;
     const dateStr = new Date().toLocaleDateString("es-CO", {
       timeZone: "America/Bogota",
       weekday: "long",
@@ -83,7 +88,7 @@ async function sendDailyReport(): Promise<void> {
     const msg = [
       `📊 *Reporte Canelita — ${dateStr}*`,
       ``,
-      `💰 Ventas: *${orders.length} pedidos* | $${totalRevenue.toLocaleString("es-CO")} COP`,
+      `💰 Ventas: *${orderCount} pedidos* | $${totalRevenue.toLocaleString("es-CO")} COP`,
       `💬 Conversaciones nuevas: *${newConvs}*`,
       `📈 Tasa de cierre: *${closeRate}%*`,
       `📨 Tasa de respuesta: *${responseRate}%*`,
@@ -123,6 +128,8 @@ setInterval(async () => {
       where: { sent: false, dueAt: { lte: new Date() } },
     });
     for (const r of due) {
+      // Mark sent BEFORE notifying to prevent duplicate notifications on slow ticks
+      await prisma.reminder.update({ where: { id: r.id }, data: { sent: true } });
       const dateStr = new Date(r.dueAt).toLocaleString("es-CO", {
         timeZone: "America/Bogota",
         dateStyle: "short",
@@ -131,7 +138,6 @@ setInterval(async () => {
       await notifyOwner(
         `🔔 *Recordatorio pendiente*\n\n${r.note}\n\n👤 +${r.waId}\n📅 Venció: ${dateStr}`,
       );
-      await prisma.reminder.update({ where: { id: r.id }, data: { sent: true } });
     }
   } catch (e: any) {
     console.error("[reminder.checker]", e.message);
