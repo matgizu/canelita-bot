@@ -369,7 +369,7 @@ async function persistOutbound(session: Session, body: string, state: State, obj
   }
 }
 
-// Exported for documentation — mirrors the upsert decision logic
+// Exported for unit testing — pure decision function with no DB dependencies.
 export function shouldCreateNewOrder(existing: { id: number; status: string } | null): boolean {
   if (!existing) return true;
   return existing.status === "CANCELLED";
@@ -401,10 +401,8 @@ async function persistOrderIfNeeded(session: Session) {
       reference:     session.reference     ?? null,
     };
 
-    let order: { id: number };
-
     if (shouldCreateNewOrder(existing)) {
-      order = await prisma.order.create({
+      const order = await prisma.order.create({
         data: { conversationId: conv.id, status: "PENDING", ...orderData },
         select: { id: true },
       });
@@ -417,18 +415,12 @@ async function persistOrderIfNeeded(session: Session) {
         at: Date.now(),
       });
 
-      await notifyOwner(
-        `🛒 *Nuevo pedido*\n\n${orderSummary(session, total)}`,
-      );
-
-      notify(
-        TELEGRAM_TEMPLATES.newOrder(session.waId, orderSummary(session, total)),
-      );
+      notifyOwner(`🛒 *Nuevo pedido*\n\n${orderSummary(session, total)}`).catch(() => {});
+      notify(TELEGRAM_TEMPLATES.newOrder(session.waId, orderSummary(session, total)));
     } else {
-      order = await prisma.order.update({
+      await prisma.order.update({
         where: { id: existing!.id },
         data: orderData,
-        select: { id: true },
       });
     }
   } catch (e: any) {
