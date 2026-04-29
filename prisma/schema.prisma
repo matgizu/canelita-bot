@@ -99,7 +99,7 @@ model Order {
 model Reminder {
   id        Int      @id @default(autoincrement())
   waId      String
-  note      String
+  note      String   @db.Text
   dueAt     DateTime
   sent      Boolean  @default(false)
   createdAt DateTime @default(now())
