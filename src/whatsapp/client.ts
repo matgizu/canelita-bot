@@ -207,6 +207,16 @@ export function splitMessage(text: string): string[] {
   return merged;
 }
 
+export async function deleteMessage(messageId: string): Promise<boolean> {
+  try {
+    await http.delete(`/${phoneId}/messages/${messageId}`);
+    return true;
+  } catch (e: any) {
+    console.error("[wa.deleteMessage]", e.response?.data ?? e.message);
+    return false;
+  }
+}
+
 export function delayForPart(text: string): number {
   const words = text.trim().split(/\s+/).length;
   return Math.min(600 + 35 * words, 4000);

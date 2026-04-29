@@ -6,7 +6,7 @@ import { events } from "../events";
 import { config } from "../config";
 import { getSession, setAutomation } from "../sessions";
 import { cancelRemarketing } from "../bot/remarketing";
-import { mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
+import { deleteMessage, mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
 import { sanitizeOutput } from "../bot/blocklist";
 import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
 
@@ -451,6 +451,13 @@ apiRouter.post(
     res.json({ ok: true, type, mediaId });
   },
 );
+
+apiRouter.delete("/messages/:msgId", async (req, res) => {
+  const msgId = req.params.msgId;
+  const ok = await deleteMessage(msgId);
+  if (!ok) { res.status(502).json({ error: "delete_failed" }); return; }
+  res.json({ ok: true });
+});
 
 // Proxy para reproducir audios/imágenes de WhatsApp en el dashboard
 // sin exponer el token al frontend

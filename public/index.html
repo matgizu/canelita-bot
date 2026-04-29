@@ -158,6 +158,12 @@
     .mw.outbound .bubble { background: var(--brand-light); border: 1px solid var(--brand-border); border-bottom-right-radius: 3px; }
     .mtime { font-size: 10px; color: var(--muted); margin-top: 2px; padding: 0 3px; }
     .mtag  { background: #f3f4f6; padding: 1px 5px; border-radius: 6px; margin-left: 4px; font-size: 9px; }
+    .del-btn {
+      display: none; cursor: pointer; background: none; border: none;
+      font-size: 13px; opacity: 0.5; padding: 0 2px; line-height: 1;
+    }
+    .del-btn:hover { opacity: 1; }
+    .mw.outbound:hover .del-btn { display: inline; }
     .audio-player {
       display: flex; align-items: center; gap: 8px;
       padding: 8px 12px; border-radius: 12px; min-width: 220px;
@@ -1020,10 +1026,14 @@ function bubbleHtml(m) {
   const tag = !isAudio && m.type && m.type !== 'text'
     ? `<span class="mtag">${m.type}</span>` : '';
 
+  const delBtn = out && m.whatsappMsgId
+    ? `<button class="del-btn" title="Eliminar para todos" onclick="deleteMsg('${m.whatsappMsgId}',this)">🗑</button>`
+    : '';
+
   return `
     <div class="mw ${out?'outbound':'inbound'}">
       ${content}
-      <div class="mtime">${t}${tag}</div>
+      <div class="mtime">${t}${tag}${delBtn}</div>
     </div>`;
 }
 
@@ -1432,6 +1442,18 @@ async function sendMsg() {
   } catch { alert('Error enviando mensaje'); }
   btn.disabled = false;
   input.focus();
+}
+
+async function deleteMsg(msgId, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/messages/${encodeURIComponent(msgId)}`, { method: 'DELETE' });
+    if (!res.ok) { btn.disabled = false; alert('No se pudo eliminar (venció el límite de 60s o error de Meta)'); return; }
+    const mw = btn.closest('.mw');
+    const bubble = mw.querySelector('.bubble');
+    if (bubble) { bubble.style.fontStyle = 'italic'; bubble.style.color = 'var(--muted)'; bubble.textContent = 'Mensaje eliminado'; }
+    btn.remove();
+  } catch { btn.disabled = false; alert('Error de conexión'); }
 }
 
 async function closeConv(waId) {
