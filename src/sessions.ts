@@ -63,6 +63,7 @@ export async function getOrLoadSession(waId: string): Promise<Session> {
         phone: conv.phone ?? undefined,
         altPhone: conv.altPhone ?? undefined,
         idNumber: conv.idNumber ?? undefined,
+        email: conv.email ?? undefined,
         address: conv.address ?? undefined,
         reference: conv.reference ?? undefined,
         city: conv.city ?? undefined,

@@ -45,7 +45,6 @@ export interface InboundEvent {
   referral?: {
     sourceId?: string;
     headline?: string;
-    sourceUrl?: string;
     ctwaClid?: string;
   };
 }

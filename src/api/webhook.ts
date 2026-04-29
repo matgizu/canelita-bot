@@ -69,10 +69,9 @@ function parseMessage(m: any, names: Map<string, string>): InboundEvent | null {
   // Parse CTWA referral if present
   const referral = m.referral
     ? {
-        sourceId:  m.referral.source_id   ?? undefined,
-        headline:  m.referral.headline    ?? undefined,
-        sourceUrl: m.referral.source_url  ?? undefined,
-        ctwaClid:  m.referral.ctwa_clid   ?? undefined,
+        sourceId:  m.referral.source_id  ?? undefined,
+        headline:  m.referral.headline   ?? undefined,
+        ctwaClid:  m.referral.ctwa_clid  ?? undefined,
       }
     : undefined;
 
