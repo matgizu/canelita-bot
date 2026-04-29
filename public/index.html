@@ -580,6 +580,16 @@
     <span class="metric-label">Cerradas</span>
     <span class="metric-value gray" id="m-closed">…</span>
   </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Remarketing reply</span>
+    <span class="metric-value gray" id="m-rmk-reply">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Remarketing conv.</span>
+    <span class="metric-value gray" id="m-rmk-conv">…</span>
+  </div>
 </div>
 
 <!-- Layout -->
@@ -776,6 +786,16 @@ async function loadMetrics() {
     setMetric('m-replied', d.replied ?? 0, 'gray');
     setMetric('m-closed',  d.closed  ?? 0, 'gray');
   } catch(e) { console.warn('loadMetrics', e); }
+
+  try {
+    const rmk = await fetch('/api/remarketing-stats').then(r => r.json());
+    const rrPct = ((rmk.overall?.replyRate ?? 0) * 100).toFixed(1) + '%';
+    const rcPct = ((rmk.overall?.conversionRate ?? 0) * 100).toFixed(1) + '%';
+    const rrColor = (rmk.overall?.replyRate ?? 0) >= 0.20 ? 'green' : 'orange';
+    const rcColor = (rmk.overall?.conversionRate ?? 0) >= 0.10 ? 'green' : 'orange';
+    setMetric('m-rmk-reply', rrPct, rrColor);
+    setMetric('m-rmk-conv',  rcPct, rcColor);
+  } catch(_) {}
 }
 
 function setMetric(id, value, color) {

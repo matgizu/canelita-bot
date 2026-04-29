@@ -60,6 +60,86 @@ apiRouter.get("/metrics", async (_req, res) => {
   }
 });
 
+apiRouter.get("/remarketing-stats", async (_req, res) => {
+  try {
+    const types = ["t1", "t2", "t3", "t4"] as const;
+    const result: Record<string, { sent: number; replied: number; converted: number }> = {};
+
+    for (const t of types) {
+      const msgType = `remarketing:${t}`;
+
+      // Count messages of this type sent
+      const sent = await prisma.message.count({
+        where: { type: msgType, direction: "outbound" },
+      });
+
+      // Count conversations where an inbound message follows this remarketing type
+      const repliedRows = await prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(DISTINCT m2."conversationId") AS count
+        FROM "Message" m1
+        JOIN "Message" m2
+          ON m2."conversationId" = m1."conversationId"
+          AND m2.direction = 'inbound'
+          AND m2."createdAt" > m1."createdAt"
+        WHERE m1.type = ${msgType}
+          AND m1.direction = 'outbound'
+      `;
+      const replied = Number(repliedRows[0]?.count ?? 0);
+
+      // Count conversations that eventually reached CLOSED after this remarketing
+      const convertedRows = await prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(DISTINCT c.id) AS count
+        FROM "Conversation" c
+        JOIN "Message" m
+          ON m."conversationId" = c.id
+          AND m.type = ${msgType}
+          AND m.direction = 'outbound'
+        WHERE c.state = 'CLOSED'
+      `;
+      const converted = Number(convertedRows[0]?.count ?? 0);
+
+      result[t] = { sent, replied, converted };
+    }
+
+    const totalSent      = Object.values(result).reduce((s, r) => s + r.sent, 0);
+    const totalReplied   = Object.values(result).reduce((s, r) => s + r.replied, 0);
+    const totalConverted = Object.values(result).reduce((s, r) => s + r.converted, 0);
+
+    res.json({
+      ...result,
+      overall: {
+        sent:           totalSent,
+        replied:        totalReplied,
+        converted:      totalConverted,
+        replyRate:      totalSent > 0 ? totalReplied   / totalSent : 0,
+        conversionRate: totalSent > 0 ? totalConverted / totalSent : 0,
+      },
+    });
+  } catch (e: any) {
+    console.error("[remarketing-stats]", e.message);
+    res.status(500).json({ error: "stats_error" });
+  }
+});
+
+apiRouter.get("/reminders", async (_req, res) => {
+  try {
+    const reminders = await prisma.reminder.findMany({
+      where: { sent: false },
+      orderBy: { dueAt: "asc" },
+      take: 50,
+    });
+    res.json(reminders);
+  } catch (e: any) {
+    res.status(500).json({ error: "fetch_failed" });
+  }
+});
+
+apiRouter.patch("/reminders/:id/dismiss", async (req, res) => {
+  const id = Number(req.params.id);
+  await prisma.reminder.update({ where: { id }, data: { sent: true } }).catch(() => {});
+  res.json({ ok: true });
+});
+
 /* ── Templates ─────────────────────────────────────────────────────────── */
 
 apiRouter.get("/templates", async (_req, res) => {
