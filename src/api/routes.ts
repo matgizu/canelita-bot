@@ -455,8 +455,8 @@ apiRouter.post(
 
 apiRouter.delete("/messages/:msgId", async (req, res) => {
   const msgId = req.params.msgId;
-  const ok = await deleteMessage(msgId);
-  if (!ok) { res.status(502).json({ error: "delete_failed" }); return; }
+  const result = await deleteMessage(msgId);
+  if (!result.ok) { res.status(502).json({ error: result.error ?? "delete_failed" }); return; }
   res.json({ ok: true });
 });
 

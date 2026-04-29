@@ -1448,7 +1448,8 @@ async function deleteMsg(msgId, btn) {
   btn.disabled = true;
   try {
     const res = await fetch(`/api/messages/${encodeURIComponent(msgId)}`, { method: 'DELETE' });
-    if (!res.ok) { btn.disabled = false; alert('No se pudo eliminar (venció el límite de 60s o error de Meta)'); return; }
+    const data = await res.json();
+    if (!res.ok) { btn.disabled = false; alert('Error de Meta: ' + (data.error || 'desconocido')); return; }
     const mw = btn.closest('.mw');
     const bubble = mw.querySelector('.bubble');
     if (bubble) { bubble.style.fontStyle = 'italic'; bubble.style.color = 'var(--muted)'; bubble.textContent = 'Mensaje eliminado'; }

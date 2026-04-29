@@ -207,13 +207,15 @@ export function splitMessage(text: string): string[] {
   return merged;
 }
 
-export async function deleteMessage(messageId: string): Promise<boolean> {
+export async function deleteMessage(messageId: string): Promise<{ ok: boolean; error?: string }> {
   try {
     await http.delete(`/${phoneId}/messages/${messageId}`);
-    return true;
+    return { ok: true };
   } catch (e: any) {
+    const metaError = e.response?.data?.error;
+    const msg = metaError?.message ?? e.message ?? "unknown";
     console.error("[wa.deleteMessage]", e.response?.data ?? e.message);
-    return false;
+    return { ok: false, error: msg };
   }
 }
 
