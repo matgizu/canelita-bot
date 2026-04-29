@@ -582,12 +582,12 @@
   </div>
   <div class="metric-divider"></div>
   <div class="metric-item">
-    <span class="metric-label">Remarketing reply</span>
+    <span class="metric-label">Rmk. respuesta</span>
     <span class="metric-value gray" id="m-rmk-reply">…</span>
   </div>
   <div class="metric-divider"></div>
   <div class="metric-item">
-    <span class="metric-label">Remarketing conv.</span>
+    <span class="metric-label">Rmk. conversión</span>
     <span class="metric-value gray" id="m-rmk-conv">…</span>
   </div>
 </div>
@@ -795,7 +795,7 @@ async function loadMetrics() {
     const rcColor = (rmk.overall?.conversionRate ?? 0) >= 0.10 ? 'green' : 'orange';
     setMetric('m-rmk-reply', rrPct, rrColor);
     setMetric('m-rmk-conv',  rcPct, rcColor);
-  } catch(_) {}
+  } catch(e) { console.warn('loadRmkStats', e); }
 }
 
 function setMetric(id, value, color) {

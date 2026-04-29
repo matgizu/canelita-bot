@@ -63,43 +63,45 @@ apiRouter.get("/metrics", async (_req, res) => {
 apiRouter.get("/remarketing-stats", async (_req, res) => {
   try {
     const types = ["t1", "t2", "t3", "t4"] as const;
-    const result: Record<string, { sent: number; replied: number; converted: number }> = {};
 
-    for (const t of types) {
+    // Fire all 12 queries in parallel (3 per touch type × 4 types)
+    const queries = types.map((t) => {
       const msgType = `remarketing:${t}`;
+      return Promise.all([
+        prisma.message.count({ where: { type: msgType, direction: "outbound" } }),
+        prisma.$queryRaw<[{ count: bigint }]>`
+          SELECT COUNT(DISTINCT m2."conversationId") AS count
+          FROM "Message" m1
+          JOIN "Message" m2
+            ON m2."conversationId" = m1."conversationId"
+            AND m2.direction = 'inbound'
+            AND m2."createdAt" > m1."createdAt"
+          WHERE m1.type = ${msgType}
+            AND m1.direction = 'outbound'
+        `,
+        prisma.$queryRaw<[{ count: bigint }]>`
+          SELECT COUNT(DISTINCT c.id) AS count
+          FROM "Conversation" c
+          JOIN "Message" m
+            ON m."conversationId" = c.id
+            AND m.type = ${msgType}
+            AND m.direction = 'outbound'
+          WHERE c.state = 'CLOSED'
+        `,
+      ] as const);
+    });
 
-      // Count messages of this type sent
-      const sent = await prisma.message.count({
-        where: { type: msgType, direction: "outbound" },
-      });
-
-      // Count conversations where an inbound message follows this remarketing type
-      const repliedRows = await prisma.$queryRaw<[{ count: bigint }]>`
-        SELECT COUNT(DISTINCT m2."conversationId") AS count
-        FROM "Message" m1
-        JOIN "Message" m2
-          ON m2."conversationId" = m1."conversationId"
-          AND m2.direction = 'inbound'
-          AND m2."createdAt" > m1."createdAt"
-        WHERE m1.type = ${msgType}
-          AND m1.direction = 'outbound'
-      `;
-      const replied = Number(repliedRows[0]?.count ?? 0);
-
-      // Count conversations that eventually reached CLOSED after this remarketing
-      const convertedRows = await prisma.$queryRaw<[{ count: bigint }]>`
-        SELECT COUNT(DISTINCT c.id) AS count
-        FROM "Conversation" c
-        JOIN "Message" m
-          ON m."conversationId" = c.id
-          AND m.type = ${msgType}
-          AND m.direction = 'outbound'
-        WHERE c.state = 'CLOSED'
-      `;
-      const converted = Number(convertedRows[0]?.count ?? 0);
-
-      result[t] = { sent, replied, converted };
-    }
+    const resolved = await Promise.all(queries);
+    const result = Object.fromEntries(
+      types.map((t, i) => [
+        t,
+        {
+          sent:      resolved[i][0],
+          replied:   Number(resolved[i][1][0]?.count ?? 0),
+          converted: Number(resolved[i][2][0]?.count ?? 0),
+        },
+      ]),
+    ) as Record<(typeof types)[number], { sent: number; replied: number; converted: number }>;
 
     const totalSent      = Object.values(result).reduce((s, r) => s + r.sent, 0);
     const totalReplied   = Object.values(result).reduce((s, r) => s + r.replied, 0);
@@ -130,14 +132,23 @@ apiRouter.get("/reminders", async (_req, res) => {
     });
     res.json(reminders);
   } catch (e: any) {
+    console.error("[reminders.fetch]", e.message);
     res.status(500).json({ error: "fetch_failed" });
   }
 });
 
 apiRouter.patch("/reminders/:id/dismiss", async (req, res) => {
   const id = Number(req.params.id);
-  await prisma.reminder.update({ where: { id }, data: { sent: true } }).catch(() => {});
-  res.json({ ok: true });
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "invalid_id" });
+    return;
+  }
+  try {
+    await prisma.reminder.update({ where: { id }, data: { sent: true } });
+    res.json({ ok: true });
+  } catch {
+    res.status(404).json({ error: "not_found" });
+  }
 });
 
 /* ── Templates ─────────────────────────────────────────────────────────── */
