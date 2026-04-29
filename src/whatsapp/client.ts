@@ -226,12 +226,14 @@ export async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export async function sendInParts(to: string, fullText: string): Promise<void> {
+export async function sendInParts(to: string, fullText: string): Promise<string | null> {
   const parts = splitMessage(fullText);
+  let lastId: string | null = null;
   for (let i = 0; i < parts.length; i++) {
-    await sendText(to, parts[i]);
+    lastId = await sendText(to, parts[i]);
     if (i < parts.length - 1) {
       await sleep(delayForPart(parts[i]));
     }
   }
+  return lastId;
 }

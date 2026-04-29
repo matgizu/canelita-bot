@@ -14,6 +14,8 @@ app.use(express.static(path.resolve(__dirname, "..", "public"), {
   setHeaders: (res, filePath) => {
     if (filePath.includes("/assets/")) {
       res.setHeader("Cache-Control", "public, max-age=86400");
+    } else if (filePath.endsWith("index.html")) {
+      res.setHeader("Cache-Control", "no-store");
     }
   },
 }));

@@ -208,7 +208,7 @@ async function processCombined(
     }
   }
 
-  await sendInParts(session.waId, sanitized);
+  const outboundMsgId = await sendInParts(session.waId, sanitized);
   session.lastOutboundAt = Date.now();
 
   pushHistory(
@@ -226,7 +226,7 @@ async function processCombined(
     scheduleFullSequence(session);
   }
 
-  await persistOutbound(session, sanitized, nextState, detectedObjectionType ?? undefined);
+  await persistOutbound(session, sanitized, nextState, detectedObjectionType ?? undefined, outboundMsgId ?? undefined);
 
   events.emitDashboard({
     type: "message",
@@ -349,7 +349,7 @@ async function persistInbound(session: Session, ev: InboundEvent, finalText: str
   }
 }
 
-async function persistOutbound(session: Session, body: string, state: State, objectionType?: string) {
+async function persistOutbound(session: Session, body: string, state: State, objectionType?: string, whatsappMsgId?: string) {
   try {
     const conv = await ensureConversation(session);
     await prisma.message.create({
@@ -360,6 +360,7 @@ async function persistOutbound(session: Session, body: string, state: State, obj
         body,
         rawState: state,
         objectionType: objectionType ?? null,
+        whatsappMsgId: whatsappMsgId ?? null,
       },
     });
     await prisma.conversation.update({
