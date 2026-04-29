@@ -28,6 +28,12 @@ export type DashboardEvent =
       orderId: number;
       total: number;
       at: number;
+    }
+  | {
+      type: "labels_update";
+      waId: string;
+      labels: string[];
+      at: number;
     };
 
 class TypedEmitter extends EventEmitter {

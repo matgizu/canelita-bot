@@ -19,6 +19,8 @@ model Conversation {
   reference         String?
   city              String?
   department        String?
+  email             String?
+  labels            String[]  @default([])
   state             String    @default("GREETING")
   automationEnabled Boolean   @default(true)
   objectionCount    Int       @default(0)
@@ -61,6 +63,7 @@ model Order {
   status         String       @default("PENDING")
   fullName       String?
   idNumber       String?
+  email          String?
   address        String?
   city           String?
   department     String?

@@ -54,6 +54,7 @@ export async function askClaude(
         "Ay reina, se me complicó un segundito acá 💛 ¿Me repites lo último?",
       state: session.state,
       cartUpdate: null,
+      fields: null,
     };
   }
 }

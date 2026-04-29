@@ -31,6 +31,7 @@ import {
   buildObjectionResponse,
   detectObjection,
 } from "./objections";
+import type { SessionFields } from "./parser";
 import { cancelRemarketing, scheduleGreetingRemarketing, scheduleRemarketing } from "./remarketing";
 import { detectSpecialCase, TELEGRAM_TEMPLATES } from "./specialCases";
 
@@ -166,6 +167,7 @@ async function processCombined(
       ? reply.state
       : session.state;
     cartUpdate = reply.cartUpdate;
+    if (reply.fields) applyFields(session, reply.fields);
   }
 
   const sanitized = sanitizeOutput(claudeText);
@@ -214,6 +216,17 @@ async function processCombined(
     messageType: "text",
     at: Date.now(),
   });
+}
+
+function applyFields(session: Session, f: SessionFields) {
+  if (f.fullName)    session.fullName    = f.fullName;
+  if (f.idNumber)    session.idNumber    = f.idNumber;
+  if (f.email)       session.email       = f.email;
+  if (f.city)        session.city        = f.city;
+  if (f.department)  session.department  = f.department;
+  if (f.address)     session.address     = f.address;
+  if (f.reference)   session.reference   = f.reference;
+  if (f.altPhone)    session.altPhone    = f.altPhone;
 }
 
 function transitionTo(session: Session, to: State) {
@@ -278,6 +291,14 @@ async function ensureConversation(session: Session) {
       state: session.state,
       automationEnabled: session.automationEnabled,
       customerName: session.customerName ?? undefined,
+      fullName: session.fullName ?? undefined,
+      idNumber: session.idNumber ?? undefined,
+      email: session.email ?? undefined,
+      city: session.city ?? undefined,
+      department: session.department ?? undefined,
+      address: session.address ?? undefined,
+      reference: session.reference ?? undefined,
+      altPhone: session.altPhone ?? undefined,
       cart: session.cart as any,
       lastInboundAt: new Date(session.lastInboundAt),
     },
@@ -341,6 +362,7 @@ async function persistOrderIfNeeded(session: Session) {
         status: "PENDING",
         fullName: session.fullName,
         idNumber: session.idNumber,
+        email: session.email,
         address: session.address,
         city: session.city,
         department: session.department,

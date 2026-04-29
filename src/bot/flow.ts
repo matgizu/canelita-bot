@@ -93,6 +93,7 @@ export interface Session {
   phone?: string;
   altPhone?: string;
   idNumber?: string;
+  email?: string;
   address?: string;
   reference?: string;
   city?: string;

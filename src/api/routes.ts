@@ -106,6 +106,47 @@ apiRouter.get("/conversations/:waId", async (req, res) => {
   res.json(conv);
 });
 
+apiRouter.patch("/conversations/:waId/labels", async (req, res) => {
+  const labels: string[] = (req.body?.labels ?? [])
+    .filter((l: unknown) => typeof l === "string" && l.trim())
+    .map((l: string) => l.trim().slice(0, 40))
+    .slice(0, 15);
+
+  await prisma.conversation
+    .upsert({
+      where: { waId: req.params.waId },
+      create: { waId: req.params.waId, labels },
+      update: { labels },
+    })
+    .catch((e) => console.error("[labels]", e.message));
+
+  events.emitDashboard({
+    type: "labels_update",
+    waId: req.params.waId,
+    labels,
+    at: Date.now(),
+  });
+  res.json({ ok: true, labels });
+});
+
+apiRouter.get("/orders", async (_req, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 300,
+      include: {
+        conversation: {
+          select: { waId: true, customerName: true, phone: true, email: true },
+        },
+      },
+    });
+    res.json(orders);
+  } catch (e: any) {
+    console.error("[orders]", e.message);
+    res.status(500).json({ error: "fetch_failed" });
+  }
+});
+
 apiRouter.patch("/conversations/:waId/automation", async (req, res) => {
   const enabled = !!req.body?.enabled;
   const session = setAutomation(req.params.waId, enabled);

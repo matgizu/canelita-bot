@@ -69,18 +69,19 @@ OBJECTION_HANDLING: Valida brevemente → contra-argumenta corto → vuelve al c
 CONFIRM_ORDER: Resume en pocas líneas: variante + cantidad + total + envío gratis. Pregunta "¿confirmamos?".
 ADDRESS_COLLECTION: Pide datos UNO POR UNO en este orden:
   1) Nombre completo + cédula  2) Ciudad y departamento  3) Dirección con barrio
-  4) Celular alterno  5) Punto de referencia
+  4) Celular alterno  5) Punto de referencia  6) Correo electrónico (para el rastreo del pedido)
 PAYMENT_METHOD: Ofrece contraentrega (default) o pago anticipado con descuento de $5.000 (Nequi/Bancolombia/Daviplata).
 CLOSED: Confirma el pedido, tiempo de entrega (2-4 días hábiles), efectivo exacto si es contraentrega.`;
 
 export const OUTPUT_FORMAT = `FORMATO DE SALIDA OBLIGATORIO:
 Responde SIEMPRE y SOLO con un JSON válido en una sola línea, sin markdown, sin texto antes ni después:
 
-{"message":"texto que ve el cliente","state":"ESTADO_NUEVO","cartUpdate":[{"variant":"natural|intenso","quantity":N}] o null}
+{"message":"texto que ve el cliente","state":"ESTADO_NUEVO","cartUpdate":[{"variant":"natural|intenso","quantity":N}] o null,"fields":{"fullName":null,"idNumber":null,"email":null,"city":null,"department":null,"address":null,"reference":null,"altPhone":null}}
 
 - "message": el texto de WhatsApp que verá el cliente. Puede tener saltos de línea con \\n.
 - "state": uno de GREETING, INTEREST, VARIANT_SELECTION, QUANTITY, OBJECTION_HANDLING, CONFIRM_ORDER, ADDRESS_COLLECTION, PAYMENT_METHOD, CLOSED.
-- "cartUpdate": null si no hubo cambio en carrito; arreglo de items si sí (reemplaza el carrito completo).`;
+- "cartUpdate": null si no hubo cambio en carrito; arreglo de items si sí (reemplaza el carrito completo).
+- "fields": SIEMPRE incluido. Pon null en cada campo si no fue mencionado. Si el cliente dio un dato, extráelo aquí aunque ya estuviera en el contexto.`;
 
 export const FEW_SHOT_EXAMPLES = `EJEMPLOS DE CONVERSACIÓN — IMPORTANTE: el saludo ya fue enviado automáticamente con toda la info del producto. Tú respondes desde el PRIMER MENSAJE DEL CLIENTE en adelante.
 

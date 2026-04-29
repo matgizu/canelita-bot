@@ -1,10 +1,22 @@
 import { State, STATES } from "./flow";
 import type { CartItem } from "./flow";
 
+export interface SessionFields {
+  fullName?: string;
+  idNumber?: string;
+  email?: string;
+  city?: string;
+  department?: string;
+  address?: string;
+  reference?: string;
+  altPhone?: string;
+}
+
 export interface ClaudeReply {
   message: string;
   state: State;
   cartUpdate: CartItem[] | null;
+  fields: SessionFields | null;
 }
 
 const VALID_STATES = new Set(STATES);
@@ -40,6 +52,7 @@ export function parseClaudeReply(
         message: direct.message,
         state: isValidState(direct.state) ? direct.state : fallbackState,
         cartUpdate: normalizeCartUpdate(direct.cartUpdate),
+        fields: normalizeFields(direct.fields),
       };
     }
   } catch {}
@@ -53,6 +66,7 @@ export function parseClaudeReply(
           message: parsed.message,
           state: isValidState(parsed.state) ? parsed.state : fallbackState,
           cartUpdate: normalizeCartUpdate(parsed.cartUpdate),
+          fields: normalizeFields(parsed.fields),
         };
       }
     } catch {}
@@ -71,6 +85,7 @@ export function parseClaudeReply(
           ? (stateMatch[1] as State)
           : fallbackState,
       cartUpdate: null,
+      fields: null,
     };
   }
 
@@ -80,6 +95,7 @@ export function parseClaudeReply(
       message: decodeJsonString(patternMatch[1]),
       state: fallbackState,
       cartUpdate: null,
+      fields: null,
     };
   }
 
@@ -87,7 +103,28 @@ export function parseClaudeReply(
     message: cleaned.replace(/[`{}[\]]/g, "").trim() || "Cuéntame más reina 💛",
     state: fallbackState,
     cartUpdate: null,
+    fields: null,
   };
+}
+
+function str(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() ? v.trim() : undefined;
+}
+
+function normalizeFields(raw: unknown): SessionFields | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const f: SessionFields = {};
+  const keys: (keyof SessionFields)[] = [
+    "fullName", "idNumber", "email", "city", "department",
+    "address", "reference", "altPhone",
+  ];
+  let any = false;
+  for (const k of keys) {
+    const v = str(r[k]);
+    if (v) { f[k] = v; any = true; }
+  }
+  return any ? f : null;
 }
 
 function extractJsonBlock(s: string): string | null {

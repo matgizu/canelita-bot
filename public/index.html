@@ -373,6 +373,75 @@
       font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 8px;
     }
     #test-btn:hover { background: #374151; }
+
+    /* ── Labels ── */
+    .labels-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .label-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      background: #e0f2fe; color: #0369a1; cursor: default;
+    }
+    .label-chip .rm {
+      cursor: pointer; opacity: .6; font-size: 12px; line-height: 1;
+      padding: 0 1px; border-radius: 2px;
+    }
+    .label-chip .rm:hover { opacity: 1; }
+    .label-input-row { display: flex; gap: 6px; margin-top: 8px; }
+    .label-input-row input {
+      flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12px; outline: none; font-family: inherit;
+    }
+    .label-input-row input:focus { border-color: var(--brand); }
+    .label-input-row button {
+      padding: 6px 12px; background: var(--brand); color: #fff;
+      border: none; border-radius: 8px; font-size: 12px;
+      font-weight: 600; cursor: pointer;
+    }
+    .label-input-row button:hover { opacity: .85; }
+
+    /* ── Orders overlay ── */
+    #orders-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #orders-panel {
+      width: 920px; max-width: 97vw; height: 80vh;
+      background: var(--card); border-radius: 16px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    #orders-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; background: var(--sidebar); flex-shrink: 0;
+    }
+    #orders-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    #orders-close {
+      width: 30px; height: 30px; background: #374151; color: #9ca3af;
+      border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #orders-close:hover { background: #ef4444; color: #fff; }
+    #orders-body { flex: 1; overflow: auto; padding: 0; }
+    #orders-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #orders-table thead { position: sticky; top: 0; background: #f9fafb; z-index: 1; }
+    #orders-table th {
+      text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .4px; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    #orders-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    #orders-table tr:hover td { background: #f9fafb; }
+    .o-status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+    .o-status.PENDING  { background: #fef3c7; color: #92400e; }
+    .o-status.SHIPPED  { background: #d1fae5; color: #065f46; }
+    .o-status.CANCELED { background: #fee2e2; color: #991b1b; }
+    #orders-btn {
+      padding: 6px 14px; background: #1f2937; color: #60a5fa;
+      border: 1px solid #374151; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    #orders-btn:hover { background: #374151; }
   </style>
 </head>
 <body>
@@ -386,6 +455,7 @@
     <div class="stat"><span class="stat-val" id="st-open">—</span><span class="stat-lbl">En proceso</span></div>
     <div class="stat"><span class="stat-val" id="st-closed">—</span><span class="stat-lbl">Cerrados</span></div>
   </div>
+  <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
   <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
   <div class="sse-pill">
     <div class="sse-dot" id="sse-dot"></div>
@@ -477,6 +547,35 @@
     </div>
   </aside>
 
+</div>
+
+<!-- Orders overlay -->
+<div id="orders-overlay" hidden>
+  <div id="orders-panel">
+    <div id="orders-header">
+      <h2>📦 Pedidos cerrados</h2>
+      <button id="orders-close" onclick="closeOrders()">✕</button>
+    </div>
+    <div id="orders-body">
+      <table id="orders-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Teléfono</th>
+            <th>Email</th>
+            <th>Productos</th>
+            <th>Total</th>
+            <th>Pago</th>
+            <th>Ciudad</th>
+            <th>Dirección</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- Test overlay -->
@@ -819,6 +918,7 @@ function renderInfoTab() {
       ${row('Cédula',    d.idNumber)}
       ${row('WhatsApp',  phone(d.waId))}
       ${row('Cel alterno', d.altPhone)}
+      ${row('Email',     d.email)}
     </div>
 
     <div class="isec">
@@ -827,6 +927,18 @@ function renderInfoTab() {
       ${row('Depto.',     d.department)}
       ${row('Dirección',  d.address)}
       ${row('Referencia', d.reference)}
+    </div>
+
+    <div class="isec">
+      <div class="isec-title">Etiquetas</div>
+      <div class="labels-wrap" id="labels-chips">
+        ${(d.labels||[]).map(l => labelChip(l)).join('')}
+      </div>
+      <div class="label-input-row">
+        <input type="text" id="label-input" placeholder="Nueva etiqueta…" maxlength="40"
+          onkeydown="if(event.key==='Enter'){addLabel();event.preventDefault();}">
+        <button onclick="addLabel()">+ Agregar</button>
+      </div>
     </div>
 
     ${cart.length ? `
@@ -882,6 +994,92 @@ function switchTab(name) {
   document.getElementById('tab-btn-orders').classList.toggle('active', name==='orders');
   document.getElementById('tab-info').hidden   = name !== 'info';
   document.getElementById('tab-orders').hidden = name !== 'orders';
+}
+
+/* ─────────────────────────────────────
+   LABELS
+───────────────────────────────────── */
+function labelChip(label) {
+  return `<span class="label-chip">${x(label)}<span class="rm" onclick="removeLabel('${x(label)}')">×</span></span>`;
+}
+
+async function addLabel() {
+  const input = document.getElementById('label-input');
+  const val   = (input.value || '').trim();
+  if (!val || !selected || !detail) return;
+  const current = Array.isArray(detail.labels) ? detail.labels : [];
+  if (current.includes(val)) { input.value = ''; return; }
+  const labels = [...current, val];
+  await saveLabels(labels);
+  input.value = '';
+}
+
+async function removeLabel(label) {
+  if (!selected || !detail) return;
+  const labels = (detail.labels || []).filter(l => l !== label);
+  await saveLabels(labels);
+}
+
+async function saveLabels(labels) {
+  try {
+    await fetch(`/api/conversations/${selected}/labels`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ labels }),
+    });
+    if (detail) detail.labels = labels;
+    // update chips live
+    const wrap = document.getElementById('labels-chips');
+    if (wrap) wrap.innerHTML = labels.map(l => labelChip(l)).join('');
+    // update sidebar conv
+    const c = convs.find(c => c.waId === selected);
+    if (c) c.labels = labels;
+  } catch(e) { console.error('saveLabels', e); }
+}
+
+/* ─────────────────────────────────────
+   ORDERS OVERLAY
+───────────────────────────────────── */
+async function openOrders() {
+  document.getElementById('orders-overlay').hidden = false;
+  const tbody = document.getElementById('orders-tbody');
+  tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted)">Cargando…</td></tr>`;
+  try {
+    const orders = await fetch('/api/orders').then(r => r.json());
+    if (!orders.length) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted)">Sin pedidos aún</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = orders.map(o => {
+      const items = (Array.isArray(o.cart) ? o.cart : [])
+        .map(i => `${i.quantity}x ${i.variant==='natural'?'Natural':'Intenso'}`)
+        .join(', ');
+      const name  = o.fullName || o.conversation?.customerName || '—';
+      const phone = o.conversation?.waId ? '+' + o.conversation.waId : '—';
+      const email = o.email || o.conversation?.email || '—';
+      const date  = o.createdAt ? new Date(o.createdAt).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—';
+      const dir   = [o.address, o.reference].filter(Boolean).join(' — ') || '—';
+      const city  = [o.city, o.department].filter(Boolean).join(', ') || '—';
+      return `<tr>
+        <td>${date}</td>
+        <td>${x(name)}</td>
+        <td>${phone}</td>
+        <td>${x(email)}</td>
+        <td>${x(items)}</td>
+        <td style="font-weight:700">$${Number(o.total).toLocaleString('es-CO')}</td>
+        <td>${o.paymentMethod==='cod'?'Contraentrega':'Anticipado'}</td>
+        <td>${x(city)}</td>
+        <td>${x(dir)}</td>
+        <td><span class="o-status ${o.status}">${o.status}</span></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--red)">Error cargando pedidos</td></tr>`;
+  }
+}
+
+function closeOrders() {
+  document.getElementById('orders-overlay').hidden = true;
 }
 
 /* ─────────────────────────────────────
