@@ -5,6 +5,8 @@ import { apiRouter } from "./api/routes";
 import { testRouter } from "./api/test";
 import { webhookRouter } from "./api/webhook";
 import { config } from "./config";
+import { prisma } from "./db";
+import { notifyOwner } from "./owner";
 
 const app = express();
 
@@ -26,6 +28,114 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, ts: Date.now() });
 });
 
+async function sendDailyReport(): Promise<void> {
+  try {
+    // COL midnight = 05:00 UTC (Colombia is UTC-5, no DST)
+    const now = new Date();
+    const colMidnight = new Date(now);
+    colMidnight.setUTCHours(5, 0, 0, 0);
+    if (colMidnight > now) colMidnight.setUTCDate(colMidnight.getUTCDate() - 1);
+
+    const [orders, newConvs, closedConvs, objRows] = await Promise.all([
+      prisma.order.findMany({
+        where: { createdAt: { gte: colMidnight }, status: { not: "CANCELLED" } },
+      }),
+      prisma.conversation.count({ where: { createdAt: { gte: colMidnight } } }),
+      prisma.conversation.count({ where: { state: "CLOSED", updatedAt: { gte: colMidnight } } }),
+      prisma.$queryRaw<Array<{ objectionType: string; count: bigint }>>`
+        SELECT "objectionType", COUNT(*) AS count
+        FROM "Message"
+        WHERE "objectionType" IS NOT NULL
+          AND "createdAt" >= ${colMidnight}
+        GROUP BY "objectionType"
+        ORDER BY count DESC
+        LIMIT 5
+      `,
+    ]);
+
+    const repliedRows = await prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) AS count FROM (
+        SELECT "conversationId"
+        FROM "Message"
+        WHERE direction = 'inbound'
+          AND "createdAt" >= ${colMidnight}
+        GROUP BY "conversationId"
+        HAVING COUNT(*) >= 2
+      ) sub
+    `;
+    const replied = Number(repliedRows[0]?.count ?? 0);
+
+    const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
+    const dateStr = new Date().toLocaleDateString("es-CO", {
+      timeZone: "America/Bogota",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+
+    const responseRate = newConvs > 0 ? ((replied / newConvs) * 100).toFixed(1) : "0.0";
+    const closeRate    = newConvs > 0 ? ((closedConvs / newConvs) * 100).toFixed(1) : "0.0";
+
+    const objLines = objRows.length
+      ? objRows.map((r) => `• ${r.objectionType} (${r.count} veces)`).join("\n")
+      : "• Ninguna registrada";
+
+    const msg = [
+      `📊 *Reporte Canelita — ${dateStr}*`,
+      ``,
+      `💰 Ventas: *${orders.length} pedidos* | $${totalRevenue.toLocaleString("es-CO")} COP`,
+      `💬 Conversaciones nuevas: *${newConvs}*`,
+      `📈 Tasa de cierre: *${closeRate}%*`,
+      `📨 Tasa de respuesta: *${responseRate}%*`,
+      ``,
+      `🚧 *Objeciones del día:*`,
+      objLines,
+    ].join("\n");
+
+    await notifyOwner(msg);
+  } catch (e: any) {
+    console.error("[daily.report]", e.message);
+  }
+}
+
+function scheduleDailyReport(): void {
+  // Send at 9am COL = 14:00 UTC
+  const now = Date.now();
+  const next = new Date(now);
+  next.setUTCHours(14, 0, 0, 0);
+  if (next.getTime() <= now) next.setUTCDate(next.getUTCDate() + 1);
+
+  const delay = next.getTime() - now;
+  setTimeout(() => {
+    sendDailyReport().catch(() => {});
+    setInterval(() => sendDailyReport().catch(() => {}), 24 * 60 * 60 * 1000).unref();
+  }, delay).unref();
+}
+
 app.listen(config.port, () => {
   console.log(`[canelita-bot] listening on :${config.port}`);
 });
+
+// Check for due reminders every 10 minutes
+setInterval(async () => {
+  try {
+    const due = await prisma.reminder.findMany({
+      where: { sent: false, dueAt: { lte: new Date() } },
+    });
+    for (const r of due) {
+      const dateStr = new Date(r.dueAt).toLocaleString("es-CO", {
+        timeZone: "America/Bogota",
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+      await notifyOwner(
+        `🔔 *Recordatorio pendiente*\n\n${r.note}\n\n👤 +${r.waId}\n📅 Venció: ${dateStr}`,
+      );
+      await prisma.reminder.update({ where: { id: r.id }, data: { sent: true } });
+    }
+  } catch (e: any) {
+    console.error("[reminder.checker]", e.message);
+  }
+}, 10 * 60 * 1000).unref();
+
+scheduleDailyReport();
