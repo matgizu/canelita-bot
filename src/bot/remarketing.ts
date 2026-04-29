@@ -43,8 +43,8 @@ export function scheduleFullSequence(session: Session) {
     const absoluteFire = start + touch.delay;
     const remaining    = absoluteFire - Date.now();
 
-    if (remaining <= 0)           continue; // already past
-    if (touch.delay > WINDOW_72H) continue; // outside Meta window
+    if (remaining <= 0)                       continue; // already past
+    if (absoluteFire > start + WINDOW_72H)    continue; // outside Meta 72h window
 
     const { type } = touch;
     timers.push(

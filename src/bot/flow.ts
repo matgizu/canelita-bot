@@ -61,16 +61,21 @@ export const REMARKETING_MESSAGES = {
   t4: `Última cosita reina 💛 Hoy es el último día que te puedo aplicar el precio especial.\n\n¿Lo llevamos o lo dejamos para después?`,
 };
 
-// Helper: ms until the next occurrence of colHour on the *next calendar day* (COL = UTC-5)
+// Helper: ms until colHour:00 on the next COL calendar day (COL = UTC-5, no DST).
+// Correctly handles sessions created late at night COL time.
 export function msUntilNextDayColTime(fromMs: number, colHour: number): number {
-  const utcHour = (colHour + 5) % 24; // COL UTC-5: 8am→13:00 UTC, 15pm→20:00 UTC
-  const candidate = new Date(fromMs + 24 * 60 * 60 * 1000); // start from tomorrow
-  candidate.setUTCHours(utcHour, 0, 0, 0);
-  // If candidate ended up before fromMs (e.g., hour wrap), add another day
-  if (candidate.getTime() <= fromMs) {
-    candidate.setUTCDate(candidate.getUTCDate() + 1);
-  }
-  return candidate.getTime() - fromMs;
+  // Shift fromMs back 5h to get the "COL clock date" as if it were UTC
+  const colDate = new Date(fromMs - 5 * 60 * 60 * 1000);
+  // Next COL calendar day at colHour:00 COL = (colHour+5):00 UTC
+  // Date.UTC handles colHour+5 > 23 by rolling over to the next UTC day — correct behaviour
+  const target = Date.UTC(
+    colDate.getUTCFullYear(),
+    colDate.getUTCMonth(),
+    colDate.getUTCDate() + 1,
+    colHour + 5,
+    0, 0, 0,
+  );
+  return target - fromMs;
 }
 
 export const TIMING = {
