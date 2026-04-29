@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { events } from "../events";
 import { config } from "../config";
 import { getSession, setAutomation } from "../sessions";
+import { cancelRemarketing } from "../bot/remarketing";
 import { mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
 import { sanitizeOutput } from "../bot/blocklist";
 import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
@@ -344,6 +345,28 @@ apiRouter.patch("/conversations/:waId/automation", async (req, res) => {
     at: Date.now(),
   });
   res.json({ waId: session.waId, automationEnabled: session.automationEnabled });
+});
+
+apiRouter.patch("/conversations/:waId/close", async (req, res) => {
+  const waId = req.params.waId;
+  try {
+    const conv = await prisma.conversation.findUnique({ where: { waId } });
+    if (!conv) { res.status(404).json({ error: "not_found" }); return; }
+
+    const prevState = conv.state;
+    await prisma.conversation.update({ where: { waId }, data: { state: "CLOSED" } });
+
+    const session = getSession(waId);
+    session.state = "CLOSED" as any;
+
+    cancelRemarketing(waId);
+
+    events.emitDashboard({ type: "state_change", waId, from: prevState, to: "CLOSED", at: Date.now() });
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("[close]", e.message);
+    res.status(500).json({ error: "close_failed" });
+  }
 });
 
 apiRouter.post("/conversations/:waId/send", async (req, res) => {

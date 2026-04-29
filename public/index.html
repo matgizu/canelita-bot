@@ -981,7 +981,9 @@ function renderHeader() {
     </div>
     <button class="toggle-btn ${c.automationEnabled?'on':'off'}" onclick="toggleBot('${c.waId}')">
       ${c.automationEnabled ? '🤖 Bot activo' : '🔇 Bot pausado'}
-    </button>`;
+    </button>
+    ${c.state !== 'CLOSED' ? `<button class="toggle-btn" style="background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${c.waId}')">✓ Cerrar venta</button>` : ''}
+    `;
 }
 
 function remarketingContent(type, body) {
@@ -1063,6 +1065,7 @@ function renderInfoTab() {
           ? '🤖 Activo — pausar bot'
           : '🔇 Pausado — activar bot'}
       </button>
+      ${conv.state !== 'CLOSED' ? `<button class="toggle-btn full" style="margin-top:6px;background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${d.waId}')">✓ Cerrar venta manualmente</button>` : '<div style="text-align:center;font-size:12px;color:#34d399;padding:6px 0">✓ Venta cerrada</div>'}
     </div>
 
     <div class="isec">
@@ -1429,6 +1432,19 @@ async function sendMsg() {
   } catch { alert('Error enviando mensaje'); }
   btn.disabled = false;
   input.focus();
+}
+
+async function closeConv(waId) {
+  if (!confirm('¿Marcar esta conversación como cerrada?')) return;
+  try {
+    const res = await fetch(`/api/conversations/${waId}/close`, { method: 'PATCH' });
+    if (!res.ok) { alert('Error cerrando la conversación'); return; }
+    const c = convs.find(x => x.waId === waId);
+    if (c) c.state = 'CLOSED';
+    renderSidebar();
+    renderStats();
+    if (waId === selected) { renderHeader(); renderInfoTab(); }
+  } catch { alert('Error de conexión'); }
 }
 
 async function toggleBot(waId) {
