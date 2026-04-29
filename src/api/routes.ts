@@ -377,7 +377,7 @@ apiRouter.post("/conversations/:waId/send", async (req, res) => {
   }
   const sanitized = sanitizeOutput(text);
   const waId = req.params.waId;
-  await sendInParts(waId, sanitized);
+  const waMsgId = await sendInParts(waId, sanitized);
 
   const session = getSession(waId);
   session.lastOutboundAt = Date.now();
@@ -394,6 +394,7 @@ apiRouter.post("/conversations/:waId/send", async (req, res) => {
         direction: "outbound",
         type: "manual",
         body: sanitized,
+        whatsappMsgId: waMsgId ?? null,
       },
     });
   } catch (e: any) {
