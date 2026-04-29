@@ -32,7 +32,7 @@ import {
   detectObjection,
 } from "./objections";
 import type { SessionFields } from "./parser";
-import { cancelRemarketing, scheduleGreetingRemarketing, scheduleRemarketing } from "./remarketing";
+import { cancelRemarketing, scheduleFullSequence } from "./remarketing";
 import { detectSpecialCase, TELEGRAM_TEMPLATES } from "./specialCases";
 
 export interface InboundEvent {
@@ -119,7 +119,7 @@ async function processCombined(
     await replyHardcoded(session, HARDCODED_GREETING, HARDCODED_GREETING_JSON);
     pushHistory(session, "user", combined);
     transitionTo(session, "INTEREST");
-    scheduleGreetingRemarketing(session.waId);
+    scheduleFullSequence(session);
     return;
   }
 
@@ -214,7 +214,7 @@ async function processCombined(
     await persistOrderIfNeeded(session);
     cancelRemarketing(session.waId);
   } else {
-    scheduleRemarketing(session);
+    scheduleFullSequence(session);
   }
 
   await persistOutbound(session, sanitized, nextState);

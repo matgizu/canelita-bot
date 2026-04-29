@@ -55,20 +55,23 @@ export const HARDCODED_GREETING_JSON = JSON.stringify({
 });
 
 export const REMARKETING_MESSAGES = {
-  testimonials2h: `Reina, ¿pudiste ver bien la info? 💛\n\nMira los resultados que están teniendo nuestras clientas con Canelita... el bronceado queda natural y divino.\n\nRecuerda: envío GRATIS a toda Colombia y pagas solo cuando lo recibes. Sin riesgo ✨\n\n¿Te lo mandamos hoy?`,
-  confirmOrder30min: `¿Sigues por ahí reina? 💛 Te dejé tu pedido apartado, cuando quieras lo confirmamos y te lo despachamos hoy mismo.`,
-  addressCollection1h: `Hola de nuevo ✨ Vi que quedamos a mitad del pedido. Si tienes los datos a mano lo cerramos en 1 minuto y queda en camino.`,
-  paymentMethod2h: `Hola reina, solo nos falta el último pasito para cerrar tu pedido. Si lo dejamos para mañana ya no alcanzo a despachar hoy 💛`,
-  recovery24h: `¡Hola otra vez! 💛 Te quería contar que como cariñito por volver te puedo aplicar un descuento de bienvenida solo por hoy. ¿Te animas a llevarlo?`,
+  t1: `Reina, ¿pudiste ver bien la info? 💛\n\nMira los resultados que están teniendo nuestras clientas con Canelita... el bronceado queda natural y divino.\n\nRecuerda: envío GRATIS a toda Colombia y pagas solo cuando lo recibes. Sin riesgo ✨\n\n¿Te lo mandamos hoy?`,
+  t2: `Hola de nuevo ✨ Te cuento que el autobronceador sigue disponible con envío gratis y pagas al recibirlo — sin riesgo.\n\nLa mayoría que lo prueba repite. ¿Le damos?`,
+  t3: `Buenos días reina ☀️ Hoy tenemos despachos y quería saber si ya te decidiste.\n\nSi lo cerramos hoy mismo sale en camino. ¿Qué me dices?`,
+  t4: `Última cosita reina 💛 Hoy es el último día que te puedo aplicar el precio especial.\n\n¿Lo llevamos o lo dejamos para después?`,
 };
 
-export const REMARKETING_DELAYS = {
-  testimonials: 2 * 60 * 60 * 1000,
-  confirmOrder: 30 * 60 * 1000,
-  addressCollection: 60 * 60 * 1000,
-  paymentMethod: 2 * 60 * 60 * 1000,
-  recovery: 24 * 60 * 60 * 1000,
-};
+// Helper: ms until the next occurrence of colHour on the *next calendar day* (COL = UTC-5)
+export function msUntilNextDayColTime(fromMs: number, colHour: number): number {
+  const utcHour = (colHour + 5) % 24; // COL UTC-5: 8am→13:00 UTC, 15pm→20:00 UTC
+  const candidate = new Date(fromMs + 24 * 60 * 60 * 1000); // start from tomorrow
+  candidate.setUTCHours(utcHour, 0, 0, 0);
+  // If candidate ended up before fromMs (e.g., hour wrap), add another day
+  if (candidate.getTime() <= fromMs) {
+    candidate.setUTCDate(candidate.getUTCDate() + 1);
+  }
+  return candidate.getTime() - fromMs;
+}
 
 export const TIMING = {
   debounceMs: 30_000,

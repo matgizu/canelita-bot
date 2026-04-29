@@ -1,6 +1,6 @@
 import { config } from "../config";
 import { sendImageUrl, sendText } from "../whatsapp/client";
-import { Session, REMARKETING_DELAYS, REMARKETING_MESSAGES, State } from "./flow";
+import { REMARKETING_MESSAGES, Session, msUntilNextDayColTime } from "./flow";
 import { events } from "../events";
 import { prisma } from "../db";
 
@@ -22,107 +22,85 @@ export function cancelRemarketing(waId: string) {
   clearTimers(waId);
 }
 
-// Llamado justo después de enviar el greeting.
-// Si la persona no responde en 2h, manda testimonios + mensaje.
-export function scheduleGreetingRemarketing(waId: string) {
-  clearTimers(waId);
-  const timer = setTimeout(
-    () => sendTestimonialsRemarketing(waId),
-    REMARKETING_DELAYS.testimonials,
-  );
-  trackers.set(waId, { timers: [timer] });
-}
-
-// Llamado después de que Claude responde (estados INTEREST en adelante).
-export function scheduleRemarketing(session: Session) {
+// Single entry point: schedule all 4 touches from session.createdAt.
+// Safe to call repeatedly — recalculates and replaces existing timers.
+export function scheduleFullSequence(session: Session) {
   clearTimers(session.waId);
+
+  const start = session.createdAt;
+  const WINDOW_72H = 72 * 60 * 60 * 1000;
+
+  const touches: Array<{ delay: number; type: string }> = [
+    { delay: 2  * 60 * 60 * 1000,              type: "t1" },
+    { delay: 10 * 60 * 60 * 1000,              type: "t2" },
+    { delay: msUntilNextDayColTime(start, 8),  type: "t3" },
+    { delay: msUntilNextDayColTime(start, 15), type: "t4" },
+  ];
+
   const timers: NodeJS.Timeout[] = [];
 
-  const staged = stagedFor(session.state);
-  if (staged) {
+  for (const touch of touches) {
+    const absoluteFire = start + touch.delay;
+    const remaining    = absoluteFire - Date.now();
+
+    if (remaining <= 0)           continue; // already past
+    if (touch.delay > WINDOW_72H) continue; // outside Meta window
+
+    const { type } = touch;
     timers.push(
-      setTimeout(() => sendRemarketing(session.waId, staged.text, "stage"), staged.delay),
+      setTimeout(() => fireTouch(session.waId, type), remaining),
     );
   }
 
-  timers.push(
-    setTimeout(
-      () => sendRemarketing(session.waId, REMARKETING_MESSAGES.recovery24h, "recovery"),
-      REMARKETING_DELAYS.recovery,
-    ),
-  );
-
-  trackers.set(session.waId, { timers });
+  if (timers.length) trackers.set(session.waId, { timers });
 }
 
-function stagedFor(state: State): { text: string; delay: number } | null {
-  switch (state) {
-    case "CONFIRM_ORDER":
-      return { text: REMARKETING_MESSAGES.confirmOrder30min, delay: REMARKETING_DELAYS.confirmOrder };
-    case "ADDRESS_COLLECTION":
-      return { text: REMARKETING_MESSAGES.addressCollection1h, delay: REMARKETING_DELAYS.addressCollection };
-    case "PAYMENT_METHOD":
-      return { text: REMARKETING_MESSAGES.paymentMethod2h, delay: REMARKETING_DELAYS.paymentMethod };
-    default:
-      return null;
+async function fireTouch(waId: string, type: string) {
+  try {
+    const conv = await prisma.conversation.findUnique({ where: { waId } });
+    if (!conv) return;
+    if (conv.windowExpired) return;
+    if (conv.state === "CLOSED") return;
+
+    if (type === "t1") {
+      await sendT1(waId, conv.id);
+    } else {
+      const msg = REMARKETING_MESSAGES[type as keyof typeof REMARKETING_MESSAGES];
+      if (!msg) return;
+      await sendRemarketingText(waId, conv.id, msg, type);
+    }
+  } catch (e: any) {
+    console.error(`[remarketing.${type}]`, e.message);
   }
 }
 
-async function sendTestimonialsRemarketing(waId: string) {
+async function sendT1(waId: string, convId: number) {
   const imgs = config.greeting.imageUrls;
-
-  // Enviar cada imagen con 1s de pausa entre ellas
   for (const url of imgs) {
     await sendImageUrl(waId, url);
     await new Promise((r) => setTimeout(r, 1000));
   }
-
-  const text = REMARKETING_MESSAGES.testimonials2h;
-  await sendText(waId, text);
-
-  const label = `[remarketing: testimonios x${imgs.length}]\n${text}`;
-
-  events.emitDashboard({
-    type: "message", waId, direction: "outbound",
-    body: label, messageType: "remarketing:testimonials", at: Date.now(),
-  });
-
-  try {
-    const conv = await prisma.conversation.findUnique({ where: { waId } });
-    if (conv) {
-      await prisma.message.create({
-        data: {
-          conversationId: conv.id,
-          direction: "outbound",
-          type: "remarketing:testimonials",
-          body: label,
-        },
-      });
-    }
-  } catch (e: any) {
-    console.error("[remarketing.testimonials]", e.message);
-  }
+  await sendRemarketingText(waId, convId, REMARKETING_MESSAGES.t1, "t1");
 }
 
-async function sendRemarketing(waId: string, text: string, kind: string) {
+async function sendRemarketingText(waId: string, convId: number, text: string, type: string) {
   await sendText(waId, text);
+
   events.emitDashboard({
-    type: "message", waId, direction: "outbound",
-    body: text, messageType: `remarketing:${kind}`, at: Date.now(),
+    type: "message",
+    waId,
+    direction: "outbound",
+    body: text,
+    messageType: `remarketing:${type}`,
+    at: Date.now(),
   });
-  try {
-    const conv = await prisma.conversation.findUnique({ where: { waId } });
-    if (conv) {
-      await prisma.message.create({
-        data: {
-          conversationId: conv.id,
-          direction: "outbound",
-          type: `remarketing:${kind}`,
-          body: text,
-        },
-      });
-    }
-  } catch (e: any) {
-    console.error("[remarketing.persist]", e.message);
-  }
+
+  await prisma.message.create({
+    data: {
+      conversationId: convId,
+      direction: "outbound",
+      type: `remarketing:${type}`,
+      body: text,
+    },
+  });
 }
