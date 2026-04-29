@@ -20,6 +20,9 @@ model Conversation {
   city              String?
   department        String?
   email             String?
+  adSource          String?
+  adHeadline        String?
+  ctwaClid          String?
   labels            String[]  @default([])
   windowExpired     Boolean   @default(false)
   state             String    @default("GREETING")
@@ -63,6 +66,7 @@ model Message {
   rawState       String?
   mediaUrl       String?
   whatsappMsgId  String?
+  objectionType  String?
   createdAt      DateTime     @default(now())
 
   @@index([conversationId])
@@ -90,4 +94,15 @@ model Order {
 
   @@index([status])
   @@index([conversationId])
+}
+
+model Reminder {
+  id        Int      @id @default(autoincrement())
+  waId      String
+  note      String
+  dueAt     DateTime
+  sent      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([sent, dueAt])
 }
