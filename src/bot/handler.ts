@@ -140,6 +140,15 @@ async function processCombined(
       }
     }
 
+    if (special.type === "pickup_office") {
+      const ADELANTO = 10_000;
+      const unitPrice = findCombo(1)!.price;
+      const cartTotal = session.cart.length ? computeTotal(session.cart) : unitPrice;
+      const totalEnOficina = cartTotal - ADELANTO;
+      const nombre = session.customerName ? `${session.customerName}, nos` : "Nos";
+      special.response = `${nombre} confirman que para hacer pedidos a oficinas, debes dar un adelanto de $${ADELANTO.toLocaleString("es-CO")}, esto con el fin de nosotros no perder el envío, ya que si no lo reclamas, a nosotros se nos devuelve y nos genera un gasto de $20.000 aproximadamente.\n\nDando este adelanto, el total a pagar en la oficina te queda en: $${totalEnOficina.toLocaleString("es-CO")} 💛`;
+    }
+
     await replyText(session, special.response, session.state);
 
     if (special.type === "payment_proof") {

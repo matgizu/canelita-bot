@@ -9,6 +9,7 @@ export type SpecialCase =
   | "face_application"
   | "pregnancy_lactation"
   | "testimonials_request"
+  | "pickup_office"
   | null;
 
 export interface SpecialCaseResult {
@@ -90,6 +91,26 @@ const IS_ORIGINAL_TRIGGERS = [
   "no es pirata",
 ];
 
+const PICKUP_OFFICE_TRIGGERS = [
+  "en oficina",
+  "recoger en oficina",
+  "reclamar en oficina",
+  "lo recojo en oficina",
+  "recoger en la oficina",
+  "reclamar en la oficina",
+  "recojo en oficina",
+  "voy a recoger",
+  "lo recojo yo",
+  "recoger en correspondencia",
+  "correspondencia",
+  "servientrega",
+  "interrapidisimo",
+  "deprisa",
+  "en la oficina de",
+  "recoger en el punto",
+  "recojo en el punto",
+];
+
 const TESTIMONIALS_TRIGGERS = [
   "fotos de testimonio",
   "fotos de resultado",
@@ -148,6 +169,15 @@ export interface DetectInput {
 
 export function detectSpecialCase(input: DetectInput): SpecialCaseResult | null {
   const q = norm(input.text || "");
+
+  if (matches(q, PICKUP_OFFICE_TRIGGERS)) {
+    return {
+      type: "pickup_office",
+      response: "__PICKUP_OFFICE__", // filled dynamically in handler.ts
+      disableBot: false,
+      notifyTelegram: false,
+    };
+  }
 
   if (matches(q, TESTIMONIALS_TRIGGERS)) {
     return {
