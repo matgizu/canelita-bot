@@ -8,6 +8,7 @@ export type SpecialCase =
   | "laser_depilation"
   | "face_application"
   | "pregnancy_lactation"
+  | "testimonials_request"
   | null;
 
 export interface SpecialCaseResult {
@@ -89,6 +90,26 @@ const IS_ORIGINAL_TRIGGERS = [
   "no es pirata",
 ];
 
+const TESTIMONIALS_TRIGGERS = [
+  "fotos de testimonio",
+  "fotos de resultado",
+  "fotos de resultados",
+  "fotos reales",
+  "ver fotos",
+  "mas fotos",
+  "más fotos",
+  "puedo ver fotos",
+  "muestrame fotos",
+  "muéstrame fotos",
+  "antes y despues",
+  "antes y después",
+  "fotos de clientas",
+  "resultados reales",
+  "evidencias",
+  "me mandas fotos",
+  "me muestras fotos",
+];
+
 const PAYMENT_PROOF_TRIGGERS = [
   "comprobante",
   "le envío el comprobante",
@@ -105,6 +126,8 @@ const RESPONSES = {
   wholesaler: `¡Qué bueno saber de ti! Te paso de una vez con mi compañera del área de mayoreo, ella maneja precios especiales para distribuidoras y revendedoras. En un ratico te escribe 💛`,
 
   international: `Por ahora solo enviamos dentro de Colombia, pero pronto vamos a estar en otros países ✨ ¿Tienes alguien acá que te lo pueda recibir?`,
+
+  testimonials: `Mira los resultados de nuestras clientas ✨ El bronceado queda natural y divino. ¿Te animas?`,
 
   paymentProof: `Listo, ya recibí tu comprobante. Lo verifico en máximo 30 minutos y te confirmo el despacho 💛`,
 
@@ -125,6 +148,15 @@ export interface DetectInput {
 
 export function detectSpecialCase(input: DetectInput): SpecialCaseResult | null {
   const q = norm(input.text || "");
+
+  if (matches(q, TESTIMONIALS_TRIGGERS)) {
+    return {
+      type: "testimonials_request",
+      response: RESPONSES.testimonials,
+      disableBot: false,
+      notifyTelegram: false,
+    };
+  }
 
   if (input.hasImage && (input.state === "PAYMENT_METHOD" || matches(q, PAYMENT_PROOF_TRIGGERS))) {
     return {

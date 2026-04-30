@@ -32,25 +32,30 @@ app.get("/health", (_req, res) => {
 
 async function sendDailyReport(): Promise<void> {
   try {
-    // COL midnight = 05:00 UTC (Colombia is UTC-5, no DST)
+    // Report covers YESTERDAY in COL time (UTC-5)
+    // Today's COL midnight = 05:00 UTC
     const now = new Date();
-    const colMidnight = new Date(now);
-    colMidnight.setUTCHours(5, 0, 0, 0);
-    if (colMidnight > now) colMidnight.setUTCDate(colMidnight.getUTCDate() - 1);
+    const todayColMidnight = new Date(now);
+    todayColMidnight.setUTCHours(5, 0, 0, 0);
+    if (todayColMidnight > now) todayColMidnight.setUTCDate(todayColMidnight.getUTCDate() - 1);
+    // Yesterday's COL midnight
+    const yesterdayColMidnight = new Date(todayColMidnight);
+    yesterdayColMidnight.setUTCDate(yesterdayColMidnight.getUTCDate() - 1);
 
     const [orderAgg, newConvs, closedConvs, objRows] = await Promise.all([
       prisma.order.aggregate({
-        where: { createdAt: { gte: colMidnight }, status: { not: "CANCELLED" } },
+        where: { createdAt: { gte: yesterdayColMidnight, lt: todayColMidnight }, status: { not: "CANCELLED" } },
         _count: { id: true },
         _sum:   { total: true },
       }),
-      prisma.conversation.count({ where: { createdAt: { gte: colMidnight } } }),
-      prisma.conversation.count({ where: { state: "CLOSED", updatedAt: { gte: colMidnight } } }),
+      prisma.conversation.count({ where: { createdAt: { gte: yesterdayColMidnight, lt: todayColMidnight } } }),
+      prisma.conversation.count({ where: { state: "CLOSED", updatedAt: { gte: yesterdayColMidnight, lt: todayColMidnight } } }),
       prisma.$queryRaw<Array<{ objectionType: string; count: bigint }>>`
         SELECT "objectionType", COUNT(*) AS count
         FROM "Message"
         WHERE "objectionType" IS NOT NULL
-          AND "createdAt" >= ${colMidnight}
+          AND "createdAt" >= ${yesterdayColMidnight}
+          AND "createdAt" < ${todayColMidnight}
         GROUP BY "objectionType"
         ORDER BY count DESC
         LIMIT 5
@@ -64,7 +69,8 @@ async function sendDailyReport(): Promise<void> {
         FROM "Message" m
         JOIN "Conversation" c ON c.id = m."conversationId"
         WHERE m.direction = 'inbound'
-          AND c."createdAt" >= ${colMidnight}
+          AND c."createdAt" >= ${yesterdayColMidnight}
+          AND c."createdAt" < ${todayColMidnight}
         GROUP BY m."conversationId"
         HAVING COUNT(*) >= 2
       ) sub
@@ -73,7 +79,7 @@ async function sendDailyReport(): Promise<void> {
 
     const orderCount   = orderAgg._count.id ?? 0;
     const totalRevenue = orderAgg._sum.total ?? 0;
-    const dateStr = new Date().toLocaleDateString("es-CO", {
+    const dateStr = yesterdayColMidnight.toLocaleDateString("es-CO", {
       timeZone: "America/Bogota",
       weekday: "long",
       day: "numeric",
@@ -106,10 +112,10 @@ async function sendDailyReport(): Promise<void> {
 }
 
 function scheduleDailyReport(): void {
-  // Send at 9am COL = 14:00 UTC
+  // Send at 8am COL = 13:00 UTC
   const now = Date.now();
   const next = new Date(now);
-  next.setUTCHours(14, 0, 0, 0);
+  next.setUTCHours(13, 0, 0, 0);
   if (next.getTime() <= now) next.setUTCDate(next.getUTCDate() + 1);
 
   const delay = next.getTime() - now;

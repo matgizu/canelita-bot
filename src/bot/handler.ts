@@ -133,6 +133,13 @@ async function processCombined(
   });
 
   if (special) {
+    if (special.type === "testimonials_request") {
+      for (const url of config.greeting.imageUrls) {
+        await sendImageUrl(session.waId, url);
+        await new Promise((r) => setTimeout(r, 800));
+      }
+    }
+
     await replyText(session, special.response, session.state);
 
     if (special.type === "payment_proof") {

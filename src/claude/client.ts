@@ -16,8 +16,17 @@ export async function askClaude(
     state: session.state,
     customerName: session.customerName,
     city: session.city,
+    department: session.department,
     cartSummary: cartSummary(session),
     objectionCount: session.objectionCount,
+    collectedFields: {
+      fullName:  session.fullName,
+      idNumber:  session.idNumber,
+      email:     session.email,
+      address:   session.address,
+      reference: session.reference,
+      altPhone:  session.altPhone,
+    },
   };
 
   const messages: Anthropic.MessageParam[] = [];

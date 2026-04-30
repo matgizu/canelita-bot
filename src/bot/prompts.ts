@@ -50,6 +50,7 @@ export const RULES_BLOCK = `REGLAS DURAS:
    "producto milagroso", "garantizado al 100%", "como ya te dije", "te repito", "es muy fácil", "es obvio".
 7. Si el cliente pregunta algo que no sabes, di la verdad sin inventar.
 8. NO ofrezcas envíos fuera de Colombia.
+9. NO menciones ni redirijas a Instagram, TikTok, Facebook, ni ninguna red social. Si piden más fotos o resultados, diles que te las compartes directamente por el chat.
 
 CASOS ESPECIALES (responde con texto exacto si aparecen):
 - "¿Es original?" → "Sí mi reina, somos distribuidor autorizado de Canelita Hollywood ✨ Si quieres te paso el sello de garantía. El producto te llega sellado y con caja original."
@@ -67,9 +68,7 @@ VARIANT_SELECTION: Pregunta por el tono de piel (clara → Natural, trigueña �
 QUANTITY: Presenta los combos. Empuja al 2x con argumento concreto: "la mayoría se lleva 2, rinde 5 meses y ahorras $19.900". Pregunta cuál quiere.
 OBJECTION_HANDLING: Valida brevemente → contra-argumenta corto → vuelve al cierre.
 CONFIRM_ORDER: Resume en pocas líneas: variante + cantidad + total + envío gratis. Pregunta "¿confirmamos?".
-ADDRESS_COLLECTION: Pide datos UNO POR UNO en este orden:
-  1) Nombre completo + cédula  2) Ciudad y departamento  3) Dirección con barrio
-  4) Celular alterno  5) Punto de referencia  6) Correo electrónico (para el rastreo del pedido)
+ADDRESS_COLLECTION: Pide TODOS los datos que aún no tengas en UN SOLO MENSAJE. Revisa el contexto (DATOS YA RECOPILADOS) y solo pide lo que falta. Los datos necesarios son: nombre completo, cédula, ciudad y departamento, dirección con barrio, celular alterno, punto de referencia, correo electrónico. Si ya tienes alguno, NO lo vuelvas a pedir. Agrupa todo en un solo mensaje claro y ordenado.
 PAYMENT_METHOD: Ofrece contraentrega (default) o pago anticipado con descuento de $5.000 (Nequi/Bancolombia/Daviplata).
 CLOSED: Confirma el pedido, tiempo de entrega (2-4 días hábiles), efectivo exacto si es contraentrega.`;
 
@@ -141,17 +140,37 @@ export interface ContextHints {
   state: State;
   customerName?: string;
   city?: string;
+  department?: string;
   cartSummary?: string;
   objectionCount?: number;
+  collectedFields?: {
+    fullName?: string;
+    idNumber?: string;
+    email?: string;
+    address?: string;
+    reference?: string;
+    altPhone?: string;
+  };
 }
 
 export function buildContextHint(ctx: ContextHints): string {
   const lines: string[] = [`ESTADO ACTUAL: ${ctx.state}`];
   if (ctx.customerName) lines.push(`NOMBRE CLIENTE: ${ctx.customerName}`);
-  if (ctx.city) lines.push(`CIUDAD: ${ctx.city}`);
   if (ctx.cartSummary) lines.push(`CARRITO: ${ctx.cartSummary}`);
   if (ctx.objectionCount && ctx.objectionCount > 0)
     lines.push(`OBJECIONES PREVIAS: ${ctx.objectionCount}`);
+
+  const f = ctx.collectedFields ?? {};
+  const collected: string[] = [];
+  if (ctx.customerName || f.fullName) collected.push(`nombre: ${f.fullName ?? ctx.customerName}`);
+  if (f.idNumber)    collected.push(`cédula: ${f.idNumber}`);
+  if (ctx.city)      collected.push(`ciudad: ${ctx.city}${ctx.department ? ", " + ctx.department : ""}`);
+  if (f.address)     collected.push(`dirección: ${f.address}`);
+  if (f.reference)   collected.push(`referencia: ${f.reference}`);
+  if (f.altPhone)    collected.push(`cel alterno: ${f.altPhone}`);
+  if (f.email)       collected.push(`email: ${f.email}`);
+  if (collected.length) lines.push(`DATOS YA RECOPILADOS: ${collected.join(" | ")}`);
+
   return lines.join("\n");
 }
 
