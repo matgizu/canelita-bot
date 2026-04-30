@@ -47,13 +47,15 @@ async function main() {
     ) sub
   `;
   const replied = Number(repliedRows[0]?.count ?? 0);
-  const orderCount = orderAgg._count.id ?? 0;
   const totalRevenue = orderAgg._sum.total ?? 0;
   const dateStr = yesterdayMidnight.toLocaleDateString("es-CO", {
     timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long",
   });
   const responseRate = newConvs > 0 ? ((replied / newConvs) * 100).toFixed(1) : "0.0";
   const closeRate = newConvs > 0 ? ((closedConvs / newConvs) * 100).toFixed(1) : "0.0";
+  const revenueStr = totalRevenue > 0
+    ? `$${Number(totalRevenue).toLocaleString("es-CO")} COP`
+    : "por confirmar";
   const objLines = objRows.length
     ? objRows.map((r) => `• ${r.objectionType} (${r.count} veces)`).join("\n")
     : "• Ninguna registrada";
@@ -61,7 +63,7 @@ async function main() {
   const msg = [
     `📊 *Reporte Canelita — ${dateStr}*`,
     ``,
-    `💰 Ventas: *${orderCount} pedidos* | $${Number(totalRevenue).toLocaleString("es-CO")} COP`,
+    `💰 Ventas cerradas: *${closedConvs}* | ${revenueStr}`,
     `💬 Conversaciones nuevas: *${newConvs}*`,
     `📈 Tasa de cierre: *${closeRate}%*`,
     `📨 Tasa de respuesta: *${responseRate}%*`,

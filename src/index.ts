@@ -77,7 +77,6 @@ async function sendDailyReport(): Promise<void> {
     `;
     const replied = Number(repliedRows[0]?.count ?? 0);
 
-    const orderCount   = orderAgg._count.id ?? 0;
     const totalRevenue = orderAgg._sum.total ?? 0;
     const dateStr = yesterdayColMidnight.toLocaleDateString("es-CO", {
       timeZone: "America/Bogota",
@@ -89,6 +88,11 @@ async function sendDailyReport(): Promise<void> {
     const responseRate = newConvs > 0 ? ((replied / newConvs) * 100).toFixed(1) : "0.0";
     const closeRate    = newConvs > 0 ? ((closedConvs / newConvs) * 100).toFixed(1) : "0.0";
 
+    // Revenue line: use actual orders sum if available, else show closed convs only
+    const revenueStr = totalRevenue > 0
+      ? `$${Number(totalRevenue).toLocaleString("es-CO")} COP`
+      : "por confirmar";
+
     const objLines = objRows.length
       ? objRows.map((r) => `• ${r.objectionType} (${r.count} veces)`).join("\n")
       : "• Ninguna registrada";
@@ -96,7 +100,7 @@ async function sendDailyReport(): Promise<void> {
     const msg = [
       `📊 *Reporte Canelita — ${dateStr}*`,
       ``,
-      `💰 Ventas: *${orderCount} pedidos* | $${totalRevenue.toLocaleString("es-CO")} COP`,
+      `💰 Ventas cerradas: *${closedConvs}* | ${revenueStr}`,
       `💬 Conversaciones nuevas: *${newConvs}*`,
       `📈 Tasa de cierre: *${closeRate}%*`,
       `📨 Tasa de respuesta: *${responseRate}%*`,
