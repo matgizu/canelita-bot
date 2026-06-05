@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canelita Hollywood — Dashboard</title>
+  <style>
+    :root {
+      --brand: #f59e0b;
+      --brand-light: #fff8e6;
+      --brand-border: #fde68a;
+      --sidebar: #111827;
+      --sidebar-hover: #1f2937;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --green: #10b981;
+      --red: #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #header {
+      height: 54px; background: var(--sidebar);
+      display: flex; align-items: center; padding: 0 20px; gap: 24px;
+      flex-shrink: 0; border-bottom: 1px solid #1f2937;
+    }
+    .brand { color: var(--brand); font-weight: 700; font-size: 15px; }
+    .stats-bar { display: flex; gap: 24px; margin-left: auto; }
+    .stat { display: flex; flex-direction: column; align-items: center; }
+    .stat-val { font-size: 18px; font-weight: 700; color: #fff; line-height: 1; }
+    .stat-lbl { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+    .sse-pill {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #9ca3af; margin-left: 16px;
+    }
+    .sse-dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; flex-shrink: 0; }
+    .sse-dot.live { background: var(--green); animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Metrics bar ── */
+    #metrics-bar {
+      background: #1a2234; border-bottom: 1px solid #1f2937;
+      display: flex; align-items: center; padding: 0 20px; gap: 32px;
+      height: 40px; flex-shrink: 0; overflow-x: auto;
+    }
+    .metric-item {
+      display: flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0;
+    }
+    .metric-label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; }
+    .metric-value {
+      font-size: 14px; font-weight: 700; border-radius: 6px;
+      padding: 2px 8px; line-height: 1.6;
+    }
+    .metric-value.green  { background: #064e3b; color: #34d399; }
+    .metric-value.orange { background: #451a03; color: #fb923c; }
+    .metric-value.red    { background: #450a0a; color: #f87171; }
+    .metric-value.gray   { background: #1f2937; color: #9ca3af; }
+    .metric-divider { width: 1px; height: 22px; background: #374151; flex-shrink: 0; }
+
+    /* ── Layout ── */
+    #layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 290px; background: var(--sidebar);
+      display: flex; flex-direction: column; flex-shrink: 0;
+      border-right: 1px solid #1f2937;
+    }
+    .search-box { padding: 10px 12px; }
+    .search-box input {
+      width: 100%; padding: 8px 12px; background: #1f2937;
+      border: 1px solid #374151; border-radius: 8px;
+      color: #fff; font-size: 12px; outline: none;
+    }
+    .search-box input::placeholder { color: #6b7280; }
+    .search-box input:focus { border-color: var(--brand); }
+    #conv-list { flex: 1; overflow-y: auto; }
+    #conv-list::-webkit-scrollbar { width: 3px; }
+    #conv-list::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+    .conv-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 11px 14px; cursor: pointer;
+      border-bottom: 1px solid #1f2937;
+      transition: background .12s;
+    }
+    .conv-item:hover { background: var(--sidebar-hover); }
+    .conv-item.active { background: #1e2a3a; border-left: 3px solid var(--brand); padding-left: 11px; }
+    .ava {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--brand); color: #fff;
+      font-weight: 700; font-size: 15px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ci-body { flex: 1; min-width: 0; }
+    .ci-name {
+      font-size: 12.5px; font-weight: 600; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .bot-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .bot-dot.on  { background: var(--green); }
+    .bot-dot.off { background: var(--red); }
+    .ci-preview {
+      font-size: 11px; color: #9ca3af;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
+    }
+    .ci-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .ci-time { font-size: 10px; color: #6b7280; }
+    .sbadge {
+      font-size: 9px; font-weight: 600; padding: 2px 6px;
+      border-radius: 10px; text-transform: uppercase; letter-spacing: .3px;
+    }
+
+    /* ── Chat area ── */
+    #chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    #empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; color: var(--muted); gap: 10px;
+    }
+    #empty-state div:first-child { font-size: 44px; }
+
+    #chat-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #chat-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 18px; background: var(--card);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+      min-width: 0;
+    }
+    #chat-header .ava { width: 34px; height: 34px; font-size: 13px; flex-shrink: 0; }
+    .ch-info { flex: 1; min-width: 0; overflow: hidden; }
+    .ch-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ch-sub  { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-top: 2px; white-space: nowrap; overflow: hidden; }
+
+    #messages {
+      flex: 1; overflow-y: auto; padding: 14px 18px;
+      display: flex; flex-direction: column; gap: 6px; background: var(--bg);
+    }
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+
+    .mw { display: flex; flex-direction: column; }
+    .mw.inbound  { align-items: flex-start; }
+    .mw.outbound { align-items: flex-end; }
+    .bubble {
+      max-width: 68%; padding: 9px 13px; border-radius: 16px;
+      font-size: 13px; line-height: 1.45; word-break: break-word;
+    }
+    .mw.inbound  .bubble { background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+    .mw.outbound .bubble { background: var(--brand-light); border: 1px solid var(--brand-border); border-bottom-right-radius: 3px; }
+    .mtime { font-size: 10px; color: var(--muted); margin-top: 2px; padding: 0 3px; }
+    .mtag  { background: #f3f4f6; padding: 1px 5px; border-radius: 6px; margin-left: 4px; font-size: 9px; }
+    .del-btn {
+      display: none; cursor: pointer; background: none; border: none;
+      font-size: 13px; opacity: 0.5; padding: 0 2px; line-height: 1;
+    }
+    .del-btn:hover { opacity: 1; }
+    .mw.outbound:hover .del-btn { display: inline; }
+    .audio-player {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 12px; min-width: 220px;
+    }
+    .mw.inbound  .audio-player { background: var(--card); border: 1px solid var(--border); }
+    .mw.outbound .audio-player { background: var(--brand-light); border: 1px solid var(--brand-border); }
+    .audio-player audio { width: 180px; height: 32px; }
+    .audio-player audio::-webkit-media-controls-panel { background: transparent; }
+    .msystem {
+      align-self: center; font-size: 11px; color: var(--muted);
+      background: #f3f4f6; padding: 3px 12px; border-radius: 20px; margin: 2px 0;
+    }
+
+    #composer {
+      display: flex; flex-direction: column; gap: 6px; padding: 10px 14px;
+      background: var(--card); border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    #composer-row { display: flex; gap: 8px; align-items: flex-end; }
+    #msg-input {
+      flex: 1; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 13px; resize: none; outline: none;
+      font-family: inherit; max-height: 100px; min-height: 38px;
+    }
+    #msg-input:focus { border-color: var(--brand); }
+    #send-btn {
+      padding: 9px 18px; background: var(--brand); color: #fff;
+      border: none; border-radius: 10px; font-size: 13px;
+      font-weight: 600; cursor: pointer; height: 38px; flex-shrink: 0;
+    }
+    #send-btn:hover    { background: #d97706; }
+    #send-btn:disabled { opacity: .5; cursor: default; }
+    #media-btn {
+      width: 38px; height: 38px; background: #f3f4f6; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 18px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #media-btn:hover { background: #e5e7eb; }
+    #media-preview {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: #f8f9fa; border-radius: 8px;
+      border: 1px solid var(--border); font-size: 12px;
+    }
+    #media-preview img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
+    #media-preview .mp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #media-preview .mp-size { color: var(--muted); flex-shrink: 0; }
+    #media-caption {
+      flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12px; outline: none; font-family: inherit;
+    }
+    #media-caption:focus { border-color: var(--brand); }
+    #media-send {
+      padding: 6px 14px; background: var(--brand); color: #fff;
+      border: none; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; flex-shrink: 0;
+    }
+    #media-send:disabled { opacity: .5; cursor: default; }
+    #media-cancel {
+      padding: 6px 10px; background: #f3f4f6; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 8px; font-size: 12px;
+      cursor: pointer; flex-shrink: 0;
+    }
+
+    /* ── Info panel ── */
+    #info-panel {
+      width: 295px; background: var(--card);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+    }
+    #info-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 13px; text-align: center; padding: 20px;
+    }
+    #info-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .tab {
+      flex: 1; padding: 11px; text-align: center; font-size: 12px;
+      font-weight: 600; cursor: pointer; color: var(--muted);
+      border-bottom: 2px solid transparent; transition: all .12s;
+    }
+    .tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+    .tab-pane { flex: 1; overflow-y: auto; padding: 14px 16px; }
+    .tab-pane::-webkit-scrollbar { width: 3px; }
+    .tab-pane::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+
+    .isec { margin-bottom: 18px; }
+    .isec-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--muted); margin-bottom: 8px;
+    }
+    .irow { display: flex; gap: 6px; margin-bottom: 7px; align-items: flex-start; }
+    .ilbl { font-size: 11px; color: var(--muted); min-width: 78px; flex-shrink: 0; padding-top: 1px; }
+    .ival { font-size: 12px; font-weight: 500; word-break: break-all; }
+
+    .toggle-btn {
+      padding: 6px 12px; border-radius: 8px; white-space: nowrap;
+      font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid;
+      transition: all .12s; flex-shrink: 0;
+    }
+    .toggle-btn.on  { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+    .toggle-btn.off { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+    /* full-width variant used only inside the info panel */
+    .toggle-btn.full { width: 100%; text-align: left; }
+
+    .cart-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; background: #fafafa;
+      border: 1px solid var(--border); border-radius: 8px; margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    .order-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .order-top  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .order-id   { font-size: 11px; font-weight: 700; color: var(--muted); }
+    .order-status { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #fef3c7; color: #92400e; }
+    .order-total  { font-size: 16px; font-weight: 700; }
+    .order-meta   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* State badge palette */
+    .s-GREETING          { background:#f3f4f6; color:#6b7280; }
+    .s-INTEREST          { background:#dbeafe; color:#1d4ed8; }
+    .s-VARIANT_SELECTION { background:#ede9fe; color:#5b21b6; }
+    .s-QUANTITY          { background:#fef3c7; color:#92400e; }
+    .s-OBJECTION_HANDLING{ background:#fee2e2; color:#b91c1c; }
+    .s-CONFIRM_ORDER     { background:#ffedd5; color:#c2410c; }
+    .s-ADDRESS_COLLECTION{ background:#cffafe; color:#0e7490; }
+    .s-PAYMENT_METHOD    { background:#d1fae5; color:#065f46; }
+    .s-CLOSED            { background:#f3f4f6; color:#374151; }
+
+    [hidden] { display: none !important; }
+
+    /* ── Test overlay ── */
+    #test-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #test-panel {
+      width: 420px; max-width: 96vw; height: 640px; max-height: 90vh;
+      background: var(--card); border-radius: 16px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    #test-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px; background: var(--sidebar);
+      flex-shrink: 0;
+    }
+    #test-header .ava { background: #374151; width: 34px; height: 34px; font-size: 13px; }
+    .test-title { flex: 1; color: #fff; font-size: 13px; font-weight: 600; }
+    .test-subtitle { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+    #test-state-badge { font-size: 10px; }
+    #test-reset {
+      padding: 5px 10px; background: #374151; color: #d1d5db;
+      border: none; border-radius: 6px; font-size: 11px; cursor: pointer;
+    }
+    #test-reset:hover { background: #4b5563; }
+    #test-close {
+      width: 28px; height: 28px; background: #374151; color: #9ca3af;
+      border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #test-close:hover { background: #ef4444; color: #fff; }
+    #test-messages {
+      flex: 1; overflow-y: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 8px;
+      background: #f0f0f0;
+    }
+    #test-messages::-webkit-scrollbar { width: 3px; }
+    #test-messages::-webkit-scrollbar-thumb { background: #d1d5db; }
+    .tm-wrap { display: flex; flex-direction: column; }
+    .tm-wrap.user   { align-items: flex-end; }
+    .tm-wrap.sofia  { align-items: flex-start; }
+    .tm-bubble {
+      max-width: 80%; padding: 9px 13px; border-radius: 16px;
+      font-size: 13px; line-height: 1.45; word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .tm-wrap.user  .tm-bubble { background: #dcf8c6; border-bottom-right-radius: 3px; }
+    .tm-wrap.sofia .tm-bubble { background: #fff; border: 1px solid #e5e7eb; border-bottom-left-radius: 3px; }
+    .tm-meta { font-size: 10px; color: #9ca3af; margin-top: 2px; padding: 0 3px; }
+    .tm-system {
+      align-self: center; font-size: 10px; color: #9ca3af;
+      background: #e5e7eb; padding: 3px 10px; border-radius: 20px;
+    }
+    .tm-typing {
+      align-self: flex-start;
+    }
+    .tm-typing .tm-bubble {
+      background: #fff; border: 1px solid #e5e7eb; color: #9ca3af;
+      font-style: italic;
+    }
+    #test-composer {
+      display: flex; gap: 8px; padding: 10px 12px;
+      background: var(--card); border-top: 1px solid var(--border);
+      align-items: flex-end; flex-shrink: 0;
+    }
+    #test-input {
+      flex: 1; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 13px; resize: none;
+      outline: none; font-family: inherit; max-height: 80px; min-height: 38px;
+    }
+    #test-input:focus { border-color: var(--brand); }
+    #test-send {
+      padding: 9px 16px; background: #25d366; color: #fff;
+      border: none; border-radius: 10px; font-size: 13px;
+      font-weight: 600; cursor: pointer; height: 38px; flex-shrink: 0;
+    }
+    #test-send:hover    { background: #1da851; }
+    #test-send:disabled { opacity: .5; cursor: default; }
+    #test-btn {
+      padding: 6px 14px; background: #1f2937; color: #f59e0b;
+      border: 1px solid #374151; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 8px;
+    }
+    #test-btn:hover { background: #374151; }
+
+    /* ── Window expired banner ── */
+    #window-expired-bar {
+      background: #7c2d12; color: #fed7aa; font-size: 12px; font-weight: 600;
+      padding: 8px 16px; display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0; border-bottom: 1px solid #9a3412;
+    }
+    #window-expired-bar span { flex: 1; }
+    #template-pick-btn {
+      padding: 5px 12px; background: #ea580c; color: #fff;
+      border: none; border-radius: 6px; font-size: 11px;
+      font-weight: 700; cursor: pointer;
+    }
+    #template-pick-btn:hover { background: #c2410c; }
+
+    /* ── Templates overlay ── */
+    #templates-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #templates-panel {
+      width: 680px; max-width: 97vw; height: 80vh;
+      background: var(--card); border-radius: 16px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    #templates-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; background: var(--sidebar); flex-shrink: 0;
+    }
+    #templates-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    #templates-close {
+      width: 30px; height: 30px; background: #374151; color: #9ca3af;
+      border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #templates-close:hover { background: #ef4444; color: #fff; }
+    #templates-body { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .tpl-card {
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .tpl-top { display: flex; align-items: center; gap: 8px; }
+    .tpl-name { font-size: 13px; font-weight: 700; flex: 1; font-family: monospace; color: var(--brand); }
+    .tpl-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+    }
+    .tpl-badge.APPROVED  { background: #d1fae5; color: #065f46; }
+    .tpl-badge.PENDING   { background: #fef3c7; color: #92400e; }
+    .tpl-badge.REJECTED  { background: #fee2e2; color: #991b1b; }
+    .tpl-badge.DRAFT     { background: #f3f4f6; color: #6b7280; }
+    .tpl-badge.SUBMITTED { background: #dbeafe; color: #1e40af; }
+    .tpl-body { font-size: 12px; color: var(--text); white-space: pre-wrap; background: #f9fafb; padding: 8px 10px; border-radius: 6px; }
+    .tpl-reason { font-size: 11px; color: var(--red); }
+    .tpl-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .tpl-send-btn {
+      padding: 5px 12px; background: #25d366; color: #fff;
+      border: none; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .tpl-send-btn:hover { background: #1da851; }
+    .tpl-del-btn {
+      padding: 5px 10px; background: #fee2e2; color: #991b1b;
+      border: none; border-radius: 6px; font-size: 11px; cursor: pointer;
+    }
+    .tpl-del-btn:hover { background: #fca5a5; }
+    #new-tpl-form {
+      border: 2px dashed var(--border); border-radius: 10px; padding: 14px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    #new-tpl-form input, #new-tpl-form select, #new-tpl-form textarea {
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 12px; outline: none; font-family: inherit;
+    }
+    #new-tpl-form input:focus, #new-tpl-form select:focus, #new-tpl-form textarea:focus { border-color: var(--brand); }
+    #new-tpl-form textarea { resize: vertical; min-height: 80px; }
+    #new-tpl-form .form-row { display: flex; gap: 8px; }
+    #new-tpl-form .form-row > * { flex: 1; }
+    #tpl-submit-btn {
+      padding: 8px 16px; background: var(--brand); color: #fff;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    #tpl-submit-btn:hover { opacity: .85; }
+    #tpl-submit-btn:disabled { opacity: .5; cursor: default; }
+    #templates-btn {
+      padding: 6px 14px; background: #1f2937; color: #a78bfa;
+      border: 1px solid #374151; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    #templates-btn:hover { background: #374151; }
+
+    /* ── Labels ── */
+    .labels-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .label-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      background: #e0f2fe; color: #0369a1; cursor: default;
+    }
+    .label-chip .rm {
+      cursor: pointer; opacity: .6; font-size: 12px; line-height: 1;
+      padding: 0 1px; border-radius: 2px;
+    }
+    .label-chip .rm:hover { opacity: 1; }
+    .label-input-row { display: flex; gap: 6px; margin-top: 8px; }
+    .label-input-row input {
+      flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12px; outline: none; font-family: inherit;
+    }
+    .label-input-row input:focus { border-color: var(--brand); }
+    .label-input-row button {
+      padding: 6px 12px; background: var(--brand); color: #fff;
+      border: none; border-radius: 8px; font-size: 12px;
+      font-weight: 600; cursor: pointer;
+    }
+    .label-input-row button:hover { opacity: .85; }
+
+    /* ── Orders overlay ── */
+    #orders-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #orders-panel {
+      width: 920px; max-width: 97vw; height: 80vh;
+      background: var(--card); border-radius: 16px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    #orders-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; background: var(--sidebar); flex-shrink: 0;
+    }
+    #orders-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    #orders-close {
+      width: 30px; height: 30px; background: #374151; color: #9ca3af;
+      border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #orders-close:hover { background: #ef4444; color: #fff; }
+    #orders-body { flex: 1; overflow: auto; padding: 0; }
+    #orders-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #orders-table thead { position: sticky; top: 0; background: #f9fafb; z-index: 1; }
+    #orders-table th {
+      text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .4px; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    #orders-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    #orders-table tr:hover td { background: #f9fafb; }
+    .o-status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+    .o-status.PENDING  { background: #fef3c7; color: #92400e; }
+    .o-status.SHIPPED  { background: #d1fae5; color: #065f46; }
+    .o-status.CANCELED { background: #fee2e2; color: #991b1b; }
+    #orders-btn {
+      padding: 6px 14px; background: #1f2937; color: #60a5fa;
+      border: 1px solid #374151; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    #orders-btn:hover { background: #374151; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header id="header">
+  <div class="brand">🌴 Canelita Hollywood</div>
+  <div class="stats-bar">
+    <div class="stat"><span class="stat-val" id="st-total">—</span><span class="stat-lbl">Conversaciones</span></div>
+    <div class="stat"><span class="stat-val" id="st-bots">—</span><span class="stat-lbl">Bot activo</span></div>
+    <div class="stat"><span class="stat-val" id="st-open">—</span><span class="stat-lbl">En proceso</span></div>
+    <div class="stat"><span class="stat-val" id="st-closed">—</span><span class="stat-lbl">Cerrados</span></div>
+  </div>
+  <button id="templates-btn" onclick="openTemplates()">📋 Plantillas</button>
+  <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
+  <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
+  <div class="sse-pill">
+    <div class="sse-dot" id="sse-dot"></div>
+    <span id="sse-lbl">Conectando…</span>
+  </div>
+</header>
+
+<!-- Metrics bar -->
+<div id="metrics-bar">
+  <div class="metric-item">
+    <span class="metric-label">Tasa de respuesta</span>
+    <span class="metric-value gray" id="m-response">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Tasa de cierre</span>
+    <span class="metric-value gray" id="m-close">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Hoy</span>
+    <span class="metric-value gray" id="m-today">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Respondieron</span>
+    <span class="metric-value gray" id="m-replied">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Cerradas</span>
+    <span class="metric-value gray" id="m-closed">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Rmk. respuesta</span>
+    <span class="metric-value gray" id="m-rmk-reply">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Rmk. conversión</span>
+    <span class="metric-value gray" id="m-rmk-conv">…</span>
+  </div>
+</div>
+
+<!-- Layout -->
+<div id="layout">
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="search-box">
+      <input type="search" id="search" placeholder="🔍 Nombre o número…" oninput="doFilter(this.value)">
+    </div>
+    <div id="conv-list"></div>
+  </aside>
+
+  <!-- Chat -->
+  <main id="chat-area">
+    <div id="empty-state">
+      <div>💬</div>
+      <div style="font-size:14px">Selecciona una conversación</div>
+    </div>
+    <div id="chat-view" hidden>
+      <div id="chat-header"></div>
+      <div id="window-expired-bar" hidden>
+        <span>⏰ La ventana de conversación expiró (72 h). Solo puedes enviar plantillas aprobadas.</span>
+        <button id="template-pick-btn" onclick="openTemplates(true)">Enviar plantilla</button>
+      </div>
+      <div id="messages"></div>
+      <div id="composer">
+        <div id="media-preview" hidden>
+          <img id="mp-thumb" src="" alt="" hidden>
+          <span class="mp-name" id="mp-name"></span>
+          <span class="mp-size" id="mp-size"></span>
+        </div>
+        <div id="media-send-row" hidden style="display:flex;gap:6px;align-items:center">
+          <input id="media-caption" type="text" placeholder="Pie de foto opcional…">
+          <button id="media-send" onclick="sendMediaFile()">Enviar</button>
+          <button id="media-cancel" onclick="cancelMedia()">✕</button>
+        </div>
+        <div id="composer-row">
+          <input type="file" id="file-input" accept="image/*,video/*" style="display:none" onchange="onFileSelected(event)">
+          <button id="media-btn" title="Enviar foto o video" onclick="document.getElementById('file-input').click()">📎</button>
+          <textarea id="msg-input" rows="1"
+            placeholder="Mensaje manual (Enter para enviar, Shift+Enter nueva línea)…"
+            onkeydown="onKey(event)" oninput="grow(this)"></textarea>
+          <button id="send-btn" onclick="sendMsg()">Enviar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Info panel -->
+  <aside id="info-panel">
+    <div id="info-empty">← Selecciona una conversación</div>
+    <div id="info-content" hidden>
+      <div class="tabs">
+        <div class="tab active" id="tab-btn-info"      onclick="switchTab('info')">Cliente</div>
+        <div class="tab"        id="tab-btn-orders"    onclick="switchTab('orders')">Pedidos</div>
+        <div class="tab"        id="tab-btn-reminders" onclick="switchTab('reminders')">🔔</div>
+      </div>
+      <div id="tab-info"      class="tab-pane"></div>
+      <div id="tab-orders"    class="tab-pane" hidden></div>
+      <div id="tab-reminders" class="tab-pane" hidden></div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Templates overlay -->
+<div id="templates-overlay" hidden>
+  <div id="templates-panel">
+    <div id="templates-header">
+      <h2>📋 Plantillas de mensaje</h2>
+      <button id="templates-close" onclick="closeTemplates()">✕</button>
+    </div>
+    <div id="templates-body">
+      <!-- New template form -->
+      <div id="new-tpl-form">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">➕ Nueva plantilla</div>
+        <div class="form-row">
+          <input id="tpl-name" type="text" placeholder="nombre_plantilla (sin espacios)" maxlength="60">
+          <select id="tpl-category">
+            <option value="MARKETING">Marketing</option>
+            <option value="UTILITY">Utilidad</option>
+          </select>
+        </div>
+        <textarea id="tpl-body" placeholder="Texto de la plantilla. Usa {{1}}, {{2}}… para variables.&#10;Ej: Hola {{1}}, tu pedido está en camino 💛"></textarea>
+        <div style="font-size:11px;color:var(--muted)">El nombre debe ser en minúsculas, sin espacios (usa _). Idioma: español (es).</div>
+        <button id="tpl-submit-btn" onclick="createTemplate()">Crear y enviar a Meta para aprobación</button>
+      </div>
+      <!-- Template list -->
+      <div id="tpl-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Orders overlay -->
+<div id="orders-overlay" hidden>
+  <div id="orders-panel">
+    <div id="orders-header">
+      <h2>📦 Pedidos cerrados</h2>
+      <button id="orders-close" onclick="closeOrders()">✕</button>
+    </div>
+    <div id="orders-body">
+      <table id="orders-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Teléfono</th>
+            <th>Email</th>
+            <th>Productos</th>
+            <th>Total</th>
+            <th>Pago</th>
+            <th>Ciudad</th>
+            <th>Dirección</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Test overlay -->
+<div id="test-overlay" hidden>
+  <div id="test-panel">
+    <div id="test-header">
+      <div class="ava" style="width:34px;height:34px;font-size:13px;border-radius:50%;background:#374151;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">S</div>
+      <div style="flex:1;min-width:0">
+        <div class="test-title">Sofía — Canelita Hollywood</div>
+        <div class="test-subtitle">Estado: <span id="test-state-badge">GREETING</span></div>
+      </div>
+      <button id="test-reset" onclick="resetTest()">↺ Reiniciar</button>
+      <button id="test-close" onclick="closeTest()">✕</button>
+    </div>
+    <div id="test-messages"></div>
+    <div id="test-composer">
+      <textarea id="test-input" rows="1"
+        placeholder="Escribe como si fueras el cliente…"
+        onkeydown="testKey(event)" oninput="grow(this)"></textarea>
+      <button id="test-send" onclick="testSend()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────
+   STATE
+───────────────────────────────────── */
+let convs    = [];
+let selected = null;
+let detail   = null;
+let q        = '';
+let tab      = 'info';
+
+/* ─────────────────────────────────────
+   BOOT
+───────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConvs();
+  await loadMetrics();
+  setInterval(loadMetrics, 60_000); // refresh every minute
+  connectSSE();
+});
+
+/* ─────────────────────────────────────
+   API
+───────────────────────────────────── */
+async function loadConvs() {
+  try {
+    const data = await fetch('/api/conversations').then(r => r.json());
+    convs = data;
+    renderSidebar();
+    renderStats();
+  } catch(e) { console.error('loadConvs', e); }
+}
+
+async function loadMetrics() {
+  try {
+    const d = await fetch('/api/metrics').then(r => r.json());
+
+    // Response rate: >45% green, 30-45% orange, <30% red
+    const rr  = d.responseRate ?? 0;
+    const rrPct = (rr * 100).toFixed(1) + '%';
+    const rrColor = rr >= 0.45 ? 'green' : rr >= 0.30 ? 'orange' : 'red';
+    setMetric('m-response', rrPct, rrColor);
+
+    // Close rate: >12% green, otherwise red
+    const cr  = d.closeRate ?? 0;
+    const crPct = (cr * 100).toFixed(1) + '%';
+    const crColor = cr >= 0.12 ? 'green' : 'red';
+    setMetric('m-close', crPct, crColor);
+
+    // Plain numbers
+    setMetric('m-today',   d.today   ?? 0, 'gray');
+    setMetric('m-replied', d.replied ?? 0, 'gray');
+    setMetric('m-closed',  d.closed  ?? 0, 'gray');
+  } catch(e) { console.warn('loadMetrics', e); }
+
+  try {
+    const rmk = await fetch('/api/remarketing-stats').then(r => r.json());
+    const rrPct = ((rmk.overall?.replyRate ?? 0) * 100).toFixed(1) + '%';
+    const rcPct = ((rmk.overall?.conversionRate ?? 0) * 100).toFixed(1) + '%';
+    const rrColor = (rmk.overall?.replyRate ?? 0) >= 0.20 ? 'green' : 'orange';
+    const rcColor = (rmk.overall?.conversionRate ?? 0) >= 0.10 ? 'green' : 'orange';
+    setMetric('m-rmk-reply', rrPct, rrColor);
+    setMetric('m-rmk-conv',  rcPct, rcColor);
+  } catch(e) { console.warn('loadRmkStats', e); }
+}
+
+function setMetric(id, value, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = value;
+  el.className   = `metric-value ${color}`;
+}
+
+async function loadDetail(waId) {
+  try {
+    detail = await fetch(`/api/conversations/${waId}`).then(r => r.json());
+    renderChat();
+    renderInfoPanel();
+  } catch(e) { console.error('loadDetail', e); }
+}
+
+/* ─────────────────────────────────────
+   SSE — conexión en tiempo real
+───────────────────────────────────── */
+let sseRetry = 1000;
+let sseEs    = null;
+let pollTimer = null;
+
+function connectSSE() {
+  const dot = document.getElementById('sse-dot');
+  const lbl = document.getElementById('sse-lbl');
+
+  if (sseEs) { try { sseEs.close(); } catch(_) {} }
+
+  const es = new EventSource('/api/conversations/stream/events');
+  sseEs = es;
+
+  es.addEventListener('hello', () => {
+    dot.className = 'sse-dot live';
+    lbl.textContent = 'En vivo';
+    sseRetry = 1000;
+    // Al reconectar, sincroniza todo
+    loadConvs();
+    if (selected) loadDetail(selected);
+    stopPolling();
+  });
+
+  es.addEventListener('message', e => {
+    const d = JSON.parse(e.data);
+    let c = convs.find(x => x.waId === d.waId);
+    if (!c) {
+      c = { waId: d.waId, customerName: null, state: 'GREETING', automationEnabled: true };
+      convs.unshift(c);
+    }
+    c._preview      = d.body;
+    c.lastInboundAt = new Date(d.at).toISOString();
+    renderSidebar();
+    renderStats();
+    if (d.waId === selected) appendBubble(d);
+  });
+
+  es.addEventListener('state_change', e => {
+    const d = JSON.parse(e.data);
+    const c = convs.find(x => x.waId === d.waId);
+    if (c) c.state = d.to;
+    renderSidebar();
+    renderStats();
+    if (d.waId === selected) renderHeader();
+  });
+
+  es.addEventListener('order_created', e => {
+    const d = JSON.parse(e.data);
+    renderStats();
+    if (d.waId === selected) loadDetail(d.waId);
+  });
+
+  es.addEventListener('automation_toggle', e => {
+    const d = JSON.parse(e.data);
+    const c = convs.find(x => x.waId === d.waId);
+    if (c) c.automationEnabled = d.enabled;
+    renderSidebar();
+    if (d.waId === selected) { renderHeader(); renderInfoTab(); }
+  });
+
+  es.addEventListener('window_expired', e => {
+    const d = JSON.parse(e.data);
+    const c = convs.find(x => x.waId === d.waId);
+    if (c) c.windowExpired = true;
+    if (detail && detail.waId === d.waId) detail.windowExpired = true;
+    if (d.waId === selected) updateWindowExpiredBar();
+  });
+
+  es.onerror = () => {
+    dot.className = 'sse-dot';
+    lbl.textContent = `Reconectando en ${Math.round(sseRetry/1000)}s…`;
+    es.close();
+    sseEs = null;
+    setTimeout(connectSSE, sseRetry);
+    sseRetry = Math.min(sseRetry * 2, 30_000); // backoff: 1s→2s→4s→…→30s
+    startPolling();
+  };
+}
+
+// Polling de respaldo mientras SSE está caído
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(() => {
+    loadConvs();
+    if (selected) loadDetail(selected);
+  }, 30_000);
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+/* ─────────────────────────────────────
+   RENDER — SIDEBAR
+───────────────────────────────────── */
+function doFilter(v) { q = v.toLowerCase(); renderSidebar(); }
+
+function renderSidebar() {
+  const list   = document.getElementById('conv-list');
+  const items  = q
+    ? convs.filter(c =>
+        (c.customerName||'').toLowerCase().includes(q) ||
+        c.waId.includes(q))
+    : convs;
+
+  if (!items.length) {
+    list.innerHTML = `<div style="padding:24px;text-align:center;color:#6b7280;font-size:12px">Sin conversaciones</div>`;
+    return;
+  }
+  list.innerHTML = items.map(c => `
+    <div class="conv-item${c.waId===selected?' active':''}" onclick="selectConv('${c.waId}')">
+      <div class="ava">${initial(c)}</div>
+      <div class="ci-body">
+        <div class="ci-name">
+          ${x(c.customerName || phone(c.waId))}
+          <span class="bot-dot ${c.automationEnabled?'on':'off'}"></span>
+        </div>
+        <div class="ci-preview">${x(c._preview || '—')}</div>
+      </div>
+      <div class="ci-meta">
+        <span class="ci-time">${ago(c.lastInboundAt)}</span>
+        <span class="sbadge s-${c.state}">${slabel(c.state)}</span>
+      </div>
+    </div>`).join('');
+}
+
+/* ─────────────────────────────────────
+   RENDER — CHAT
+───────────────────────────────────── */
+async function selectConv(waId) {
+  selected = waId;
+  renderSidebar();
+  document.getElementById('empty-state').hidden = true;
+  document.getElementById('chat-view').hidden   = false;
+  document.getElementById('info-empty').hidden  = true;
+  document.getElementById('info-content').hidden = false;
+  await loadDetail(waId);
+}
+
+function renderChat() {
+  if (!detail) return;
+  renderHeader();
+  updateWindowExpiredBar();
+  const msgs = detail.messages || [];
+  const box  = document.getElementById('messages');
+  box.innerHTML = msgs.map(bubbleHtml).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderHeader() {
+  const c = convs.find(x => x.waId === selected) || detail;
+  if (!c) return;
+  document.getElementById('chat-header').innerHTML = `
+    <div class="ava">${initial(c)}</div>
+    <div class="ch-info">
+      <div class="ch-name">${x(c.customerName || phone(c.waId))}</div>
+      <div class="ch-sub">
+        ${phone(c.waId)}
+        <span class="sbadge s-${c.state}">${slabel(c.state)}</span>
+      </div>
+    </div>
+    <button class="toggle-btn ${c.automationEnabled?'on':'off'}" onclick="toggleBot('${c.waId}')">
+      ${c.automationEnabled ? '🤖 Bot activo' : '🔇 Bot pausado'}
+    </button>
+    ${c.state !== 'CLOSED' ? `<button class="toggle-btn" style="background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${c.waId}')">✓ Cerrar venta</button>` : ''}
+    `;
+}
+
+function remarketingContent(type, body) {
+  const text = (body || '').replace(/^\[remarketing:[^\]]*\]\n?/, '');
+  const isTestimonials = type === 'remarketing:testimonials';
+  const imgs = isTestimonials
+    ? `<div class="bubble" style="color:var(--muted);font-size:0.8em;padding:6px 10px">🖼 Fotos de testimonios enviadas</div>`
+    : '';
+  return imgs + `<div class="bubble" style="margin-top:${isTestimonials?'4':'0'}px">${x(text)}</div>`;
+}
+
+function bubbleHtml(m) {
+  const out = m.direction === 'outbound';
+  const t   = new Date(m.createdAt).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+
+  if (m.type && m.type.startsWith('remarketing')) {
+    return `
+    <div class="mw outbound">
+      ${remarketingContent(m.type, m.body)}
+      <div class="mtime">${t}<span class="mtag">remarketing</span></div>
+    </div>`;
+  }
+
+  const isAudio = (m.type === 'audio' || m.type === 'voice') && m.mediaUrl;
+
+  const content = isAudio
+    ? `<div class="audio-player">
+        🎤
+        <audio controls preload="none" src="/api/media/${m.mediaUrl}"></audio>
+       </div>
+       ${m.body && m.body !== '[audio]' ? `<div class="bubble" style="margin-top:4px">${x(m.body)}</div>` : ''}`
+    : `<div class="bubble">${x(m.body)}</div>`;
+
+  const tag = !isAudio && m.type && m.type !== 'text'
+    ? `<span class="mtag">${m.type}</span>` : '';
+
+  const delBtn = out && m.whatsappMsgId
+    ? `<button class="del-btn" title="Eliminar para todos" onclick="deleteMsg('${m.whatsappMsgId}',this)">🗑</button>`
+    : '';
+
+  return `
+    <div class="mw ${out?'outbound':'inbound'}">
+      ${content}
+      <div class="mtime">${t}${tag}${delBtn}</div>
+    </div>`;
+}
+
+function appendBubble(d) {
+  const box = document.getElementById('messages');
+  if (!box) return;
+  const out = d.direction === 'outbound';
+  const t   = new Date(d.at).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  const div = document.createElement('div');
+
+  if (d.messageType && d.messageType.startsWith('remarketing')) {
+    div.className = 'mw outbound';
+    div.innerHTML = remarketingContent(d.messageType, d.body)
+      + `<div class="mtime">${t}<span class="mtag">remarketing</span></div>`;
+  } else {
+    div.className = `mw ${out?'outbound':'inbound'}`;
+    div.innerHTML = `<div class="bubble">${x(d.body)}</div><div class="mtime">${t}</div>`;
+  }
+
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ─────────────────────────────────────
+   RENDER — INFO PANEL
+───────────────────────────────────── */
+function renderInfoPanel() { renderInfoTab(); renderOrdersTab(); }
+
+function renderInfoTab() {
+  if (!detail) return;
+  const d    = detail;
+  const conv = convs.find(x => x.waId === selected) || d;
+  const cart = Array.isArray(d.cart) ? d.cart : [];
+  document.getElementById('tab-info').innerHTML = `
+    <div class="isec">
+      <div class="isec-title">Bot</div>
+      <button class="toggle-btn full ${conv.automationEnabled?'on':'off'}" onclick="toggleBot('${d.waId}')">
+        ${conv.automationEnabled
+          ? '🤖 Activo — pausar bot'
+          : '🔇 Pausado — activar bot'}
+      </button>
+      ${conv.state !== 'CLOSED' ? `<button class="toggle-btn full" style="margin-top:6px;background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${d.waId}')">✓ Cerrar venta manualmente</button>` : '<div style="text-align:center;font-size:12px;color:#34d399;padding:6px 0">✓ Venta cerrada</div>'}
+    </div>
+
+    <div class="isec">
+      <div class="isec-title">Contacto</div>
+      ${row('Nombre',    d.customerName)}
+      ${row('Completo',  d.fullName)}
+      ${row('Cédula',    d.idNumber)}
+      ${row('WhatsApp',  phone(d.waId))}
+      ${row('Cel alterno', d.altPhone)}
+      ${row('Email',     d.email)}
+    </div>
+
+    <div class="isec">
+      <div class="isec-title">Envío</div>
+      ${row('Ciudad',     d.city)}
+      ${row('Depto.',     d.department)}
+      ${row('Dirección',  d.address)}
+      ${row('Referencia', d.reference)}
+    </div>
+
+    <div class="isec">
+      <div class="isec-title">Etiquetas</div>
+      <div class="labels-wrap" id="labels-chips">
+        ${(d.labels||[]).map(l => labelChip(l)).join('')}
+      </div>
+      <div class="label-input-row">
+        <input type="text" id="label-input" placeholder="Nueva etiqueta…" maxlength="40"
+          onkeydown="if(event.key==='Enter'){addLabel();event.preventDefault();}">
+        <button onclick="addLabel()">+ Agregar</button>
+      </div>
+    </div>
+
+    ${cart.length ? `
+    <div class="isec">
+      <div class="isec-title">Carrito</div>
+      ${cart.map(i => `
+        <div class="cart-row">
+          <span style="font-weight:600">Canelita ${i.variant==='natural'?'Natural':'Intenso'}</span>
+          <span style="color:var(--muted)">${i.quantity} u.</span>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="isec">
+      <div class="isec-title">Sesión</div>
+      ${row('Estado',    `<span class="sbadge s-${d.state}">${slabel(d.state)}</span>`)}
+      ${row('Objeciones', d.objectionCount ?? 0)}
+      ${d.adHeadline ? row('Anuncio', x(d.adHeadline)) : ''}
+      ${d.adSource   ? row('Ad ID',   x(d.adSource))   : ''}
+      ${row('Creado',    d.createdAt ? new Date(d.createdAt).toLocaleDateString('es-CO') : '—')}
+    </div>`;
+}
+
+function renderOrdersTab() {
+  if (!detail) return;
+  const orders = detail.orders || [];
+  const pane   = document.getElementById('tab-orders');
+  if (!orders.length) {
+    pane.innerHTML = `<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px">Sin pedidos aún</div>`;
+    return;
+  }
+  pane.innerHTML = orders.map(o => {
+    const items = (Array.isArray(o.cart) ? o.cart : [])
+      .map(i => `${i.quantity}x ${i.variant==='natural'?'Natural':'Intenso'}`)
+      .join(', ');
+    return `
+      <div class="order-card">
+        <div class="order-top">
+          <span class="order-id">Pedido #${o.id}</span>
+          <span class="order-status">${o.status}</span>
+        </div>
+        <div class="order-total">${cop(o.total)}</div>
+        <div class="order-meta">${o.paymentMethod==='cod'?'📦 Contraentrega':'💳 Pago anticipado'}</div>
+        <div class="order-meta" style="margin-top:4px">${items}</div>
+        ${o.city ? `<div class="order-meta">📍 ${o.city}${o.department?', '+o.department:''}</div>` : ''}
+        ${o.fullName  ? `<div class="order-meta">👤 ${o.fullName}</div>` : ''}
+        ${o.address   ? `<div class="order-meta">🏠 ${o.address}</div>` : ''}
+        ${o.createdAt ? `<div class="order-meta" style="margin-top:6px">🕐 ${new Date(o.createdAt).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'})}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function loadRemindersTab() {
+  const pane = document.getElementById('tab-reminders');
+  pane.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px">Cargando…</div>';
+  try {
+    const reminders = await fetch('/api/reminders').then(r => r.json());
+    if (!Array.isArray(reminders) || !reminders.length) {
+      pane.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px">Sin recordatorios pendientes</div>';
+      return;
+    }
+    pane.innerHTML = reminders.map(r => `
+      <div class="order-card" style="margin-bottom:10px">
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:4px">🕐 ${new Date(r.dueAt).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'})}</div>
+        <div style="font-size:13px;font-weight:600">${x(r.waId ? '+'+r.waId : '—')}</div>
+        <div style="font-size:12px;color:#374151;margin-top:4px">${x(r.note)}</div>
+        <button data-id="${Number.isInteger(r.id) ? r.id : 0}" onclick="dismissReminder(parseInt(this.dataset.id),this)" style="margin-top:8px;font-size:11px;padding:4px 10px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;cursor:pointer">
+          Descartar
+        </button>
+      </div>`).join('');
+  } catch(e) {
+    console.warn('loadRemindersTab', e);
+    pane.innerHTML = '<div style="text-align:center;color:var(--red);font-size:13px;padding:24px">Error cargando</div>';
+  }
+}
+
+async function dismissReminder(id, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/reminders/${id}/dismiss`, { method: 'PATCH' });
+    if (!res.ok) throw new Error('dismiss failed');
+    btn.closest('.order-card').remove();
+  } catch {
+    btn.disabled = false;
+  }
+}
+
+function switchTab(name) {
+  tab = name;
+  document.getElementById('tab-btn-info').classList.toggle('active',      name==='info');
+  document.getElementById('tab-btn-orders').classList.toggle('active',    name==='orders');
+  document.getElementById('tab-btn-reminders').classList.toggle('active', name==='reminders');
+  document.getElementById('tab-info').hidden      = name !== 'info';
+  document.getElementById('tab-orders').hidden    = name !== 'orders';
+  document.getElementById('tab-reminders').hidden = name !== 'reminders';
+  if (name === 'reminders') loadRemindersTab();
+}
+
+/* ─────────────────────────────────────
+   LABELS
+───────────────────────────────────── */
+function labelChip(label) {
+  return `<span class="label-chip">${x(label)}<span class="rm" onclick="removeLabel('${x(label)}')">×</span></span>`;
+}
+
+async function addLabel() {
+  const input = document.getElementById('label-input');
+  const val   = (input.value || '').trim();
+  if (!val || !selected || !detail) return;
+  const current = Array.isArray(detail.labels) ? detail.labels : [];
+  if (current.includes(val)) { input.value = ''; return; }
+  const labels = [...current, val];
+  await saveLabels(labels);
+  input.value = '';
+}
+
+async function removeLabel(label) {
+  if (!selected || !detail) return;
+  const labels = (detail.labels || []).filter(l => l !== label);
+  await saveLabels(labels);
+}
+
+async function saveLabels(labels) {
+  try {
+    await fetch(`/api/conversations/${selected}/labels`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ labels }),
+    });
+    if (detail) detail.labels = labels;
+    // update chips live
+    const wrap = document.getElementById('labels-chips');
+    if (wrap) wrap.innerHTML = labels.map(l => labelChip(l)).join('');
+    // update sidebar conv
+    const c = convs.find(c => c.waId === selected);
+    if (c) c.labels = labels;
+  } catch(e) { console.error('saveLabels', e); }
+}
+
+/* ─────────────────────────────────────
+   ORDERS OVERLAY
+───────────────────────────────────── */
+async function openOrders() {
+  document.getElementById('orders-overlay').hidden = false;
+  const tbody = document.getElementById('orders-tbody');
+  tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted)">Cargando…</td></tr>`;
+  try {
+    const orders = await fetch('/api/orders').then(r => r.json());
+    if (!orders.length) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted)">Sin pedidos aún</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = orders.map(o => {
+      const items = (Array.isArray(o.cart) ? o.cart : [])
+        .map(i => `${i.quantity}x ${i.variant==='natural'?'Natural':'Intenso'}`)
+        .join(', ');
+      const name  = o.fullName || o.conversation?.customerName || '—';
+      const phone = o.conversation?.waId ? '+' + o.conversation.waId : '—';
+      const email = o.email || o.conversation?.email || '—';
+      const date  = o.createdAt ? new Date(o.createdAt).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : '—';
+      const dir   = [o.address, o.reference].filter(Boolean).join(' — ') || '—';
+      const city  = [o.city, o.department].filter(Boolean).join(', ') || '—';
+      return `<tr>
+        <td>${date}</td>
+        <td>${x(name)}</td>
+        <td>${phone}</td>
+        <td>${x(email)}</td>
+        <td>${x(items)}</td>
+        <td style="font-weight:700">$${Number(o.total).toLocaleString('es-CO')}</td>
+        <td>${o.paymentMethod==='cod'?'Contraentrega':'Anticipado'}</td>
+        <td>${x(city)}</td>
+        <td>${x(dir)}</td>
+        <td><span class="o-status ${o.status}">${o.status}</span></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--red)">Error cargando pedidos</td></tr>`;
+  }
+}
+
+function closeOrders() {
+  document.getElementById('orders-overlay').hidden = true;
+}
+
+/* ─────────────────────────────────────
+   TEMPLATES
+───────────────────────────────────── */
+let tplPickMode = false; // true when opened from expired banner
+
+async function openTemplates(pickMode = false) {
+  tplPickMode = pickMode;
+  document.getElementById('templates-overlay').hidden = false;
+  document.getElementById('tpl-submit-btn').textContent =
+    'Crear y enviar a Meta para aprobación';
+  await loadTemplates();
+}
+
+function closeTemplates() {
+  document.getElementById('templates-overlay').hidden = true;
+  tplPickMode = false;
+}
+
+async function loadTemplates() {
+  const list = document.getElementById('tpl-list');
+  list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">Cargando…</div>`;
+  try {
+    const templates = await fetch('/api/templates').then(r => r.json());
+    if (!templates.length) {
+      list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Sin plantillas aún. Crea una arriba.</div>`;
+      return;
+    }
+    list.innerHTML = templates.map(t => {
+      const canSend = t.status === 'APPROVED' && tplPickMode && selected;
+      const sendBtn = canSend
+        ? `<button class="tpl-send-btn" onclick="sendTplToConv('${t.name}')">📤 Enviar ahora</button>`
+        : '';
+      return `
+        <div class="tpl-card">
+          <div class="tpl-top">
+            <span class="tpl-name">${x(t.name)}</span>
+            <span class="tpl-badge ${t.status}">${t.status}</span>
+            <span style="font-size:10px;color:var(--muted)">${t.category} · ${t.language}</span>
+          </div>
+          <div class="tpl-body">${x(t.body)}</div>
+          ${t.rejectionReason ? `<div class="tpl-reason">⚠ ${x(t.rejectionReason)}</div>` : ''}
+          <div class="tpl-actions">
+            ${sendBtn}
+            <button class="tpl-del-btn" onclick="deleteTemplate(${t.id})">🗑 Eliminar</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--red)">Error cargando plantillas</div>`;
+  }
+}
+
+async function createTemplate() {
+  const name = document.getElementById('tpl-name').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const body = document.getElementById('tpl-body').value.trim();
+  const category = document.getElementById('tpl-category').value;
+  if (!name || !body) { alert('Nombre y texto son obligatorios'); return; }
+
+  const btn = document.getElementById('tpl-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+
+  try {
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, body, category, language: 'es' }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert('Error: ' + (data.error || 'desconocido')); return; }
+    document.getElementById('tpl-name').value = '';
+    document.getElementById('tpl-body').value = '';
+    await loadTemplates();
+  } catch(e) {
+    alert('Error de conexión');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Crear y enviar a Meta para aprobación';
+  }
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('¿Eliminar esta plantilla?')) return;
+  await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+  await loadTemplates();
+}
+
+async function sendTplToConv(templateName) {
+  if (!selected) return;
+  const res = await fetch(`/api/conversations/${selected}/send-template`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ templateName }),
+  });
+  const data = await res.json();
+  if (!res.ok) { alert('Error: ' + (data.error || 'no se pudo enviar')); return; }
+  closeTemplates();
+  // Reset expired flag locally
+  if (detail) detail.windowExpired = false;
+  const c = convs.find(c => c.waId === selected);
+  if (c) c.windowExpired = false;
+  updateWindowExpiredBar();
+}
+
+function isWindowExpired(conv) {
+  if (!conv) return false;
+  if (conv.windowExpired) return true;
+  const WINDOW_MS = 72 * 60 * 60 * 1000;
+  return Date.now() - new Date(conv.lastInboundAt).getTime() > WINDOW_MS;
+}
+
+function updateWindowExpiredBar() {
+  const bar     = document.getElementById('window-expired-bar');
+  const composer = document.getElementById('composer');
+  const expired  = isWindowExpired(detail || convs.find(c => c.waId === selected));
+  bar.hidden     = !expired;
+  if (composer) composer.style.opacity = expired ? '0.4' : '1';
+  const inp = document.getElementById('msg-input');
+  const btn = document.getElementById('send-btn');
+  if (inp) inp.disabled = expired;
+  if (btn) btn.disabled = expired;
+}
+
+/* ─────────────────────────────────────
+   STATS
+───────────────────────────────────── */
+function renderStats() {
+  document.getElementById('st-total').textContent  = convs.length;
+  document.getElementById('st-bots').textContent   = convs.filter(c => c.automationEnabled).length;
+  document.getElementById('st-open').textContent   = convs.filter(c => !['GREETING','CLOSED'].includes(c.state)).length;
+  document.getElementById('st-closed').textContent = convs.filter(c => c.state === 'CLOSED').length;
+}
+
+/* ─────────────────────────────────────
+   ACTIONS
+───────────────────────────────────── */
+async function sendMsg() {
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text || !selected) return;
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  try {
+    await fetch(`/api/conversations/${selected}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    input.value = '';
+    input.style.height = 'auto';
+  } catch { alert('Error enviando mensaje'); }
+  btn.disabled = false;
+  input.focus();
+}
+
+async function deleteMsg(msgId, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/messages/${encodeURIComponent(msgId)}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { btn.disabled = false; alert('Error de Meta: ' + (data.error || 'desconocido')); return; }
+    const mw = btn.closest('.mw');
+    const bubble = mw.querySelector('.bubble');
+    if (bubble) { bubble.style.fontStyle = 'italic'; bubble.style.color = 'var(--muted)'; bubble.textContent = 'Mensaje eliminado'; }
+    btn.remove();
+  } catch { btn.disabled = false; alert('Error de conexión'); }
+}
+
+async function closeConv(waId) {
+  if (!confirm('¿Marcar esta conversación como cerrada?')) return;
+  try {
+    const res = await fetch(`/api/conversations/${waId}/close`, { method: 'PATCH' });
+    if (!res.ok) { alert('Error cerrando la conversación'); return; }
+    const c = convs.find(x => x.waId === waId);
+    if (c) c.state = 'CLOSED';
+    renderSidebar();
+    renderStats();
+    if (waId === selected) { renderHeader(); renderInfoTab(); }
+  } catch { alert('Error de conexión'); }
+}
+
+async function toggleBot(waId) {
+  const c = convs.find(x => x.waId === waId);
+  if (!c) return;
+  const enabled = !c.automationEnabled;
+  try {
+    await fetch(`/api/conversations/${waId}/automation`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled })
+    });
+    c.automationEnabled = enabled;
+    renderSidebar();
+    renderStats();
+    if (waId === selected) { renderHeader(); renderInfoTab(); }
+  } catch { alert('Error cambiando estado del bot'); }
+}
+
+/* ─────────────────────────────────────
+   HELPERS
+───────────────────────────────────── */
+function x(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+function initial(c) {
+  return ((c.customerName || c.waId || '?').charAt(0)).toUpperCase();
+}
+function phone(waId) {
+  if (!waId) return '—';
+  const m = waId.match(/^57(\d{3})(\d{3})(\d{4})$/);
+  return m ? `+57 ${m[1]} ${m[2]} ${m[3]}` : `+${waId}`;
+}
+function ago(iso) {
+  if (!iso) return '';
+  const d = Date.now() - new Date(iso).getTime();
+  if (d < 60e3)  return 'ahora';
+  if (d < 3600e3) return `${Math.floor(d/60e3)}m`;
+  if (d < 86400e3) return `${Math.floor(d/3600e3)}h`;
+  return new Date(iso).toLocaleDateString('es-CO', { day:'numeric', month:'short' });
+}
+function cop(n) { return '$' + Number(n).toLocaleString('es-CO'); }
+function slabel(s) {
+  return { GREETING:'Saludo', INTEREST:'Interés', VARIANT_SELECTION:'Variante',
+    QUANTITY:'Cantidad', OBJECTION_HANDLING:'Objeción', CONFIRM_ORDER:'Confirmar',
+    ADDRESS_COLLECTION:'Datos', PAYMENT_METHOD:'Pago', CLOSED:'Cerrado' }[s] || s;
+}
+function row(lbl, val) {
+  return `<div class="irow">
+    <span class="ilbl">${lbl}</span>
+    <span class="ival">${val || '—'}</span>
+  </div>`;
+}
+function onKey(e)  { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } }
+function grow(el)  { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+/* ── Media upload ── */
+let selectedFile = null;
+
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedFile = file;
+
+  const preview  = document.getElementById('media-preview');
+  const sendRow  = document.getElementById('media-send-row');
+  const nameEl   = document.getElementById('mp-name');
+  const sizeEl   = document.getElementById('mp-size');
+  const thumb    = document.getElementById('mp-thumb');
+  const msgInput = document.getElementById('msg-input');
+
+  nameEl.textContent = file.name;
+  sizeEl.textContent = formatBytes(file.size);
+
+  if (file.type.startsWith('image/')) {
+    thumb.src = URL.createObjectURL(file);
+    thumb.hidden = false;
+  } else {
+    thumb.hidden = true;
+  }
+
+  preview.hidden = false;
+  sendRow.hidden = false;
+  sendRow.style.display = 'flex';
+  msgInput.disabled = true;
+  document.getElementById('send-btn').disabled = true;
+  e.target.value = '';
+}
+
+function cancelMedia() {
+  selectedFile = null;
+  document.getElementById('media-preview').hidden = true;
+  document.getElementById('media-send-row').hidden = true;
+  document.getElementById('msg-input').disabled = false;
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('mp-thumb').src = '';
+  document.getElementById('media-caption').value = '';
+}
+
+async function sendMediaFile() {
+  if (!selectedFile || !selected) return;
+  const btn     = document.getElementById('media-send');
+  const caption = document.getElementById('media-caption').value.trim();
+  btn.disabled  = true;
+
+  const form = new FormData();
+  form.append('file', selectedFile, selectedFile.name);
+  if (caption) form.append('caption', caption);
+
+  try {
+    const res = await fetch(`/api/conversations/${selected}/send-media`, {
+      method: 'POST', body: form,
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const type = selectedFile.type.startsWith('image/') ? '🖼' : '🎥';
+      appendBubble({
+        direction: 'outbound',
+        type: data.type,
+        body: `${type} ${selectedFile.name}${caption ? '\n' + caption : ''}`,
+        createdAt: new Date().toISOString(),
+      });
+    } else {
+      alert('Error enviando archivo: ' + (data.error || 'desconocido'));
+    }
+  } catch { alert('Error de conexión'); }
+
+  cancelMedia();
+  btn.disabled = false;
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+/* ─────────────────────────────────────
+   TEST CHAT
+───────────────────────────────────── */
+function openTest() {
+  document.getElementById('test-overlay').hidden = false;
+  document.getElementById('test-input').focus();
+}
+function closeTest() {
+  document.getElementById('test-overlay').hidden = true;
+}
+
+async function resetTest() {
+  await fetch('/api/test/reset', { method: 'DELETE' });
+  document.getElementById('test-messages').innerHTML = '';
+  document.getElementById('test-state-badge').textContent = 'GREETING';
+}
+
+async function testSend() {
+  const input = document.getElementById('test-input');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('test-send');
+  btn.disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+
+  appendTestMsg('user', text);
+
+  const typing = appendTestTyping();
+
+  try {
+    const res  = await fetch('/api/test/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    typing.remove();
+
+    if (data.imageUrl) appendTestImage(data.imageUrl);
+    (data.messages || []).forEach(m => appendTestMsg('sofia', m));
+    document.getElementById('test-state-badge').textContent = data.state || '';
+
+    if (data.special) {
+      appendTestSystem(`Caso especial detectado: ${data.special}`);
+    }
+    if (data.cartUpdate) {
+      const items = data.cartUpdate.map(i => `${i.quantity}x ${i.variant}`).join(', ');
+      appendTestSystem(`Carrito: ${items}`);
+    }
+  } catch(e) {
+    typing.remove();
+    appendTestSystem('Error conectando con el servidor');
+  }
+
+  btn.disabled = false;
+  input.focus();
+}
+
+function appendTestMsg(role, text) {
+  const box  = document.getElementById('test-messages');
+  const wrap = document.createElement('div');
+  wrap.className = `tm-wrap ${role}`;
+  const t = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  wrap.innerHTML = `
+    <div class="tm-bubble">${x(text)}</div>
+    <div class="tm-meta">${role === 'user' ? 'Tú' : 'Sofía'} · ${t}</div>`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+function appendTestTyping() {
+  const box  = document.getElementById('test-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'tm-wrap tm-typing';
+  wrap.innerHTML = `<div class="tm-bubble">Sofía está escribiendo…</div>`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+function appendTestImage(url) {
+  const box  = document.getElementById('test-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'tm-wrap sofia';
+  wrap.innerHTML = `<img src="${url}" style="max-width:220px;border-radius:12px;border:1px solid #e5e7eb" onerror="this.style.display='none'">`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+}
+
+function appendTestSystem(msg) {
+  const box  = document.getElementById('test-messages');
+  const div  = document.createElement('div');
+  div.className = 'tm-system';
+  div.textContent = msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function testKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); testSend(); }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeTest();
+});
+</script>
+</body>
+</html>
