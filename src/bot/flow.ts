@@ -35,11 +35,18 @@ export function isValidTransition(from: State, to: State): boolean {
   return TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-export const HARDCODED_GREETING = `¡Hola! Soy Valentina ✨ Vi que te llamaron la atención los cajones organizadores para nevera.
+export const HARDCODED_GREETING = `¡Hola! Soy Valentina de FreskaBox.
 
-Con el pack de 3 transformas completamente tu nevera — cada cajón se engancha en una repisa diferente, es extensible y cabe en cualquier nevera estándar. Envío gratis y pagas cuando lo recibes 💛
+Los cajones se enganchan bajo la repisa de tu nevera en 5 segundos — sin herramientas, sin pegamento. Extensibles y aptos para cualquier nevera estándar.
 
-¿Cuántas repisas tiene tu nevera?`;
+📦 Pack x3 — 3 cajones para 3 repisas: $69.900 ($23.300 c/u)
+📦 Pack x6 — nevera completa (6 cajones): $119.900 ($19.900 c/u)
+
+Los dos con envío gratis y pagas cuando lo recibes.
+
+¿A qué ciudad te lo enviamos? El envío es totalmente gratis 🇨🇴
+
+¿Tienes alguna pregunta o arrancamos con el pedido?`;
 
 export const HARDCODED_GREETING_JSON = JSON.stringify({
   message: HARDCODED_GREETING,
