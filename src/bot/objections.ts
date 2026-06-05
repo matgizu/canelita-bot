@@ -56,7 +56,7 @@ export const OBJECTIONS: Objection[] = [
     ],
     validate: "Súper válida la duda.",
     rebut:
-      "Son extensibles de 23 a 35 cm — caben en todas las neveras estándar de Colombia, de 1 o 2 puertas. Y si al recibirlos no te caben, no pagas 💛",
+      "Son extensibles de 23 a 35 cm — caben en todas las neveras estándar de Colombia 🇨🇴, de 1 o 2 puertas. Y si al recibirlos no te caben, no pagas.",
     followUp: "¿Lo mandamos?",
   },
   {
@@ -93,7 +93,7 @@ export const OBJECTIONS: Objection[] = [
     ],
     validate: "Te entiendo.",
     rebut:
-      "Por eso es contraentrega: hoy no pagas nada. Te llega en 2-4 días hábiles y pagas al transportador cuando lo recibas — si te cae con tu quincena, mejor todavía 💛",
+      "Por eso es contraentrega: hoy no pagas nada. Te llega en 2-4 días hábiles y pagas al transportador cuando lo recibas — si te cae con tu quincena, mejor todavía.",
     followUp: "¿Te lo dejo en camino?",
   },
   {
@@ -111,7 +111,7 @@ export const OBJECTIONS: Objection[] = [
     ],
     validate: "Sin presión.",
     rebut:
-      "Si quieres te lo aparto 24 horas con tu nombre para que no se pierda el precio. Te escribo mañana sin compromiso 💛",
+      "Si quieres te lo aparto 24 horas con tu nombre para que no se pierda el precio. Te escribo mañana sin compromiso.",
     followUp: "¿Te lo aparto?",
   },
   {
@@ -144,7 +144,7 @@ export const OBJECTIONS: Objection[] = [
     ],
     validate: "Qué bueno que ya tienes hábito de organización.",
     rebut:
-      "Estos cajones son diferentes — se cuelgan de la repisa y crean una repisa extra. El espacio que normalmente no usas queda aprovechado y todo visible de un vistazo 💛",
+      "Estos cajones son diferentes — se cuelgan de la repisa y crean una repisa extra. El espacio que normalmente no usas queda aprovechado y todo visible de un vistazo.",
     followUp: "¿Los probamos?",
   },
   {
@@ -177,7 +177,7 @@ export const OBJECTIONS: Objection[] = [
     ],
     validate: "Buena pregunta.",
     rebut:
-      "Son de plástico ABS alimentario libre de BPA — el mismo estándar de los tuppers de calidad. No transfiere olores ni sabores a los alimentos 💛",
+      "Son de plástico ABS alimentario libre de BPA — el mismo estándar de los tuppers de calidad. No transfiere olores ni sabores a los alimentos.",
     followUp: "",
   },
   {
@@ -212,7 +212,7 @@ export const OBJECTIONS: Objection[] = [
     ],
     validate: "",
     rebut:
-      "El envío es completamente gratis a toda Colombia 💛 Y pagas el producto cuando te lo entregue el transportador, no antes.",
+      "El envío es completamente gratis a toda Colombia 🇨🇴 Y pagas el producto cuando te lo entregue el transportador, no antes.",
     followUp: "¿Lo pedimos?",
   },
 ];
