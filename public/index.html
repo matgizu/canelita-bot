@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Canelita Hollywood — Dashboard</title>
+  <title>FreskaBox — Dashboard</title>
   <style>
     :root {
-      --brand: #f59e0b;
-      --brand-light: #fff8e6;
-      --brand-border: #fde68a;
+      --brand: #7AB8A0;
+      --brand-light: #f0f9f6;
+      --brand-border: #b8ddd4;
       --sidebar: #111827;
       --sidebar-hover: #1f2937;
       --bg: #f3f4f6;
@@ -193,7 +193,7 @@
       border: none; border-radius: 10px; font-size: 13px;
       font-weight: 600; cursor: pointer; height: 38px; flex-shrink: 0;
     }
-    #send-btn:hover    { background: #d97706; }
+    #send-btn:hover    { background: #5a9e88; }
     #send-btn:disabled { opacity: .5; cursor: default; }
     #media-btn {
       width: 38px; height: 38px; background: #f3f4f6; border: 1px solid var(--border);
@@ -374,7 +374,7 @@
     #test-send:hover    { background: #1da851; }
     #test-send:disabled { opacity: .5; cursor: default; }
     #test-btn {
-      padding: 6px 14px; background: #1f2937; color: #f59e0b;
+      padding: 6px 14px; background: #1f2937; color: #7AB8A0;
       border: 1px solid #374151; border-radius: 8px;
       font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 8px;
     }
@@ -544,7 +544,7 @@
 
 <!-- Header -->
 <header id="header">
-  <div class="brand">🌴 Canelita Hollywood</div>
+  <div class="brand">📦 FreskaBox</div>
   <div class="stats-bar">
     <div class="stat"><span class="stat-val" id="st-total">—</span><span class="stat-lbl">Conversaciones</span></div>
     <div class="stat"><span class="stat-val" id="st-bots">—</span><span class="stat-lbl">Bot activo</span></div>
@@ -725,7 +725,7 @@
     <div id="test-header">
       <div class="ava" style="width:34px;height:34px;font-size:13px;border-radius:50%;background:#374151;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">S</div>
       <div style="flex:1;min-width:0">
-        <div class="test-title">Sofía — Canelita Hollywood</div>
+        <div class="test-title">FreskaBox — Bot de ventas</div>
         <div class="test-subtitle">Estado: <span id="test-state-badge">GREETING</span></div>
       </div>
       <button id="test-reset" onclick="resetTest()">↺ Reiniciar</button>
@@ -1113,7 +1113,7 @@ function renderInfoTab() {
       <div class="isec-title">Carrito</div>
       ${cart.map(i => `
         <div class="cart-row">
-          <span style="font-weight:600">Canelita ${i.variant==='natural'?'Natural':'Intenso'}</span>
+          <span style="font-weight:600">${i.id==='pack3'?'Pack x3':'Pack x6'}</span>
           <span style="color:var(--muted)">${i.quantity} u.</span>
         </div>`).join('')}
     </div>` : ''}
@@ -1138,7 +1138,7 @@ function renderOrdersTab() {
   }
   pane.innerHTML = orders.map(o => {
     const items = (Array.isArray(o.cart) ? o.cart : [])
-      .map(i => `${i.quantity}x ${i.variant==='natural'?'Natural':'Intenso'}`)
+      .map(i => `${i.quantity}x ${i.id==='pack3'?'Pack x3':'Pack x6'}`)
       .join(', ');
     return `
       <div class="order-card">
@@ -1259,7 +1259,7 @@ async function openOrders() {
     }
     tbody.innerHTML = orders.map(o => {
       const items = (Array.isArray(o.cart) ? o.cart : [])
-        .map(i => `${i.quantity}x ${i.variant==='natural'?'Natural':'Intenso'}`)
+        .map(i => `${i.quantity}x ${i.id==='pack3'?'Pack x3':'Pack x6'}`)
         .join(', ');
       const name  = o.fullName || o.conversation?.customerName || '—';
       const phone = o.conversation?.waId ? '+' + o.conversation.waId : '—';
@@ -1675,7 +1675,7 @@ function appendTestMsg(role, text) {
   const t = new Date().toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
   wrap.innerHTML = `
     <div class="tm-bubble">${x(text)}</div>
-    <div class="tm-meta">${role === 'user' ? 'Tú' : 'Sofía'} · ${t}</div>`;
+    <div class="tm-meta">${role === 'user' ? 'Tú' : 'FreskaBot'} · ${t}</div>`;
   box.appendChild(wrap);
   box.scrollTop = box.scrollHeight;
   return wrap;
