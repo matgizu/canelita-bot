@@ -35,18 +35,18 @@ export function isValidTransition(from: State, to: State): boolean {
   return TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-export const HARDCODED_GREETING = `¡Hola! Soy Valentina de FreskaBox.
+export const HARDCODED_GREETING = `¡Hola! Soy Valentina de FreskaBox 🌿
 
-Los cajones se enganchan bajo la repisa de tu nevera en 5 segundos — sin herramientas, sin pegamento. Extensibles y aptos para cualquier nevera estándar.
+Dime una cosa: ¿te pasa que abres la nevera y las cosas están todas amontonadas o se pierden en el fondo?
 
-📦 Pack x3 — 3 cajones para 3 repisas: $69.900 ($23.300 c/u)
-📦 Pack x6 — nevera completa (6 cajones): $119.900 ($19.900 c/u)
+Eso es exactamente lo que resuelven estos cajones — se enganchan bajo cada repisa en 5 segundos, sin tornillos ni pegamento, y crean un espacio extra que normalmente no usas.
 
-Los dos con envío gratis y pagas cuando lo recibes.
+📦 Pack x3 — 3 cajones: $69.900 (te sale a $23.300 cada uno)
+📦 Pack x6 — nevera completa: $119.900 (te sale a $19.900 cada uno)
 
-¿A qué ciudad te lo enviamos? El envío es totalmente gratis 🇨🇴
+Los dos tienen envío gratis a toda Colombia 🇨🇴 y pagas cuando lo recibes — sin riesgo.
 
-¿Tienes alguna pregunta o arrancamos con el pedido?`;
+¿Cuántas repisas tiene tu nevera? Así te digo cuál pack te conviene más.`;
 
 export const HARDCODED_GREETING_JSON = JSON.stringify({
   message: HARDCODED_GREETING,
