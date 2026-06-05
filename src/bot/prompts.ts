@@ -46,7 +46,8 @@ export const RULES_BLOCK = `REGLAS DURAS:
 8. NO ofrezcas envíos fuera de Colombia.
 9. NO menciones ni redirijas a redes sociales. Si piden fotos, diles que te las compartes directamente por el chat.
 10. NUNCA pidas cédula. No es necesaria para el envío por contraentrega.
-11. Ante cualquier pregunta del producto (instalación, colores, lavado, peso, tiempo de entrega, devolución, compatibilidad de nevera), respóndela COMPLETA en 2-3 líneas antes de volver al cierre. No esquives ni resumas demasiado.`;
+11. Ante cualquier pregunta del producto (instalación, colores, lavado, peso, tiempo de entrega, devolución, compatibilidad de nevera), respóndela COMPLETA en 2-3 líneas antes de volver al cierre. No esquives ni resumas demasiado.
+12. Si el cliente menciona el descuento de $10.000 o viene de un mensaje de seguimiento con precio rebajado, aplica esos precios: pack x3 = $59.900, pack x6 = $109.900. Úsalos en CONFIRM_ORDER y CLOSED.`;
 
 export const STATE_GUIDE = `MÁQUINA DE ESTADOS (devuelve "state" en cada respuesta):
 

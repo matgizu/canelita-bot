@@ -57,7 +57,7 @@ export const HARDCODED_GREETING_JSON = JSON.stringify({
 export const REMARKETING_MESSAGES = {
   t1: `¿Pudiste ver bien los cajones FreskaBox?\n\nCada uno se engancha bajo la repisa de tu nevera en 5 segundos — sin herramientas. El pack x3 organiza 3 repisas completas por $69.900.\n\nEnvío gratis a toda Colombia 🇨🇴 y pagas cuando lo recibes.\n\n¿Te lo mandamos hoy?`,
   t2: `Hola de nuevo. Los cajones FreskaBox siguen disponibles con envío gratis y contraentrega — sin riesgo.\n\nQuien prueba el pack x3 casi siempre vuelve por el x6 para completar la nevera. ¿Arrancamos?\n\nPack x3: $69.900 · Pack x6: $119.900`,
-  t3: `Buenos días ☀️ Hoy tenemos despachos y quería saber si ya te decidiste con los cajones.\n\nSi lo cerramos hoy mismo sale en camino — llega en 2-4 días hábiles y pagas al recibirlo. ¿Qué me dices?`,
+  t3: `Buenos días ☀️ Solo hoy te puedo aplicar un descuento de $10.000 en tu pedido FreskaBox.\n\nPack x3 → $59.900 (antes $69.900)\nPack x6 → $109.900 (antes $119.900)\n\nEnvío gratis y pagas cuando lo recibes 🇨🇴 ¿Lo cerramos hoy?`,
   t4: `Última vez que te escribo. Los cajones FreskaBox tienen envío gratis y pagas contraentrega — sin riesgo de tu parte.\n\nPack x3 por $69.900 o nevera completa con el x6 por $119.900.\n\n¿Lo llevamos o lo dejamos?`,
 };
 
