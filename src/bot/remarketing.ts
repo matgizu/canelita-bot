@@ -1,5 +1,5 @@
 import { config } from "../config";
-import { sendImageUrl, sendText } from "../whatsapp/client";
+import { sendText } from "../whatsapp/client";
 import { REMARKETING_MESSAGES, Session, msUntilNextDayColTime } from "./flow";
 import { events } from "../events";
 import { prisma } from "../db";
@@ -75,11 +75,6 @@ async function fireTouch(waId: string, type: string) {
 }
 
 async function sendT1(waId: string, convId: number) {
-  const imgs = config.greeting.imageUrls;
-  for (const url of imgs) {
-    await sendImageUrl(waId, url);
-    await new Promise((r) => setTimeout(r, 1000));
-  }
   await sendRemarketingText(waId, convId, REMARKETING_MESSAGES.t1, "t1");
 }
 
