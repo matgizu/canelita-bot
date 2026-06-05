@@ -9,7 +9,15 @@ export type ObjectionType =
   | "only_one_enough"
   | "plastic_smell"
   | "fragile"
-  | "shipping_cost";
+  | "shipping_cost"
+  | "how_to_install"
+  | "delivery_time"
+  | "returns"
+  | "colors"
+  | "washing"
+  | "capacity"
+  | "brand_compatibility"
+  | "tracking";
 
 export interface Objection {
   type: ObjectionType;
@@ -197,6 +205,168 @@ export const OBJECTIONS: Objection[] = [
     rebut:
       "El plástico ABS es resistente — es el mismo material de los tuppers y utensilios de cocina que duran años. Soporta el peso normal de frutas y verduras sin problema ✨",
     followUp: "¿Lo probamos?",
+  },
+  {
+    type: "how_to_install",
+    triggers: [
+      "cómo se pone",
+      "como se pone",
+      "cómo se instala",
+      "como se instala",
+      "cómo funciona",
+      "como funciona",
+      "cómo se usa",
+      "como se usa",
+      "cómo se engancha",
+      "como se engancha",
+      "cómo se coloca",
+      "como se coloca",
+      "es difícil ponerlo",
+      "es dificil ponerlo",
+    ],
+    validate: "",
+    rebut:
+      "Fácil: estiras el cajón al ancho de tu repisa (23-35 cm), lo enganchas desde arriba en el borde inferior del estante, y listo. Sin tornillos ni pegamento. Para quitarlo solo lo levantas y deslizas.",
+    followUp: "¿Lo pedimos?",
+  },
+  {
+    type: "delivery_time",
+    triggers: [
+      "cuánto tarda",
+      "cuanto tarda",
+      "cuándo llega",
+      "cuando llega",
+      "días de entrega",
+      "dias de entrega",
+      "tiempo de entrega",
+      "cuánto demora",
+      "cuanto demora",
+      "en cuánto llega",
+      "en cuanto llega",
+      "rápido llega",
+      "rapido llega",
+    ],
+    validate: "",
+    rebut:
+      "2 a 4 días hábiles a cualquier ciudad de Colombia 🇨🇴 Bogotá, Medellín y Cali suelen llegar en 2 días. Y pagas cuando lo recibes, no antes.",
+    followUp: "¿Lo pedimos hoy?",
+  },
+  {
+    type: "returns",
+    triggers: [
+      "y si no me gusta",
+      "y si no me sirve",
+      "puedo devolverlo",
+      "se puede devolver",
+      "y si no funciona",
+      "y si no es lo que esperaba",
+      "política de devolución",
+      "politica de devolucion",
+      "y si llega malo",
+      "garantía",
+      "garantia",
+    ],
+    validate: "",
+    rebut:
+      "Por eso es contraentrega: cuando llegue el paquete, lo abres y revisas. Si no te convence no lo recibes y no pagas nada — el transportador se lo lleva de vuelta sin costo.",
+    followUp: "Riesgo cero. ¿Lo mandamos?",
+  },
+  {
+    type: "colors",
+    triggers: [
+      "qué colores",
+      "que colores",
+      "en qué colores",
+      "en que colores",
+      "color tiene",
+      "puedo elegir color",
+      "puedo escoger color",
+      "de qué color",
+      "de que color",
+      "color viene",
+    ],
+    validate: "",
+    rebut:
+      "Vienen en beige, verde menta y amarillo pastel — tonos suaves que quedan bonitos en cualquier nevera. El pack trae los colores surtidos, no se elige un color específico.",
+    followUp: "¿Te mandamos el pack?",
+  },
+  {
+    type: "washing",
+    triggers: [
+      "cómo se lava",
+      "como se lava",
+      "se puede lavar",
+      "apto lavavajillas",
+      "se puede meter al lavavajillas",
+      "hay que lavar",
+      "fácil de limpiar",
+      "facil de limpiar",
+    ],
+    validate: "",
+    rebut:
+      "Con agua y jabón corriente o directo al lavavajillas — el plástico ABS aguanta sin problema y no absorbe olores ni manchas.",
+    followUp: "¿Lo pedimos?",
+  },
+  {
+    type: "capacity",
+    triggers: [
+      "cuánto aguanta",
+      "cuanto aguanta",
+      "cuánto carga",
+      "cuanto carga",
+      "peso máximo",
+      "peso maximo",
+      "se cae",
+      "se va a caer",
+      "aguanta mucho",
+      "qué tan resistente es",
+      "que tan resistente es",
+    ],
+    validate: "",
+    rebut:
+      "Aguanta sin problema el peso normal de frutas, verduras, quesos o sobrantes. El plástico ABS es resistente y el enganche en la repisa es firme.",
+    followUp: "¿Lo probamos?",
+  },
+  {
+    type: "brand_compatibility",
+    triggers: [
+      "samsung",
+      "lg",
+      "haceb",
+      "mabe",
+      "whirlpool",
+      "challenger",
+      "electrolux",
+      "centrales",
+      "frigidaire",
+      "abba",
+      "indurama",
+      "nevera de dos puertas",
+      "nevera de una puerta",
+      "side by side",
+    ],
+    validate: "",
+    rebut:
+      "Sí, funciona en todas las neveras estándar: Samsung, LG, Haceb, Mabe, Whirlpool, Challenger — de 1 o 2 puertas. Son extensibles de 23 a 35 cm, solo necesitas que la repisa tenga borde inferior para el enganche.",
+    followUp: "¿Lo pedimos?",
+  },
+  {
+    type: "tracking",
+    triggers: [
+      "número de guía",
+      "numero de guia",
+      "puedo rastrear",
+      "número de seguimiento",
+      "numero de seguimiento",
+      "cómo sé que va en camino",
+      "como se que va en camino",
+      "me avisan cuando sale",
+      "transportadora",
+    ],
+    validate: "",
+    rebut:
+      "Sí, cuando despachamos te mandamos el número de guía por aquí mismo para que puedas rastrear el pedido en tiempo real 📦",
+    followUp: "¿Lo pedimos?",
   },
   {
     type: "shipping_cost",
