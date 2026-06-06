@@ -121,12 +121,14 @@ export type MediaType = "image" | "video" | "document" | "audio";
 
 export async function sendImageUrl(to: string, url: string, caption?: string): Promise<void> {
   try {
-    await http.post(`/${phoneId}/messages`, {
-      messaging_product: "whatsapp",
-      to,
-      type: "image",
-      image: { link: url, ...(caption ? { caption } : {}) },
-    });
+    // WhatsApp link method only accepts JPEG/PNG — download and upload to support webp and others
+    const res = await axios.get(url, { responseType: "arraybuffer", timeout: 30_000 });
+    const buffer = Buffer.from(res.data);
+    const mimeType = (res.headers["content-type"] as string) || "image/jpeg";
+    const filename = url.split("/").pop() || "image";
+    const mediaId = await uploadMedia(buffer, mimeType, filename);
+    if (!mediaId) throw new Error("uploadMedia returned null");
+    await sendMedia(to, mediaId, "image", caption);
   } catch (e: any) {
     console.error("[wa.sendImageUrl]", e.response?.data ?? e.message);
   }
