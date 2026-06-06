@@ -13,6 +13,7 @@ import {
   sendInParts,
   sendReaction,
   sendText,
+  sendVideoUrl,
 } from "../whatsapp/client";
 import { config } from "../config";
 import { transcribeAudio } from "../whatsapp/transcribe";
@@ -31,6 +32,8 @@ import {
   HARD_OBJECTION_THRESHOLD,
   buildObjectionResponse,
   detectObjection,
+  detectPhotoRequest,
+  detectVideoRequest,
 } from "./objections";
 import type { SessionFields } from "./parser";
 import { cancelRemarketing, scheduleFullSequence } from "./remarketing";
@@ -215,6 +218,17 @@ async function processCombined(
     }
   }
 
+  if (detectPhotoRequest(combined) && config.greeting.imageUrls.length > 0) {
+    for (const url of config.greeting.imageUrls) {
+      await sendImageUrl(session.waId, url);
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+
+  if (detectVideoRequest(combined) && config.product.videoUrl) {
+    await sendVideoUrl(session.waId, config.product.videoUrl);
+  }
+
   const outboundMsgId = await sendInParts(session.waId, sanitized);
   session.lastOutboundAt = Date.now();
 
@@ -228,6 +242,8 @@ async function processCombined(
 
   if (nextState === "CLOSED") {
     await persistOrderIfNeeded(session);
+    cancelRemarketing(session.waId);
+  } else if (nextState === "CONFIRM_ORDER" || nextState === "ADDRESS_COLLECTION" || nextState === "PAYMENT_METHOD") {
     cancelRemarketing(session.waId);
   } else {
     scheduleFullSequence(session);

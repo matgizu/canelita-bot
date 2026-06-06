@@ -44,8 +44,12 @@ export const config = {
       .filter(Boolean),
   },
 
+  product: {
+    videoUrl: optional("PRODUCT_VIDEO_URL"),
+  },
+
   owner: {
-    waNumber: optional("OWNER_WA_NUMBER", "+573124743435"),
+    waNumber: optional("OWNER_WA_NUMBER", "573124743435"),
   },
 };
 

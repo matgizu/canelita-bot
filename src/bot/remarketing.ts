@@ -1,5 +1,5 @@
 import { config } from "../config";
-import { sendText } from "../whatsapp/client";
+import { sendText, sendVideoUrl } from "../whatsapp/client";
 import { REMARKETING_MESSAGES, Session, msUntilNextDayColTime } from "./flow";
 import { events } from "../events";
 import { prisma } from "../db";
@@ -55,12 +55,16 @@ export function scheduleFullSequence(session: Session) {
   if (timers.length) trackers.set(session.waId, { timers });
 }
 
+const LATE_FUNNEL_STATES = new Set(["CONFIRM_ORDER", "ADDRESS_COLLECTION", "PAYMENT_METHOD", "CLOSED"]);
+
 async function fireTouch(waId: string, type: string) {
   try {
     const conv = await prisma.conversation.findUnique({ where: { waId } });
     if (!conv) return;
     if (conv.windowExpired) return;
-    if (conv.state === "CLOSED") return;
+    if (LATE_FUNNEL_STATES.has(conv.state)) return;
+    // Also skip if the customer has already shared their data (name + address or city)
+    if (conv.fullName && (conv.address || conv.city)) return;
 
     if (type === "t1") {
       await sendT1(waId, conv.id);
@@ -75,6 +79,10 @@ async function fireTouch(waId: string, type: string) {
 }
 
 async function sendT1(waId: string, convId: number) {
+  if (config.product.videoUrl) {
+    await sendVideoUrl(waId, config.product.videoUrl);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   await sendRemarketingText(waId, convId, REMARKETING_MESSAGES.t1, "t1");
 }
 

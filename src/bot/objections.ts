@@ -408,3 +408,45 @@ export function buildObjectionResponse(obj: Objection): string {
 }
 
 export const HARD_OBJECTION_THRESHOLD = 3;
+
+const PHOTO_TRIGGERS = [
+  "foto",
+  "fotos",
+  "imagen",
+  "imagenes",
+  "imágenes",
+  "ver el producto",
+  "cómo es",
+  "como es",
+  "cómo se ve",
+  "como se ve",
+  "cómo luce",
+  "como luce",
+  "mandame una foto",
+  "mándame una foto",
+  "muéstrame",
+  "muestrame",
+  "tienes fotos",
+  "tienes foto",
+  "hay fotos",
+];
+
+export function detectPhotoRequest(message: string): boolean {
+  const q = norm(message);
+  return PHOTO_TRIGGERS.some((t) => q.includes(norm(t)));
+}
+
+const VIDEO_TRIGGERS = [
+  "video",
+  "como funciona",
+  "cómo funciona",
+  "ver como funciona",
+  "ver cómo funciona",
+  "lo quiero ver funcionar",
+  "ver funcionando",
+];
+
+export function detectVideoRequest(message: string): boolean {
+  const q = norm(message);
+  return VIDEO_TRIGGERS.some((t) => q.includes(norm(t)));
+}
