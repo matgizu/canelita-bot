@@ -242,7 +242,6 @@ apiRouter.post("/conversations/:waId/send-template", async (req, res) => {
 apiRouter.get("/conversations", async (_req, res) => {
   const conversations = await prisma.conversation.findMany({
     orderBy: { lastInboundAt: "desc" },
-    take: 100,
   });
   res.json(conversations);
 });
