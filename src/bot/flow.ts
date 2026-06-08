@@ -30,9 +30,38 @@ export const TRANSITIONS: Record<State, State[]> = {
   CLOSED:            ["CLOSED"],
 };
 
+// Order of the "happy path" funnel, excluding OBJECTION_HANDLING (which can be
+// reached from — and return to — any of these states).
+const FUNNEL_ORDER: State[] = [
+  "GREETING",
+  "INTEREST",
+  "QUANTITY",
+  "CONFIRM_ORDER",
+  "ADDRESS_COLLECTION",
+  "PAYMENT_METHOD",
+  "CLOSED",
+];
+
+// A real conversation regularly compresses steps (e.g. a customer who states
+// the quantity and confirms the order in the same message never produces an
+// explicit QUANTITY reply). If we only allowed the exact next funnel state,
+// the stored state gets stuck behind where the conversation actually is and
+// never reaches CLOSED — losing the order and the sale from tracking. Allowing
+// a one-step skip absorbs that without opening the door to premature CLOSED
+// transitions that would skip required data collection (address, payment).
+const MAX_FUNNEL_SKIP = 2;
+
 export function isValidTransition(from: State, to: State): boolean {
   if (from === to) return true;
-  return TRANSITIONS[from]?.includes(to) ?? false;
+  if (from === "CLOSED") return false;
+
+  if (to === "OBJECTION_HANDLING") return true;
+  if (from === "OBJECTION_HANDLING") return TRANSITIONS.OBJECTION_HANDLING.includes(to);
+
+  const fromIdx = FUNNEL_ORDER.indexOf(from);
+  const toIdx = FUNNEL_ORDER.indexOf(to);
+  if (fromIdx === -1 || toIdx <= fromIdx) return false;
+  return toIdx - fromIdx <= MAX_FUNNEL_SKIP;
 }
 
 export const HARDCODED_GREETING = `¡Hola! Soy Valentina de FreskaBox 🌿

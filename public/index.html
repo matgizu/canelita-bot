@@ -74,14 +74,15 @@
       display: flex; flex-direction: column; flex-shrink: 0;
       border-right: 1px solid #1f2937;
     }
-    .search-box { padding: 10px 12px; }
-    .search-box input {
+    .search-box { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .search-box input, .search-box select {
       width: 100%; padding: 8px 12px; background: #1f2937;
       border: 1px solid #374151; border-radius: 8px;
       color: #fff; font-size: 12px; outline: none;
     }
+    .search-box select { cursor: pointer; }
     .search-box input::placeholder { color: #6b7280; }
-    .search-box input:focus { border-color: var(--brand); }
+    .search-box input:focus, .search-box select:focus { border-color: var(--brand); }
     #conv-list { flex: 1; overflow-y: auto; }
     #conv-list::-webkit-scrollbar { width: 3px; }
     #conv-list::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
@@ -605,6 +606,17 @@
   <aside id="sidebar">
     <div class="search-box">
       <input type="search" id="search" placeholder="🔍 Nombre o número…" oninput="doFilter(this.value)">
+      <select id="state-filter" onchange="doStateFilter(this.value)">
+        <option value="">Todos los estados</option>
+        <option value="GREETING">Saludo</option>
+        <option value="INTEREST">Interés</option>
+        <option value="QUANTITY">Cantidad</option>
+        <option value="OBJECTION_HANDLING">Objeción</option>
+        <option value="CONFIRM_ORDER">Confirmar</option>
+        <option value="ADDRESS_COLLECTION">Datos</option>
+        <option value="PAYMENT_METHOD">Pago</option>
+        <option value="CLOSED">✓ Ventas cerradas</option>
+      </select>
     </div>
     <div id="conv-list"></div>
   </aside>
@@ -749,6 +761,7 @@ let convs    = [];
 let selected = null;
 let detail   = null;
 let q        = '';
+let stateFilter = '';
 let tab      = 'info';
 
 /* ─────────────────────────────────────
@@ -920,14 +933,15 @@ function stopPolling() {
    RENDER — SIDEBAR
 ───────────────────────────────────── */
 function doFilter(v) { q = v.toLowerCase(); renderSidebar(); }
+function doStateFilter(v) { stateFilter = v; renderSidebar(); }
 
 function renderSidebar() {
   const list   = document.getElementById('conv-list');
-  const items  = q
-    ? convs.filter(c =>
-        (c.customerName||'').toLowerCase().includes(q) ||
-        c.waId.includes(q))
-    : convs;
+  let items = convs;
+  if (stateFilter) items = items.filter(c => c.state === stateFilter);
+  if (q) items = items.filter(c =>
+    (c.customerName||'').toLowerCase().includes(q) ||
+    c.waId.includes(q));
 
   if (!items.length) {
     list.innerHTML = `<div style="padding:24px;text-align:center;color:#6b7280;font-size:12px">Sin conversaciones</div>`;

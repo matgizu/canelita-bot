@@ -6,6 +6,7 @@ import { events } from "../events";
 import { config } from "../config";
 import { getSession, setAutomation } from "../sessions";
 import { cancelRemarketing } from "../bot/remarketing";
+import { persistOrderIfNeeded } from "../bot/handler";
 import { deleteMessage, mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
 import { sanitizeOutput } from "../bot/blocklist";
 import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
@@ -357,6 +358,7 @@ apiRouter.patch("/conversations/:waId/close", async (req, res) => {
 
     const session = getSession(waId);
     session.state = "CLOSED" as any;
+    await persistOrderIfNeeded(session);
 
     cancelRemarketing(waId);
 

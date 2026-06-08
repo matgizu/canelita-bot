@@ -405,7 +405,7 @@ export function shouldCreateNewOrder(existing: { id: number; status: string } | 
   return existing.status === "CANCELLED";
 }
 
-async function persistOrderIfNeeded(session: Session) {
+export async function persistOrderIfNeeded(session: Session) {
   if (!session.cart.length) return;
   const total = computeTotal(session.cart);
 
