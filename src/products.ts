@@ -12,6 +12,7 @@ export interface Combo {
 const PRICE_PACK3 = Number(process.env.PRICE_PACK3 ?? 69900);
 const PRICE_PACK6 = Number(process.env.PRICE_PACK6 ?? 119900);
 const PREPAID_DISCOUNT = 5000;
+export const REMARKETING_DISCOUNT = 10000;
 
 export const COMBOS: Combo[] = [
   {

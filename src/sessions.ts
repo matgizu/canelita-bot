@@ -70,6 +70,7 @@ export async function getOrLoadSession(waId: string): Promise<Session> {
         department: conv.department ?? undefined,
         history,
         pendingOrder: (conv.pendingOrder as unknown as Session["pendingOrder"]) ?? undefined,
+        discountOffered: conv.discountOffered,
         automationEnabled: conv.automationEnabled,
         objectionCount: conv.objectionCount,
         lastInboundAt: conv.lastInboundAt.getTime(),
@@ -104,6 +105,14 @@ export function setAutomation(waId: string, enabled: boolean): Session {
   const s = getSession(waId);
   s.automationEnabled = enabled;
   return s;
+}
+
+// Updates a session already held in memory, without creating one if absent —
+// used for out-of-band events (e.g. remarketing touches) that shouldn't spin
+// up a session for a contact that isn't actively chatting.
+export function patchSessionIfLoaded(waId: string, patch: Partial<Session>): void {
+  const s = sessions.get(waId);
+  if (s) Object.assign(s, patch);
 }
 
 setInterval(() => {

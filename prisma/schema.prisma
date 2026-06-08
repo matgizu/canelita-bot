@@ -25,6 +25,7 @@ model Conversation {
   ctwaClid          String?
   labels            String[]  @default([])
   windowExpired     Boolean   @default(false)
+  discountOffered   Boolean   @default(false)
   state             String    @default("GREETING")
   automationEnabled Boolean   @default(true)
   objectionCount    Int       @default(0)

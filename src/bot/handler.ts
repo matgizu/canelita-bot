@@ -4,7 +4,7 @@ import { prisma } from "../db";
 import { getOrLoadSession, getSession, setAutomation } from "../sessions";
 import { notify, notifyPhoto } from "../telegram";
 import { notifyOwner } from "../owner";
-import { findCombo, formatCOP } from "../products";
+import { findCombo, formatCOP, REMARKETING_DISCOUNT } from "../products";
 import {
   getMediaUrl,
   markAsRead,
@@ -163,6 +163,20 @@ async function processCombined(
         at: Date.now(),
       });
       notify(TELEGRAM_TEMPLATES.wholesaler(session.waId, session.customerName));
+    }
+
+    if (special.type === "not_interested") {
+      session.automationEnabled = false;
+      setAutomation(session.waId, false);
+      events.emitDashboard({
+        type: "automation_toggle",
+        waId: session.waId,
+        enabled: false,
+        at: Date.now(),
+      });
+      cancelRemarketing(session.waId);
+      transitionTo(session, "CLOSED");
+      notify(TELEGRAM_TEMPLATES.notInterested(session.waId, session.customerName));
     }
     return;
   }
@@ -407,7 +421,7 @@ export function shouldCreateNewOrder(existing: { id: number; status: string } | 
 
 export async function persistOrderIfNeeded(session: Session) {
   if (!session.cart.length) return;
-  const total = computeTotal(session.cart);
+  const total = computeTotal(session);
 
   try {
     const conv = await ensureConversation(session);
@@ -458,10 +472,13 @@ export async function persistOrderIfNeeded(session: Session) {
   }
 }
 
-function computeTotal(cart: CartItem[]): number {
-  for (const item of cart) {
+function computeTotal(session: Session): number {
+  for (const item of session.cart) {
     const combo = findCombo(item.variant);
-    if (combo) return combo.price * item.quantity;
+    if (combo) {
+      const unitPrice = session.discountOffered ? combo.price - REMARKETING_DISCOUNT : combo.price;
+      return unitPrice * item.quantity;
+    }
   }
   return 69900;
 }

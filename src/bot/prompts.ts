@@ -159,6 +159,7 @@ export interface ContextHints {
   city?: string;
   department?: string;
   cartSummary?: string;
+  discountActive?: boolean;
   objectionCount?: number;
   collectedFields?: {
     fullName?: string;
@@ -174,6 +175,8 @@ export function buildContextHint(ctx: ContextHints): string {
   const lines: string[] = [`ESTADO ACTUAL: ${ctx.state}`];
   if (ctx.customerName) lines.push(`NOMBRE CLIENTE: ${ctx.customerName}`);
   if (ctx.cartSummary) lines.push(`CARRITO: ${ctx.cartSummary}`);
+  if (ctx.discountActive)
+    lines.push(`DESCUENTO DE REMARKETING ACTIVO: a este cliente ya se le ofreció el descuento de $10.000 (pack x3 = $59.900, pack x6 = $109.900). Usa esos precios en CONFIRM_ORDER y CLOSED, no los de lista.`);
   if (ctx.objectionCount && ctx.objectionCount > 0)
     lines.push(`OBJECIONES PREVIAS: ${ctx.objectionCount}`);
 

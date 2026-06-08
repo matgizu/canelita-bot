@@ -144,6 +144,7 @@ export interface Session {
     paymentMethod?: "cod" | "prepaid";
     total?: number;
   };
+  discountOffered?: boolean;
   automationEnabled: boolean;
   objectionCount: number;
   lastInboundAt: number;

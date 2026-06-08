@@ -18,6 +18,7 @@ export async function askClaude(
     city: session.city,
     department: session.department,
     cartSummary: cartSummary(session),
+    discountActive: session.discountOffered,
     objectionCount: session.objectionCount,
     collectedFields: {
       fullName:  session.fullName,

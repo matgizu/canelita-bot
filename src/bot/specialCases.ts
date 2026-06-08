@@ -5,6 +5,7 @@ export type SpecialCase =
   | "international_shipping"
   | "payment_proof"
   | "testimonials_request"
+  | "not_interested"
   | null;
 
 export interface SpecialCaseResult {
@@ -65,6 +66,34 @@ const TESTIMONIALS_TRIGGERS = [
   "me muestras fotos",
 ];
 
+// Definitive "stop contacting me" signals — short messages only (see usage),
+// to avoid matching "no gracias, pero sí me interesa el pack x6" type replies
+// where the customer is still engaging.
+const NOT_INTERESTED_TRIGGERS = [
+  "no gracias",
+  "no, gracias",
+  "no lo necesito",
+  "no me interesa",
+  "no me interesan",
+  "ya no quiero",
+  "no quiero nada",
+  "dejame de escribir",
+  "déjame de escribir",
+  "dejen de escribirme",
+  "dejame de molestar",
+  "déjame de molestar",
+  "no me escribas mas",
+  "no me escribas más",
+  "no escribas mas",
+  "no escribas más",
+  "no me molestes",
+  "no molestes mas",
+  "no molestes más",
+  "no insistas",
+  "no insistan",
+  "ya dije que no",
+];
+
 const PAYMENT_PROOF_TRIGGERS = [
   "comprobante",
   "le envío el comprobante",
@@ -85,6 +114,8 @@ const RESPONSES = {
   testimonials: `Mira cómo quedan las neveras con los cajones ✨ Todo organizado y visible. ¿Te animas?`,
 
   paymentProof: `Listo, ya recibí tu comprobante. Lo verifico en máximo 30 minutos y te confirmo el despacho 💛`,
+
+  notInterested: `Listo, entendido — no te escribo más. Que tengas un excelente día 💛`,
 };
 
 export interface DetectInput {
@@ -110,6 +141,21 @@ export function detectSpecialCase(input: DetectInput): SpecialCaseResult | null 
       type: "payment_proof",
       response: RESPONSES.paymentProof,
       disableBot: false,
+      notifyTelegram: true,
+      closeOrder: true,
+    };
+  }
+
+  // Only treat as a definitive opt-out on short replies — a longer message
+  // containing "no gracias" is usually a polite preface to a different ask
+  // ("no gracias, pero sí me interesa el x6...") and should keep flowing
+  // through Claude rather than shutting the conversation down.
+  const wordCount = q.split(/\s+/).filter(Boolean).length;
+  if (wordCount <= 8 && matches(q, NOT_INTERESTED_TRIGGERS)) {
+    return {
+      type: "not_interested",
+      response: RESPONSES.notInterested,
+      disableBot: true,
       notifyTelegram: true,
       closeOrder: true,
     };
@@ -146,6 +192,9 @@ export const TELEGRAM_TEMPLATES = {
 
   paymentProof: (waId: string, name?: string) =>
     `💳 *Comprobante de pago recibido*\nwaId: ${waId}${name ? `\nNombre: ${name}` : ""}\nVerificar y despachar.`,
+
+  notInterested: (waId: string, name?: string) =>
+    `🚫 *Cliente pidió no más mensajes*\nwaId: ${waId}${name ? `\nNombre: ${name}` : ""}\nBot desactivado y remarketing cancelado para este contacto.`,
 
   newOrder: (waId: string, summary: string) =>
     `🛍️ *Nuevo pedido confirmado*\nwaId: ${waId}\n\n${summary}`,

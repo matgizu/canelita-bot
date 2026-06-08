@@ -3,6 +3,7 @@ import { sendText, sendVideoUrl } from "../whatsapp/client";
 import { REMARKETING_MESSAGES, Session, msUntilNextDayColTime } from "./flow";
 import { events } from "../events";
 import { prisma } from "../db";
+import { patchSessionIfLoaded } from "../sessions";
 
 interface Tracker {
   timers: NodeJS.Timeout[];
@@ -72,6 +73,13 @@ async function fireTouch(waId: string, type: string) {
       const msg = REMARKETING_MESSAGES[type as keyof typeof REMARKETING_MESSAGES];
       if (!msg) return;
       await sendRemarketingText(waId, conv.id, msg, type);
+    }
+
+    // t3 offers a $10.000 discount — remember it so the rest of the
+    // conversation (and the final order total) honors that price.
+    if (type === "t3" && !conv.discountOffered) {
+      await prisma.conversation.update({ where: { waId }, data: { discountOffered: true } });
+      patchSessionIfLoaded(waId, { discountOffered: true });
     }
   } catch (e: any) {
     console.error(`[remarketing.${type}]`, e.message);
