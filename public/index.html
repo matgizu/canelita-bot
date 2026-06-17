@@ -110,6 +110,12 @@
     .bot-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .bot-dot.on  { background: var(--green); }
     .bot-dot.off { background: var(--red); }
+    .strat-badge {
+      font-size: 9px; font-weight: 800; letter-spacing: .3px;
+      padding: 1px 5px; border-radius: 8px; flex-shrink: 0;
+    }
+    .strat-badge.A { background: #1e3a5f; color: #60a5fa; }
+    .strat-badge.B { background: #3b1f00; color: #fb923c; }
     .ci-preview {
       font-size: 11px; color: #9ca3af;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
@@ -1067,7 +1073,7 @@ function connectSSE() {
     const d = JSON.parse(e.data);
     let c = convs.find(x => x.waId === d.waId);
     if (!c) {
-      c = { waId: d.waId, customerName: null, state: 'GREETING', automationEnabled: true };
+      c = { waId: d.waId, customerName: null, state: 'GREETING', automationEnabled: true, strategy: d.strategy || null };
       convs.unshift(c);
     }
     c._preview      = d.body;
@@ -1164,6 +1170,7 @@ function renderSidebar() {
         <div class="ci-name">
           ${x(c.customerName || phone(c.waId))}
           <span class="bot-dot ${c.automationEnabled?'on':'off'}"></span>
+          ${c.strategy ? `<span class="strat-badge ${c.strategy}">${c.strategy}</span>` : ''}
         </div>
         <div class="ci-preview">${x(c._preview || '—')}</div>
       </div>
@@ -1323,6 +1330,10 @@ function renderInfoTab() {
           ? '🤖 Activo — pausar bot'
           : '🔇 Pausado — activar bot'}
       </button>
+      ${conv.strategy ? `<div style="margin-top:6px;display:flex;align-items:center;gap:6px;font-size:11px;color:#6b7280">
+        Estrategia:
+        <span class="strat-badge ${conv.strategy}" style="font-size:10px">${conv.strategy === 'A' ? 'A — Clásica' : 'B — Visual First'}</span>
+      </div>` : ''}
       ${conv.state !== 'CLOSED'
         ? `<button class="toggle-btn full" style="margin-top:6px;background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${d.waId}')">✓ Cerrar venta manualmente</button>`
         : `<div style="display:flex;align-items:center;gap:6px;margin-top:6px">

@@ -166,10 +166,12 @@ async function processCombined(
       for (const url of imgs) {
         await sendImageUrl(session.waId, url);
         await new Promise((r) => setTimeout(r, 600));
+        await persistMediaOutbound(session, url, "image");
       }
       if (config.product.videoUrl) {
         await sendVideoUrl(session.waId, config.product.videoUrl);
         await new Promise((r) => setTimeout(r, 800));
+        await persistMediaOutbound(session, config.product.videoUrl, "video");
       }
       const greeting = buildDynamicGreetingB(dynCfg.pack3Price, dynCfg.pack6Price);
       const greetingJson = JSON.stringify({ message: greeting, state: "GREETING", cartUpdate: null });
@@ -179,6 +181,7 @@ async function processCombined(
       if (imgs.length > 0) {
         const url = imgs[Math.floor(Math.random() * imgs.length)];
         await sendImageUrl(session.waId, url);
+        await persistMediaOutbound(session, url, "image");
       }
       const greeting = buildDynamicGreeting(dynCfg.pack3Price, dynCfg.pack6Price);
       const greetingJson = JSON.stringify({ message: greeting, state: "GREETING", cartUpdate: null });
@@ -574,6 +577,31 @@ function hasMinimumOrderData(session: Session): boolean {
     !!(session.fullName || session.customerName) &&
     !!session.address
   );
+}
+
+async function persistMediaOutbound(session: Session, url: string, type: "image" | "video") {
+  try {
+    const conv = await ensureConversation(session);
+    await prisma.message.create({
+      data: {
+        conversationId: conv.id,
+        direction: "outbound",
+        type,
+        body: url,
+        rawState: session.state,
+      },
+    });
+    events.emitDashboard({
+      type: "message",
+      waId: session.waId,
+      direction: "outbound",
+      body: url,
+      messageType: type,
+      at: Date.now(),
+    });
+  } catch (e: any) {
+    console.error("[handler.persistMediaOutbound]", e.message);
+  }
 }
 
 function orderSummary(session: Session, total: number): string {
