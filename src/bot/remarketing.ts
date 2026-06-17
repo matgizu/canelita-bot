@@ -1,9 +1,10 @@
 import { config } from "../config";
-import { sendText, sendVideoUrl } from "../whatsapp/client";
-import { REMARKETING_MESSAGES, Session, msUntilNextDayColTime } from "./flow";
+import { sendText } from "../whatsapp/client";
+import { Session, msUntilNextDayColTime, buildRemarketingMsg } from "./flow";
 import { events } from "../events";
 import { prisma } from "../db";
 import { patchSessionIfLoaded } from "../sessions";
+import { getConfig } from "../botConfig";
 
 interface Tracker {
   timers: NodeJS.Timeout[];
@@ -32,10 +33,7 @@ export function scheduleFullSequence(session: Session) {
   const WINDOW_72H = 72 * 60 * 60 * 1000;
 
   const touches: Array<{ delay: number; type: string }> = [
-    { delay: 2  * 60 * 60 * 1000,              type: "t1" },
-    { delay: 10 * 60 * 60 * 1000,              type: "t2" },
-    { delay: msUntilNextDayColTime(start, 8),  type: "t3" },
-    { delay: msUntilNextDayColTime(start, 15), type: "t4" },
+    { delay: msUntilNextDayColTime(start, 8), type: "t3" },
   ];
 
   const timers: NodeJS.Timeout[] = [];
@@ -60,6 +58,9 @@ const LATE_FUNNEL_STATES = new Set(["CONFIRM_ORDER", "ADDRESS_COLLECTION", "PAYM
 
 async function fireTouch(waId: string, type: string) {
   try {
+    const cfg = await getConfig();
+    if (!cfg.remarketingEnabled) return;
+
     const conv = await prisma.conversation.findUnique({ where: { waId } });
     if (!conv) return;
     if (conv.windowExpired) return;
@@ -67,13 +68,9 @@ async function fireTouch(waId: string, type: string) {
     // Also skip if the customer has already shared their data (name + address or city)
     if (conv.fullName && (conv.address || conv.city)) return;
 
-    if (type === "t1") {
-      await sendT1(waId, conv.id);
-    } else {
-      const msg = REMARKETING_MESSAGES[type as keyof typeof REMARKETING_MESSAGES];
-      if (!msg) return;
-      await sendRemarketingText(waId, conv.id, msg, type);
-    }
+    const msg = type === "t3" ? buildRemarketingMsg(cfg.pack3Price, cfg.remarketingDiscount) : null;
+    if (!msg) return;
+    await sendRemarketingText(waId, conv.id, msg, type);
 
     // t3 offers a $10.000 discount — remember it so the rest of the
     // conversation (and the final order total) honors that price.
@@ -86,16 +83,8 @@ async function fireTouch(waId: string, type: string) {
   }
 }
 
-async function sendT1(waId: string, convId: number) {
-  if (config.product.videoUrl) {
-    await sendVideoUrl(waId, config.product.videoUrl);
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  await sendRemarketingText(waId, convId, REMARKETING_MESSAGES.t1, "t1");
-}
-
 async function sendRemarketingText(waId: string, convId: number, text: string, type: string) {
-  await sendText(waId, text);
+  const msgId = await sendText(waId, text);
 
   events.emitDashboard({
     type: "message",
@@ -112,6 +101,7 @@ async function sendRemarketingText(waId: string, convId: number, text: string, t
       direction: "outbound",
       type: `remarketing:${type}`,
       body: text,
+      whatsappMsgId: msgId ?? null,
     },
   });
 }

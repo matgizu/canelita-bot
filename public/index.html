@@ -539,11 +539,106 @@
       font-size: 12px; font-weight: 600; cursor: pointer;
     }
     #orders-btn:hover { background: #374151; }
+
+    /* ── Pipeline ── */
+    #pipeline-btn {
+      padding: 6px 14px; background: #1f2937; color: #a78bfa;
+      border: 1px solid #374151; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    #pipeline-btn:hover { background: #374151; }
+    #pipeline-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65);
+      display: flex; align-items: stretch; justify-content: stretch;
+      z-index: 200;
+    }
+    #pipeline-panel {
+      background: #0f172a; display: flex; flex-direction: column;
+      width: 100%; height: 100%;
+    }
+    #pipeline-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; border-bottom: 1px solid #1e293b; flex-shrink: 0;
+    }
+    #pipeline-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    #pipeline-header .pl-sub { font-size: 11px; color: #64748b; }
+    #pipeline-close {
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+      width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+      font-size: 14px; display: flex; align-items: center; justify-content: center;
+    }
+    #pipeline-close:hover { background: #334155; color: #fff; }
+    #pipeline-board {
+      display: flex; gap: 10px; padding: 16px; overflow-x: auto;
+      flex: 1; align-items: flex-start;
+    }
+    #pipeline-board::-webkit-scrollbar { height: 6px; }
+    #pipeline-board::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    .pl-col {
+      min-width: 210px; max-width: 210px; display: flex; flex-direction: column;
+      gap: 8px; flex-shrink: 0;
+    }
+    .pl-col-header {
+      padding: 7px 10px; border-radius: 8px 8px 0 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .pl-col-label { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+    .pl-col-count {
+      font-size: 11px; font-weight: 700;
+      background: rgba(0,0,0,.25); border-radius: 10px; padding: 1px 7px;
+    }
+    .pl-col-body { display: flex; flex-direction: column; gap: 6px; }
+    .pl-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      padding: 10px 11px; cursor: pointer; transition: background .12s, border-color .12s;
+    }
+    .pl-card:hover { background: #263347; border-color: #475569; }
+    .pl-card-name {
+      font-size: 12.5px; font-weight: 600; color: #e2e8f0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
+    }
+    .pl-card-phone { font-size: 10.5px; color: #64748b; margin-bottom: 5px; }
+    .pl-card-preview {
+      font-size: 11px; color: #94a3b8; line-height: 1.4;
+      overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .pl-card-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 7px; gap: 4px;
+    }
+    .pl-card-time { font-size: 10px; color: #475569; }
+    .pl-bot-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    .pl-bot-dot.on  { background: #10b981; }
+    .pl-bot-dot.off { background: #4b5563; }
+    .pl-empty { font-size: 11px; color: #334155; text-align: center; padding: 18px 0; }
+
+    /* column accent colors */
+    .pl-col.GREETING        .pl-col-header { background: #1e293b; }
+    .pl-col.GREETING        .pl-col-label  { color: #94a3b8; }
+    .pl-col.INTEREST        .pl-col-header { background: #1e3a5f; }
+    .pl-col.INTEREST        .pl-col-label  { color: #60a5fa; }
+    .pl-col.QUANTITY        .pl-col-header { background: #3b2700; }
+    .pl-col.QUANTITY        .pl-col-label  { color: #fb923c; }
+    .pl-col.OBJECTION_HANDLING .pl-col-header { background: #3b0f0f; }
+    .pl-col.OBJECTION_HANDLING .pl-col-label  { color: #f87171; }
+    .pl-col.CONFIRM_ORDER   .pl-col-header { background: #0c2e3d; }
+    .pl-col.CONFIRM_ORDER   .pl-col-label  { color: #38bdf8; }
+    .pl-col.ADDRESS_COLLECTION .pl-col-header { background: #2d1b4e; }
+    .pl-col.ADDRESS_COLLECTION .pl-col-label  { color: #c084fc; }
+    .pl-col.PAYMENT_METHOD  .pl-col-header { background: #062818; }
+    .pl-col.PAYMENT_METHOD  .pl-col-label  { color: #34d399; }
+    .pl-col.CLOSED          .pl-col-header { background: #0a1a0f; }
+    .pl-col.CLOSED          .pl-col-label  { color: #6ee7b7; }
   </style>
 </head>
 <body>
 
 <!-- Header -->
+<div id="owner-window-bar" hidden style="background:#7c2d12;color:#fed7aa;font-size:12px;font-weight:600;padding:7px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #9a3412">
+  <span>⚠️ Ventana WA cerrada — no te llegan notificaciones de pedidos. Escríbele un mensaje al bot desde tu celular para reactivarlas.</span>
+</div>
 <header id="header">
   <div class="brand">📦 FreskaBox</div>
   <div class="stats-bar">
@@ -554,6 +649,7 @@
   </div>
   <button id="templates-btn" onclick="openTemplates()">📋 Plantillas</button>
   <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
+  <button id="pipeline-btn" onclick="openPipeline()">📊 Pipeline</button>
   <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
   <div class="sse-pill">
     <div class="sse-dot" id="sse-dot"></div>
@@ -753,6 +849,18 @@
   </div>
 </div>
 
+<!-- Pipeline overlay -->
+<div id="pipeline-overlay" hidden>
+  <div id="pipeline-panel">
+    <div id="pipeline-header">
+      <h2>📊 Pipeline de ventas</h2>
+      <span class="pl-sub" id="pipeline-sub"></span>
+      <button id="pipeline-close" onclick="closePipeline()">✕</button>
+    </div>
+    <div id="pipeline-board"></div>
+  </div>
+</div>
+
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -770,8 +878,12 @@ let tab      = 'info';
 document.addEventListener('DOMContentLoaded', async () => {
   await loadConvs();
   await loadMetrics();
-  setInterval(loadMetrics, 60_000); // refresh every minute
+  setInterval(loadMetrics, 60_000);
   connectSSE();
+  // Check if owner WA notification window is open
+  fetch('/api/owner-status').then(r => r.json()).then(d => {
+    document.getElementById('owner-window-bar').hidden = d.windowOpen !== false;
+  }).catch(() => {});
 });
 
 /* ─────────────────────────────────────
@@ -897,6 +1009,13 @@ function connectSSE() {
     if (d.waId === selected) { renderHeader(); renderInfoTab(); }
   });
 
+  es.addEventListener('owner_window_expired', () => {
+    document.getElementById('owner-window-bar').hidden = false;
+  });
+  es.addEventListener('owner_window_open', () => {
+    document.getElementById('owner-window-bar').hidden = true;
+  });
+
   es.addEventListener('window_expired', e => {
     const d = JSON.parse(e.data);
     const c = convs.find(x => x.waId === d.waId);
@@ -1002,7 +1121,10 @@ function renderHeader() {
     <button class="toggle-btn ${c.automationEnabled?'on':'off'}" onclick="toggleBot('${c.waId}')">
       ${c.automationEnabled ? '🤖 Bot activo' : '🔇 Bot pausado'}
     </button>
-    ${c.state !== 'CLOSED' ? `<button class="toggle-btn" style="background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${c.waId}')">✓ Cerrar venta</button>` : ''}
+    ${c.state !== 'CLOSED'
+      ? `<button class="toggle-btn" style="background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${c.waId}')">✓ Cerrar venta</button>`
+      : `<button class="toggle-btn" style="background:#fef3c7;color:#92400e;border-color:#fde68a" onclick="reopenConv('${c.waId}')">↩ Desmarcar venta</button>`
+    }
     `;
 }
 
@@ -1028,6 +1150,10 @@ function bubbleHtml(m) {
   }
 
   const isAudio = (m.type === 'audio' || m.type === 'voice') && m.mediaUrl;
+  const isImage = m.type === 'image' && m.mediaUrl;
+
+  // Skip empty "other" messages (stickers, reactions) — nothing to show
+  if (m.type === 'other' && !m.body) return '';
 
   const content = isAudio
     ? `<div class="audio-player">
@@ -1035,9 +1161,16 @@ function bubbleHtml(m) {
         <audio controls preload="none" src="/api/media/${m.mediaUrl}"></audio>
        </div>
        ${m.body && m.body !== '[audio]' ? `<div class="bubble" style="margin-top:4px">${x(m.body)}</div>` : ''}`
+    : isImage
+    ? `<div class="bubble img-bubble">
+        <img src="/api/media/${m.mediaUrl}" alt="imagen" loading="lazy"
+             style="max-width:220px;max-height:300px;border-radius:8px;display:block;cursor:pointer"
+             onclick="window.open('/api/media/${m.mediaUrl}','_blank')">
+        ${m.body && m.body !== '[imagen]' ? `<div style="margin-top:4px;font-size:13px">${x(m.body)}</div>` : ''}
+       </div>`
     : `<div class="bubble">${x(m.body)}</div>`;
 
-  const tag = !isAudio && m.type && m.type !== 'text'
+  const tag = !isAudio && !isImage && m.type && m.type !== 'text'
     ? `<span class="mtag">${m.type}</span>` : '';
 
   const delBtn = out && m.whatsappMsgId
@@ -1062,6 +1195,16 @@ function appendBubble(d) {
     div.className = 'mw outbound';
     div.innerHTML = remarketingContent(d.messageType, d.body)
       + `<div class="mtime">${t}<span class="mtag">remarketing</span></div>`;
+  } else if (d.messageType === 'image' && d.mediaUrl) {
+    div.className = `mw ${out?'outbound':'inbound'}`;
+    div.innerHTML = `<div class="bubble img-bubble">
+      <img src="/api/media/${d.mediaUrl}" alt="imagen" loading="lazy"
+           style="max-width:220px;max-height:300px;border-radius:8px;display:block;cursor:pointer"
+           onclick="window.open('/api/media/${d.mediaUrl}','_blank')">
+      ${d.body && d.body !== '[imagen]' ? `<div style="margin-top:4px;font-size:13px">${x(d.body)}</div>` : ''}
+    </div><div class="mtime">${t}</div>`;
+  } else if (!d.body && d.messageType === 'other') {
+    return; // skip empty stickers/reactions
   } else {
     div.className = `mw ${out?'outbound':'inbound'}`;
     div.innerHTML = `<div class="bubble">${x(d.body)}</div><div class="mtime">${t}</div>`;
@@ -1089,7 +1232,13 @@ function renderInfoTab() {
           ? '🤖 Activo — pausar bot'
           : '🔇 Pausado — activar bot'}
       </button>
-      ${conv.state !== 'CLOSED' ? `<button class="toggle-btn full" style="margin-top:6px;background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${d.waId}')">✓ Cerrar venta manualmente</button>` : '<div style="text-align:center;font-size:12px;color:#34d399;padding:6px 0">✓ Venta cerrada</div>'}
+      ${conv.state !== 'CLOSED'
+        ? `<button class="toggle-btn full" style="margin-top:6px;background:#064e3b;color:#34d399;border-color:#065f46" onclick="closeConv('${d.waId}')">✓ Cerrar venta manualmente</button>`
+        : `<div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+            <div style="flex:1;text-align:center;font-size:12px;color:#34d399;padding:6px 0">✓ Venta cerrada</div>
+            <button class="toggle-btn" style="background:#fef3c7;color:#92400e;border-color:#fde68a;white-space:nowrap" onclick="reopenConv('${d.waId}')">↩ Desmarcar</button>
+           </div>`
+      }
     </div>
 
     <div class="isec">
@@ -1484,6 +1633,19 @@ async function closeConv(waId) {
   } catch { alert('Error de conexión'); }
 }
 
+async function reopenConv(waId) {
+  if (!confirm('¿Desmarcar esta venta? El pedido asociado quedará cancelado y la conversación vuelve a estado activo.')) return;
+  try {
+    const res = await fetch(`/api/conversations/${waId}/reopen`, { method: 'PATCH' });
+    if (!res.ok) { alert('Error al desmarcar la venta'); return; }
+    const c = convs.find(x => x.waId === waId);
+    if (c) c.state = 'PAYMENT_METHOD';
+    renderSidebar();
+    renderStats();
+    if (waId === selected) { renderHeader(); renderInfoTab(); }
+  } catch { alert('Error de conexión'); }
+}
+
 async function toggleBot(waId) {
   const c = convs.find(x => x.waId === waId);
   if (!c) return;
@@ -1728,8 +1890,91 @@ function testKey(e) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeTest();
+  if (e.key === 'Escape') { closeTest(); closePipeline(); }
 });
+
+/* ─────────────────────────────────────
+   PIPELINE
+───────────────────────────────────── */
+const PIPELINE_COLS = [
+  { state: 'GREETING',           label: 'Saludo' },
+  { state: 'INTEREST',           label: 'Interés' },
+  { state: 'QUANTITY',           label: 'Cantidad' },
+  { state: 'OBJECTION_HANDLING', label: 'Objeción' },
+  { state: 'CONFIRM_ORDER',      label: 'Confirmar' },
+  { state: 'ADDRESS_COLLECTION', label: 'Datos envío' },
+  { state: 'PAYMENT_METHOD',     label: 'Método pago' },
+  { state: 'CLOSED',             label: 'Cerradas ✓' },
+];
+
+function openPipeline() {
+  renderPipelineBoard();
+  document.getElementById('pipeline-overlay').hidden = false;
+}
+
+function closePipeline() {
+  document.getElementById('pipeline-overlay').hidden = true;
+}
+
+function renderPipelineBoard() {
+  const board = document.getElementById('pipeline-board');
+  const total = convs.length;
+  const active = convs.filter(c => c.state !== 'CLOSED').length;
+  document.getElementById('pipeline-sub').textContent =
+    `${total} conversaciones · ${active} en proceso`;
+
+  board.innerHTML = PIPELINE_COLS.map(col => {
+    const cards = convs
+      .filter(c => c.state === col.state)
+      .sort((a, b) => new Date(b.updatedAt || b.lastInboundAt) - new Date(a.updatedAt || a.lastInboundAt));
+
+    const cardsHtml = cards.length
+      ? cards.map(c => {
+          const name   = c.customerName || c.fullName || c.waId;
+          const phone  = c.waId.replace(/^57/, '+57 ');
+          const prev   = c._preview || '—';
+          const upd    = c.updatedAt || c.lastInboundAt;
+          const time   = upd ? relTime(new Date(upd)) : '';
+          const dot    = c.automationEnabled ? 'on' : 'off';
+          return `
+            <div class="pl-card" onclick="pipelineSelect('${c.waId}')">
+              <div class="pl-card-name">${x(name)}</div>
+              <div class="pl-card-phone">${phone}</div>
+              <div class="pl-card-preview">${x(prev)}</div>
+              <div class="pl-card-foot">
+                <span class="pl-card-time">${time}</span>
+                <span class="pl-bot-dot ${dot}" title="${dot === 'on' ? 'Bot activo' : 'Bot pausado'}"></span>
+              </div>
+            </div>`;
+        }).join('')
+      : `<div class="pl-empty">Sin conversaciones</div>`;
+
+    return `
+      <div class="pl-col ${col.state}">
+        <div class="pl-col-header">
+          <span class="pl-col-label">${col.label}</span>
+          <span class="pl-col-count">${cards.length}</span>
+        </div>
+        <div class="pl-col-body">${cardsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+function pipelineSelect(waId) {
+  closePipeline();
+  selectConv(waId);
+}
+
+function relTime(date) {
+  const diff = Date.now() - date.getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)   return 'Ahora';
+  if (m < 60)  return `Hace ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24)  return `Hace ${h}h`;
+  const d = Math.floor(h / 24);
+  return `Hace ${d}d`;
+}
 </script>
 </body>
 </html>

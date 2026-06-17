@@ -3,8 +3,10 @@ import { events } from "../events";
 import { prisma } from "../db";
 import { getOrLoadSession, getSession, setAutomation } from "../sessions";
 import { notify, notifyPhoto } from "../telegram";
-import { notifyOwner } from "../owner";
-import { findCombo, formatCOP, REMARKETING_DISCOUNT } from "../products";
+import { notifyOwner, markOwnerWindowOpen } from "../owner";
+import { handleOwnerMessage } from "./ownerHandler";
+import { findCombo, formatCOP } from "../products";
+import { getConfig } from "../botConfig";
 import {
   getMediaUrl,
   markAsRead,
@@ -26,6 +28,7 @@ import {
   State,
   isValidTransition,
   pushHistory,
+  buildDynamicGreeting,
 } from "./flow";
 import { enqueueInbound } from "./messageQueue";
 import {
@@ -54,6 +57,10 @@ export interface InboundEvent {
 }
 
 export async function handleInbound(ev: InboundEvent): Promise<void> {
+  if (ev.waId === config.owner.waNumber) {
+    await handleOwnerMessage(ev.text ?? "");
+    return;
+  }
   const session = await getOrLoadSession(ev.waId);
   session.lastInboundAt = Date.now();
   if (ev.customerName && !session.customerName) {
@@ -70,13 +77,46 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
     markAsRead(ev.whatsappMsgId).catch(() => {});
   }
 
+  // Stickers, reactions, location pins, etc. — nothing actionable, skip silently.
+  if (ev.type === "other" && !ev.text && !ev.mediaId) return;
+
   let text = ev.text ?? "";
   let hasImage = false;
   let imageMediaId: string | undefined;
 
   if (ev.type === "audio" && ev.mediaId) {
     const transcript = await transcribeAudio(ev.mediaId);
-    if (transcript) text = transcript;
+    if (transcript) {
+      text = transcript;
+    } else {
+      // No transcription available — log, notify dashboard, and ask customer to type
+      await persistInbound(session, ev, "[audio - sin transcripción]");
+      cancelRemarketing(ev.waId);
+      events.emitDashboard({
+        type: "message",
+        waId: ev.waId,
+        direction: "inbound",
+        body: "[audio]",
+        messageType: ev.type,
+        at: Date.now(),
+      });
+      if (session.automationEnabled) {
+        await sendText(
+          ev.waId,
+          "¡Hola! No pude escuchar bien el audio 🎤 ¿Me escribes tu pregunta? Así te respondo enseguida 💛",
+        );
+        await persistOutbound(session, "¡Hola! No pude escuchar bien el audio 🎤 ¿Me escribes tu pregunta? Así te respondo enseguida 💛", session.state);
+        events.emitDashboard({
+          type: "message",
+          waId: ev.waId,
+          direction: "outbound",
+          body: "¡Hola! No pude escuchar bien el audio 🎤 ¿Me escribes tu pregunta? Así te respondo enseguida 💛",
+          messageType: "text",
+          at: Date.now(),
+        });
+      }
+      return;
+    }
   }
 
   if (ev.type === "image") {
@@ -93,6 +133,7 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
     direction: "inbound",
     body: text || (hasImage ? "[imagen]" : "[audio]"),
     messageType: ev.type,
+    mediaUrl: hasImage ? imageMediaId : undefined,
     at: Date.now(),
   });
 
@@ -114,13 +155,18 @@ async function processCombined(
 ): Promise<void> {
   if (!session.automationEnabled) return;
 
+  const dynCfg = await getConfig();
+  if (dynCfg.botPaused) return;
+
   if (session.history.length === 0 && session.state === "GREETING") {
     const imgs = config.greeting.imageUrls;
     if (imgs.length > 0) {
       const url = imgs[Math.floor(Math.random() * imgs.length)];
       await sendImageUrl(session.waId, url);
     }
-    await replyHardcoded(session, HARDCODED_GREETING, HARDCODED_GREETING_JSON);
+    const greeting = buildDynamicGreeting(dynCfg.pack3Price, dynCfg.pack6Price);
+    const greetingJson = JSON.stringify({ message: greeting, state: "GREETING", cartUpdate: null });
+    await replyHardcoded(session, greeting, greetingJson);
     pushHistory(session, "user", combined);
     transitionTo(session, "INTEREST");
     scheduleFullSequence(session);
@@ -162,6 +208,9 @@ async function processCombined(
         enabled: false,
         at: Date.now(),
       });
+      prisma.conversation
+        .update({ where: { waId: session.waId }, data: { automationEnabled: false } })
+        .catch((e: any) => console.error("[wholesaler.persist]", e.message));
       notify(TELEGRAM_TEMPLATES.wholesaler(session.waId, session.customerName));
     }
 
@@ -175,9 +224,21 @@ async function processCombined(
         at: Date.now(),
       });
       cancelRemarketing(session.waId);
-      transitionTo(session, "CLOSED");
+      // Do NOT transition to CLOSED — that state is reserved for completed purchases.
+      // Just disable the bot and leave the conversation at its current funnel state.
+      prisma.conversation
+        .update({ where: { waId: session.waId }, data: { automationEnabled: false } })
+        .catch((e: any) => console.error("[not_interested.persist]", e.message));
       notify(TELEGRAM_TEMPLATES.notInterested(session.waId, session.customerName));
     }
+
+    if (special.type === "come_back_later" && special.reminder) {
+      const dueAt = new Date(Date.now() + special.reminder.daysFromNow * 24 * 60 * 60 * 1000);
+      prisma.reminder
+        .create({ data: { waId: session.waId, note: special.reminder.note, dueAt } })
+        .catch((e: any) => console.error("[reminder.comeBack]", e.message));
+    }
+
     return;
   }
 
@@ -201,9 +262,15 @@ async function processCombined(
   } else {
     const reply = await askClaude(session, combined);
     claudeText = reply.message;
-    nextState = isValidTransition(session.state, reply.state)
+    let proposedState = isValidTransition(session.state, reply.state)
       ? reply.state
       : session.state;
+    // CLOSED is only valid for real completed purchases — block it if the customer
+    // hasn't provided at minimum a name and address.
+    if (proposedState === "CLOSED" && !hasMinimumOrderData(session)) {
+      proposedState = session.state;
+    }
+    nextState = proposedState;
     cartUpdate = reply.cartUpdate;
     if (reply.fields) applyFields(session, reply.fields);
     if (reply.reminder) {
@@ -300,9 +367,9 @@ function transitionTo(session: Session, to: State) {
 }
 
 async function replyHardcoded(session: Session, text: string, historyJson: string) {
-  await sendText(session.waId, text);
+  const msgId = await sendText(session.waId, text);
   pushHistory(session, "assistant", historyJson);
-  await persistOutbound(session, text, session.state);
+  await persistOutbound(session, text, session.state, undefined, msgId ?? undefined);
   session.lastOutboundAt = Date.now();
   events.emitDashboard({
     type: "message",
@@ -316,13 +383,13 @@ async function replyHardcoded(session: Session, text: string, historyJson: strin
 
 async function replyText(session: Session, text: string, state: State) {
   const sanitized = sanitizeOutput(text);
-  await sendInParts(session.waId, sanitized);
+  const msgId = await sendInParts(session.waId, sanitized);
   pushHistory(
     session,
     "assistant",
     JSON.stringify({ message: sanitized, state, cartUpdate: null }),
   );
-  await persistOutbound(session, sanitized, state);
+  await persistOutbound(session, sanitized, state, undefined, msgId ?? undefined);
   session.lastOutboundAt = Date.now();
   events.emitDashboard({
     type: "message",
@@ -421,7 +488,7 @@ export function shouldCreateNewOrder(existing: { id: number; status: string } | 
 
 export async function persistOrderIfNeeded(session: Session) {
   if (!session.cart.length) return;
-  const total = computeTotal(session);
+  const total = await computeTotal(session);
 
   try {
     const conv = await ensureConversation(session);
@@ -472,15 +539,23 @@ export async function persistOrderIfNeeded(session: Session) {
   }
 }
 
-function computeTotal(session: Session): number {
+async function computeTotal(session: Session): Promise<number> {
+  const cfg = await getConfig();
+  const prices: Record<string, number> = { pack3: cfg.pack3Price, pack6: cfg.pack6Price };
   for (const item of session.cart) {
-    const combo = findCombo(item.variant);
-    if (combo) {
-      const unitPrice = session.discountOffered ? combo.price - REMARKETING_DISCOUNT : combo.price;
-      return unitPrice * item.quantity;
-    }
+    const base = prices[item.variant] ?? findCombo(item.variant)?.price ?? cfg.pack3Price;
+    const unitPrice = session.discountOffered ? base - cfg.remarketingDiscount : base;
+    return unitPrice * item.quantity;
   }
-  return 69900;
+  return cfg.pack3Price;
+}
+
+function hasMinimumOrderData(session: Session): boolean {
+  return (
+    session.cart.length > 0 &&
+    !!(session.fullName || session.customerName) &&
+    !!session.address
+  );
 }
 
 function orderSummary(session: Session, total: number): string {
