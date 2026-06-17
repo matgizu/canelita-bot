@@ -1,17 +1,18 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config";
+import { getConfig } from "../botConfig";
 import { CLAUDE_PARAMS, buildContextHint, buildSystemPrompt, ContextHints } from "../bot/prompts";
 import { ClaudeReply, parseClaudeReply } from "../bot/parser";
 import type { Session } from "../bot/flow";
 
 const client = new Anthropic({ apiKey: config.anthropic.apiKey });
 
-const SYSTEM_PROMPT = buildSystemPrompt();
-
 export async function askClaude(
   session: Session,
   userMessage: string,
 ): Promise<ClaudeReply> {
+  const cfg = await getConfig();
+
   const hint: ContextHints = {
     state: session.state,
     customerName: session.customerName,
@@ -46,7 +47,7 @@ export async function askClaude(
       model: CLAUDE_PARAMS.model,
       max_tokens: CLAUDE_PARAMS.max_tokens,
       temperature: CLAUDE_PARAMS.temperature,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(cfg, session.strategy ?? "A"),
       messages,
     });
 

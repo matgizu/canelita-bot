@@ -83,11 +83,47 @@ export const HARDCODED_GREETING_JSON = JSON.stringify({
   cartUpdate: null,
 });
 
+export function buildDynamicGreeting(pack3Price: number, pack6Price: number): string {
+  const p3PerUnit = Math.round(pack3Price / 3);
+  const p6PerUnit = Math.round(pack6Price / 6);
+  return `¡Hola! Soy Valentina de FreskaBox 🌿
+
+Dime una cosa: ¿te pasa que abres la nevera y las cosas están todas amontonadas o se pierden en el fondo?
+
+Eso es exactamente lo que resuelven estos cajones — se enganchan bajo cada repisa en 5 segundos, sin tornillos ni pegamento, y crean un espacio extra que normalmente no usas.
+
+📦 Pack x3 — 3 cajones: $${pack3Price.toLocaleString("es-CO")} (te sale a $${p3PerUnit.toLocaleString("es-CO")} cada uno)
+📦 Pack x6 — nevera completa: $${pack6Price.toLocaleString("es-CO")} (te sale a $${p6PerUnit.toLocaleString("es-CO")} cada uno)
+
+Los dos tienen envío gratis a toda Colombia 🇨🇴 y pagas cuando lo recibes — sin riesgo.
+
+¿Cuántas repisas tiene tu nevera? Así te digo cuál pack te conviene más.`;
+}
+
+export function buildDynamicGreetingB(pack3Price: number, pack6Price: number): string {
+  const p3PerUnit = Math.round(pack3Price / 3);
+  const p6PerUnit = Math.round(pack6Price / 6);
+  return `¡Hola! Soy Valentina de FreskaBox 🌿
+
+Te acabo de enviar fotos y el video para que los veas bien antes de cualquier cosa.
+
+Son cajones que se enganchan bajo cada repisa de tu nevera en 5 segundos — sin tornillos, sin pegamento — y crean espacio extra donde antes no había nada.
+
+📦 Pack x3 — 3 cajones: $${pack3Price.toLocaleString("es-CO")} (te sale a $${p3PerUnit.toLocaleString("es-CO")} c/u)
+📦 Pack x6 — nevera completa: $${pack6Price.toLocaleString("es-CO")} (te sale a $${p6PerUnit.toLocaleString("es-CO")} c/u)
+
+Envío gratis a toda Colombia 🇨🇴 y pagas cuando lo recibes — sin riesgo.
+
+¿Cuántas repisas tiene tu nevera?`;
+}
+
+export function buildRemarketingMsg(pack3Price: number, discount: number): string {
+  const discountedPrice = pack3Price - discount;
+  return `Hola, solo para avisarte que hoy te puedo aplicar $${discount.toLocaleString("es-CO")} de descuento en tu pedido.\n\nPack x3 → $${discountedPrice.toLocaleString("es-CO")} — envío gratis, pagas cuando lo recibes 🇨🇴\n\n¿Lo cerramos?`;
+}
+
 export const REMARKETING_MESSAGES = {
-  t1: `¿Pudiste ver bien los cajones FreskaBox?\n\nCada uno se engancha bajo la repisa de tu nevera en 5 segundos — sin herramientas. El pack x3 organiza 3 repisas completas por $69.900.\n\nEnvío gratis a toda Colombia 🇨🇴 y pagas cuando lo recibes.\n\n¿Te lo mandamos hoy?`,
-  t2: `Hola de nuevo. Los cajones FreskaBox siguen disponibles con envío gratis y contraentrega — sin riesgo.\n\nQuien prueba el pack x3 casi siempre vuelve por el x6 para completar la nevera. ¿Arrancamos?\n\nPack x3: $69.900 · Pack x6: $119.900`,
-  t3: `Buenos días ☀️ Solo hoy te puedo aplicar un descuento de $10.000 en tu pedido FreskaBox.\n\nPack x3 → $59.900 (antes $69.900)\nPack x6 → $109.900 (antes $119.900)\n\nEnvío gratis y pagas cuando lo recibes 🇨🇴 ¿Lo cerramos hoy?`,
-  t4: `Última vez que te escribo. Los cajones FreskaBox tienen envío gratis y pagas contraentrega — sin riesgo de tu parte.\n\nPack x3 por $69.900 o nevera completa con el x6 por $119.900.\n\n¿Lo llevamos o lo dejamos?`,
+  t3: `Hola, solo para avisarte que hoy te puedo aplicar $10.000 de descuento en tu pedido.\n\nPack x3 → $59.900 — envío gratis, pagas cuando lo recibes 🇨🇴\n\n¿Lo cerramos?`,
 };
 
 // Helper: ms until colHour:00 on the next COL calendar day (COL = UTC-5, no DST).
@@ -116,6 +152,12 @@ export const TIMING = {
   perPartMaxMs: 4_000,
 };
 
+export type Strategy = "A" | "B";
+
+export function randomStrategy(): Strategy {
+  return Math.random() < 0.5 ? "A" : "B";
+}
+
 export interface CartItem {
   variant: "pack3" | "pack6";
   quantity: number;
@@ -124,6 +166,7 @@ export interface CartItem {
 export interface Session {
   waId: string;
   state: State;
+  strategy: Strategy;
   cart: CartItem[];
   customerName?: string;
   fullName?: string;
@@ -157,6 +200,7 @@ export function newSession(waId: string): Session {
   return {
     waId,
     state: "GREETING",
+    strategy: randomStrategy(),
     cart: [],
     history: [],
     automationEnabled: true,

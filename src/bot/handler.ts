@@ -29,6 +29,7 @@ import {
   isValidTransition,
   pushHistory,
   buildDynamicGreeting,
+  buildDynamicGreetingB,
 } from "./flow";
 import { enqueueInbound } from "./messageQueue";
 import {
@@ -160,13 +161,29 @@ async function processCombined(
 
   if (session.history.length === 0 && session.state === "GREETING") {
     const imgs = config.greeting.imageUrls;
-    if (imgs.length > 0) {
-      const url = imgs[Math.floor(Math.random() * imgs.length)];
-      await sendImageUrl(session.waId, url);
+    if (session.strategy === "B") {
+      // Estrategia B: envía TODAS las fotos + video antes del texto
+      for (const url of imgs) {
+        await sendImageUrl(session.waId, url);
+        await new Promise((r) => setTimeout(r, 600));
+      }
+      if (config.product.videoUrl) {
+        await sendVideoUrl(session.waId, config.product.videoUrl);
+        await new Promise((r) => setTimeout(r, 800));
+      }
+      const greeting = buildDynamicGreetingB(dynCfg.pack3Price, dynCfg.pack6Price);
+      const greetingJson = JSON.stringify({ message: greeting, state: "GREETING", cartUpdate: null });
+      await replyHardcoded(session, greeting, greetingJson);
+    } else {
+      // Estrategia A: 1 foto aleatoria
+      if (imgs.length > 0) {
+        const url = imgs[Math.floor(Math.random() * imgs.length)];
+        await sendImageUrl(session.waId, url);
+      }
+      const greeting = buildDynamicGreeting(dynCfg.pack3Price, dynCfg.pack6Price);
+      const greetingJson = JSON.stringify({ message: greeting, state: "GREETING", cartUpdate: null });
+      await replyHardcoded(session, greeting, greetingJson);
     }
-    const greeting = buildDynamicGreeting(dynCfg.pack3Price, dynCfg.pack6Price);
-    const greetingJson = JSON.stringify({ message: greeting, state: "GREETING", cartUpdate: null });
-    await replyHardcoded(session, greeting, greetingJson);
     pushHistory(session, "user", combined);
     transitionTo(session, "INTEREST");
     scheduleFullSequence(session);
@@ -407,6 +424,7 @@ async function ensureConversation(session: Session) {
     create: {
       waId: session.waId,
       state: session.state,
+      ...(session.strategy ? { strategy: session.strategy } as any : {}),
       automationEnabled: session.automationEnabled,
       customerName: session.customerName,
       cart: session.cart as any,

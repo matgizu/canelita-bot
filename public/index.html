@@ -547,6 +547,80 @@
       font-size: 12px; font-weight: 600; cursor: pointer;
     }
     #pipeline-btn:hover { background: #374151; }
+    #ab-btn {
+      padding: 6px 14px; background: #1f2937; color: #fb923c;
+      border: 1px solid #374151; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    #ab-btn:hover { background: #374151; }
+
+    /* ── A/B Modal ── */
+    #ab-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    #ab-panel {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 16px;
+      width: 820px; max-width: 95vw; max-height: 90vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    #ab-header {
+      display: flex; align-items: center; padding: 16px 20px;
+      border-bottom: 1px solid #1e293b; gap: 10px;
+    }
+    #ab-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    #ab-header .ab-sub { font-size: 11px; color: #64748b; }
+    #ab-close {
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+      width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+      font-size: 14px; display: flex; align-items: center; justify-content: center;
+    }
+    #ab-close:hover { background: #334155; color: #fff; }
+    #ab-body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+
+    .ab-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .ab-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+      padding: 18px; display: flex; flex-direction: column; gap: 12px;
+    }
+    .ab-card.winner { border-color: #10b981; box-shadow: 0 0 0 1px #10b981; }
+    .ab-card-header { display: flex; align-items: center; gap: 10px; }
+    .ab-badge {
+      font-size: 11px; font-weight: 800; letter-spacing: .6px; padding: 3px 10px;
+      border-radius: 20px; text-transform: uppercase;
+    }
+    .ab-badge.A { background: #1e3a5f; color: #60a5fa; }
+    .ab-badge.B { background: #3b1f00; color: #fb923c; }
+    .ab-card-name { color: #e2e8f0; font-size: 13px; font-weight: 600; flex: 1; }
+    .ab-winner-tag {
+      font-size: 10px; font-weight: 700; color: #10b981;
+      background: #064e3b; border-radius: 10px; padding: 2px 8px;
+    }
+    .ab-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ab-metric { background: #0f172a; border-radius: 8px; padding: 10px 12px; }
+    .ab-metric-val { font-size: 22px; font-weight: 800; color: #f1f5f9; line-height: 1; }
+    .ab-metric-lbl { font-size: 10px; color: #64748b; margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; }
+    .ab-bar-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .ab-bar-row { display: flex; align-items: center; gap: 8px; }
+    .ab-bar-lbl { font-size: 10px; color: #64748b; width: 80px; flex-shrink: 0; text-transform: uppercase; }
+    .ab-bar-track { flex: 1; height: 6px; background: #0f172a; border-radius: 3px; overflow: hidden; }
+    .ab-bar-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+    .ab-bar-fill.A { background: #3b82f6; }
+    .ab-bar-fill.B { background: #fb923c; }
+    .ab-bar-pct { font-size: 10px; font-weight: 700; color: #94a3b8; width: 32px; text-align: right; flex-shrink: 0; }
+
+    .ab-funnel { display: flex; flex-direction: column; gap: 4px; }
+    .ab-funnel-row { display: flex; align-items: center; gap: 8px; }
+    .ab-funnel-lbl { font-size: 11px; color: #64748b; width: 120px; flex-shrink: 0; }
+    .ab-funnel-bars { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .ab-funnel-bar { display: flex; align-items: center; gap: 6px; }
+    .ab-funnel-track { flex: 1; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; }
+    .ab-funnel-fill { height: 100%; border-radius: 4px; }
+    .ab-funnel-fill.A { background: #3b82f6; }
+    .ab-funnel-fill.B { background: #fb923c; }
+    .ab-funnel-val { font-size: 10px; color: #94a3b8; width: 28px; text-align: right; }
+    .ab-note { font-size: 11px; color: #475569; text-align: center; padding: 4px 0; }
     #pipeline-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.65);
       display: flex; align-items: stretch; justify-content: stretch;
@@ -650,6 +724,7 @@
   <button id="templates-btn" onclick="openTemplates()">📋 Plantillas</button>
   <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
   <button id="pipeline-btn" onclick="openPipeline()">📊 Pipeline</button>
+  <button id="ab-btn" onclick="openAB()">🧪 A/B</button>
   <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
   <div class="sse-pill">
     <div class="sse-dot" id="sse-dot"></div>
@@ -845,6 +920,22 @@
         placeholder="Escribe como si fueras el cliente…"
         onkeydown="testKey(event)" oninput="grow(this)"></textarea>
       <button id="test-send" onclick="testSend()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- A/B overlay -->
+<div id="ab-overlay" hidden>
+  <div id="ab-panel">
+    <div id="ab-header">
+      <h2>🧪 Estrategias A/B</h2>
+      <span class="ab-sub" id="ab-sub">Asignación aleatoria 50/50 activa</span>
+      <button id="ab-close" onclick="closeAB()">✕</button>
+    </div>
+    <div id="ab-body">
+      <div class="ab-cards" id="ab-cards"></div>
+      <div class="ab-funnel" id="ab-funnel-section"></div>
+      <div class="ab-note" id="ab-note"></div>
     </div>
   </div>
 </div>
@@ -1890,8 +1981,135 @@ function testKey(e) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeTest(); closePipeline(); }
+  if (e.key === 'Escape') { closeTest(); closePipeline(); closeAB(); }
 });
+
+/* ─────────────────────────────────────
+   A/B TESTING
+───────────────────────────────────── */
+let abData = null;
+
+async function openAB() {
+  document.getElementById('ab-overlay').hidden = false;
+  await loadABMetrics();
+}
+
+function closeAB() {
+  document.getElementById('ab-overlay').hidden = true;
+}
+
+async function loadABMetrics() {
+  const cardsEl   = document.getElementById('ab-cards');
+  const funnelEl  = document.getElementById('ab-funnel-section');
+  const noteEl    = document.getElementById('ab-note');
+  cardsEl.innerHTML = '<div style="color:#475569;font-size:12px;padding:20px">Cargando métricas…</div>';
+  funnelEl.innerHTML = '';
+  noteEl.textContent = '';
+
+  try {
+    const res = await fetch('/api/metrics/strategies');
+    if (!res.ok) throw new Error('error');
+    const data = await res.json();
+    abData = data;
+    renderABMetrics(data);
+  } catch {
+    cardsEl.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:20px">Error cargando métricas</div>';
+  }
+}
+
+function renderABMetrics(data) {
+  const cardsEl  = document.getElementById('ab-cards');
+  const funnelEl = document.getElementById('ab-funnel-section');
+  const noteEl   = document.getElementById('ab-note');
+
+  const stratA = data.find(d => d.strategy === 'A') || { strategy:'A', total:0, interacted:0, reachedFunnel:0, closed:0, interactionRate:0, conversionRate:0, funnelRate:0 };
+  const stratB = data.find(d => d.strategy === 'B') || { strategy:'B', total:0, interacted:0, reachedFunnel:0, closed:0, interactionRate:0, conversionRate:0, funnelRate:0 };
+
+  const winnerConv = stratA.conversionRate >= stratB.conversionRate ? 'A' : 'B';
+  const total = stratA.total + stratB.total;
+
+  const stratNames = {
+    A: 'Valentina Clásica',
+    B: 'Visual First',
+  };
+  const stratDesc = {
+    A: '1 foto aleatoria · texto conversacional',
+    B: 'Todas las fotos + video · confianza visual',
+  };
+
+  function card(s, isWinner) {
+    const n = s.strategy;
+    return `
+      <div class="ab-card ${isWinner ? 'winner' : ''}">
+        <div class="ab-card-header">
+          <span class="ab-badge ${n}">${n}</span>
+          <div>
+            <div class="ab-card-name">${stratNames[n]}</div>
+            <div style="font-size:10px;color:#475569;margin-top:2px">${stratDesc[n]}</div>
+          </div>
+          ${isWinner && s.total > 0 ? '<span class="ab-winner-tag">Ganando</span>' : ''}
+        </div>
+        <div class="ab-metrics">
+          <div class="ab-metric">
+            <div class="ab-metric-val">${s.total}</div>
+            <div class="ab-metric-lbl">Conversaciones</div>
+          </div>
+          <div class="ab-metric">
+            <div class="ab-metric-val">${s.closed}</div>
+            <div class="ab-metric-lbl">Ventas cerradas</div>
+          </div>
+          <div class="ab-metric">
+            <div class="ab-metric-val">${s.conversionRate}%</div>
+            <div class="ab-metric-lbl">Tasa conversión</div>
+          </div>
+          <div class="ab-metric">
+            <div class="ab-metric-val">${s.interactionRate}%</div>
+            <div class="ab-metric-lbl">Respondieron</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  cardsEl.innerHTML = card(stratA, winnerConv === 'A' && stratA.total > 0) + card(stratB, winnerConv === 'B' && stratB.total > 0);
+
+  // Funnel comparativo
+  const maxVal = Math.max(stratA.total, stratB.total, 1);
+  const stages = [
+    { lbl: 'Total recibidos', a: stratA.total,         b: stratB.total },
+    { lbl: 'Respondieron',   a: stratA.interacted,     b: stratB.interacted },
+    { lbl: 'Al carrito',     a: stratA.reachedFunnel,  b: stratB.reachedFunnel },
+    { lbl: 'Cerradas',       a: stratA.closed,         b: stratB.closed },
+  ];
+
+  funnelEl.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Embudo comparativo</div>
+    ${stages.map(st => `
+      <div class="ab-funnel-row">
+        <span class="ab-funnel-lbl">${st.lbl}</span>
+        <div class="ab-funnel-bars">
+          <div class="ab-funnel-bar">
+            <div style="font-size:9px;color:#3b82f6;width:8px">A</div>
+            <div class="ab-funnel-track"><div class="ab-funnel-fill A" style="width:${Math.round(st.a/maxVal*100)}%"></div></div>
+            <span class="ab-funnel-val">${st.a}</span>
+          </div>
+          <div class="ab-funnel-bar">
+            <div style="font-size:9px;color:#fb923c;width:8px">B</div>
+            <div class="ab-funnel-track"><div class="ab-funnel-fill B" style="width:${Math.round(st.b/maxVal*100)}%"></div></div>
+            <span class="ab-funnel-val">${st.b}</span>
+          </div>
+        </div>
+      </div>`).join('')}`;
+
+  const minSample = 30;
+  if (total < minSample) {
+    noteEl.textContent = `⚠️ Muestra pequeña (${total} conversaciones). Necesitas al menos ${minSample} por estrategia para resultados confiables.`;
+  } else {
+    const diff = Math.abs(stratA.conversionRate - stratB.conversionRate);
+    noteEl.textContent = diff < 2
+      ? `Las dos estrategias tienen resultados muy similares (diferencia < 2%). Sigue acumulando datos.`
+      : `Estrategia ${winnerConv} lleva ${diff}pp de ventaja en conversión.`;
+  }
+}
 
 /* ─────────────────────────────────────
    PIPELINE

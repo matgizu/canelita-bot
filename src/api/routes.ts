@@ -7,6 +7,7 @@ import { config } from "../config";
 import { getSession, setAutomation } from "../sessions";
 import { cancelRemarketing } from "../bot/remarketing";
 import { persistOrderIfNeeded } from "../bot/handler";
+import { ownerWindowStatus } from "../owner";
 import { deleteMessage, mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
 import { sanitizeOutput } from "../bot/blocklist";
 import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
@@ -17,6 +18,10 @@ const upload = multer({
 });
 
 export const apiRouter = Router();
+
+apiRouter.get("/owner-status", (_req, res) => {
+  res.json({ windowOpen: ownerWindowStatus() });
+});
 
 apiRouter.get("/metrics", async (_req, res) => {
   try {
@@ -370,6 +375,33 @@ apiRouter.patch("/conversations/:waId/close", async (req, res) => {
   }
 });
 
+apiRouter.patch("/conversations/:waId/reopen", async (req, res) => {
+  const waId = req.params.waId;
+  try {
+    const conv = await prisma.conversation.findUnique({ where: { waId } });
+    if (!conv) { res.status(404).json({ error: "not_found" }); return; }
+    if (conv.state !== "CLOSED") { res.status(400).json({ error: "not_closed" }); return; }
+
+    const reopenState = "PAYMENT_METHOD";
+    await prisma.conversation.update({ where: { waId }, data: { state: reopenState } });
+
+    // Cancel any pending orders so they don't count as sales
+    await prisma.order.updateMany({
+      where: { conversation: { waId }, status: "PENDING" },
+      data: { status: "CANCELLED" },
+    });
+
+    const session = getSession(waId);
+    session.state = reopenState as any;
+
+    events.emitDashboard({ type: "state_change", waId, from: "CLOSED", to: reopenState, at: Date.now() });
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("[reopen]", e.message);
+    res.status(500).json({ error: "reopen_failed" });
+  }
+});
+
 apiRouter.post("/conversations/:waId/send", async (req, res) => {
   const text = String(req.body?.text ?? "").trim();
   if (!text) {
@@ -453,6 +485,44 @@ apiRouter.post(
     res.json({ ok: true, type, mediaId });
   },
 );
+
+apiRouter.get("/metrics/strategies", async (_req, res) => {
+  try {
+    const rows = await prisma.$queryRaw<Array<{
+      strategy: string;
+      total: bigint;
+      interacted: bigint;
+      reached_funnel: bigint;
+      closed: bigint;
+    }>>`
+      SELECT
+        strategy,
+        COUNT(*)::int                                                          AS total,
+        COUNT(*) FILTER (WHERE state <> 'GREETING')::int                      AS interacted,
+        COUNT(*) FILTER (WHERE state IN ('CONFIRM_ORDER','ADDRESS_COLLECTION','PAYMENT_METHOD','CLOSED'))::int AS reached_funnel,
+        COUNT(*) FILTER (WHERE state = 'CLOSED')::int                         AS closed
+      FROM freskabox."Conversation"
+      GROUP BY strategy
+      ORDER BY strategy
+    `;
+
+    const result = rows.map(r => ({
+      strategy: r.strategy,
+      total:        Number(r.total),
+      interacted:   Number(r.interacted),
+      reachedFunnel:Number(r.reached_funnel),
+      closed:       Number(r.closed),
+      interactionRate: r.total > 0 ? Math.round(Number(r.interacted)    / Number(r.total) * 100) : 0,
+      conversionRate:  r.total > 0 ? Math.round(Number(r.closed)        / Number(r.total) * 100) : 0,
+      funnelRate:      r.total > 0 ? Math.round(Number(r.reached_funnel)/ Number(r.total) * 100) : 0,
+    }));
+
+    res.json(result);
+  } catch (e: any) {
+    console.error("[metrics.strategies]", e.message);
+    res.status(500).json({ error: "fetch_failed" });
+  }
+});
 
 apiRouter.delete("/messages/:msgId", async (req, res) => {
   const msgId = req.params.msgId;

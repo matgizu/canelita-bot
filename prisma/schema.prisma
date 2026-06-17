@@ -28,6 +28,7 @@ model Conversation {
   discountOffered   Boolean   @default(false)
   state             String    @default("GREETING")
   automationEnabled Boolean   @default(true)
+  strategy          String    @default("A")
   objectionCount    Int       @default(0)
   cart              Json      @default("[]")
   pendingOrder      Json?
@@ -106,4 +107,10 @@ model Reminder {
   createdAt DateTime @default(now())
 
   @@index([sent, dueAt])
+}
+
+model BotConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

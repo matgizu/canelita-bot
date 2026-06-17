@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import { CartItem, Session, State, newSession } from "./bot/flow";
+import { CartItem, Session, State, Strategy, newSession } from "./bot/flow";
 
 const TTL_MS = 24 * 60 * 60 * 1000;
 const sessions = new Map<string, Session>();
@@ -57,6 +57,7 @@ export async function getOrLoadSession(waId: string): Promise<Session> {
       const session: Session = {
         waId,
         state: conv.state as State,
+        strategy: ((conv as any).strategy as Strategy) ?? "A",
         cart: (conv.cart as unknown as CartItem[]) ?? [],
         customerName: conv.customerName ?? undefined,
         fullName: conv.fullName ?? undefined,
