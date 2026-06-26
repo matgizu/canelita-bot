@@ -561,6 +561,29 @@
     .tag-pill .cnt { opacity: .55; font-weight: 400; }
     .tag-pill .del { opacity: .45; padding-left: 2px; }
     .tag-pill .del:hover { opacity: 1; color: #dc2626; }
+    /* ── Modal cerrar venta ── */
+    #close-sale-overlay {
+      position: fixed; inset: 0; z-index: 120;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #close-sale-card {
+      width: 360px; max-width: 92vw; background: var(--card);
+      border-radius: 14px; padding: 20px; box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    #close-sale-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    #close-sale-card p { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    #close-sale-card label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    #close-sale-date {
+      width: 100%; margin-top: 6px; padding: 9px 12px; font-size: 13px;
+      border: 1px solid var(--border); border-radius: 8px; font-family: inherit; outline: none;
+    }
+    #close-sale-date:focus { border-color: var(--brand); }
+    .csm-row { display: flex; gap: 8px; margin-top: 18px; }
+    .csm-row button { flex: 1; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+    #csm-confirm { background: #059669; color: #fff; }
+    #csm-confirm:hover { background: #047857; }
+    #csm-cancel { background: #f3f4f6; color: var(--muted); border: 1px solid var(--border); }
 
     /* ── Orders overlay ── */
     #orders-overlay {
@@ -948,6 +971,20 @@
       </div>
       <!-- Template list -->
       <div id="tpl-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Cerrar venta: elegir fecha -->
+<div id="close-sale-overlay" hidden>
+  <div id="close-sale-card">
+    <h3>✓ Marcar venta cerrada</h3>
+    <p>Indica la fecha y hora en que se cerró la venta.</p>
+    <label for="close-sale-date">Fecha de cierre</label>
+    <input type="datetime-local" id="close-sale-date">
+    <div class="csm-row">
+      <button id="csm-cancel" onclick="cancelCloseSale()">Cancelar</button>
+      <button id="csm-confirm" onclick="confirmCloseSale()">Marcar venta</button>
     </div>
   </div>
 </div>
@@ -1977,11 +2014,47 @@ async function deleteMsg(msgId, btn) {
   } catch { btn.disabled = false; alert('Error de conexión'); }
 }
 
-async function closeConv(waId) {
-  if (!confirm('¿Marcar esta conversación como cerrada?')) return;
+let closingWaId = null;
+
+function localNowForInput(d = new Date()) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Abre el modal para elegir la fecha/hora de cierre (en vez de cerrar al toque).
+function closeConv(waId) {
+  closingWaId = waId;
+  document.getElementById('close-sale-date').value = localNowForInput();
+  document.getElementById('close-sale-overlay').hidden = false;
+}
+
+function cancelCloseSale() {
+  document.getElementById('close-sale-overlay').hidden = true;
+  closingWaId = null;
+}
+
+async function confirmCloseSale() {
+  const waId = closingWaId;
+  if (!waId) return;
+  const val = document.getElementById('close-sale-date').value;
+  const closedAt = val ? new Date(val) : new Date();
+  if (isNaN(closedAt.getTime())) { alert('Elige una fecha válida'); return; }
+  if (closedAt.getTime() > Date.now() + 60000) { alert('La fecha no puede ser futura.'); return; }
+  document.getElementById('close-sale-overlay').hidden = true;
+  closingWaId = null;
   try {
-    const res = await fetch(`/api/conversations/${waId}/close`, { method: 'PATCH' });
-    if (!res.ok) { alert('Error cerrando la conversación'); return; }
+    const res = await fetch(`/api/conversations/${waId}/close`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ closedAt: closedAt.toISOString() }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error === 'future_date' ? 'La fecha no puede ser futura.'
+        : d.error === 'invalid_date' ? 'Fecha inválida.'
+        : 'Error cerrando la conversación');
+      return;
+    }
     const c = convs.find(x => x.waId === waId);
     if (c) c.state = 'CLOSED';
     renderSidebar();

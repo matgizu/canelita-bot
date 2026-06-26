@@ -430,10 +430,21 @@ apiRouter.patch("/conversations/:waId/close", async (req, res) => {
     const conv = await prisma.conversation.findUnique({ where: { waId } });
     if (!conv) { res.status(404).json({ error: "not_found" }); return; }
 
+    // Fecha de cierre: la que indique el dueño (cierre manual con fecha pasada),
+    // o ahora si no manda ninguna. No se aceptan fechas inválidas ni futuras.
+    let closedAt = new Date();
+    const raw = req.body?.closedAt;
+    if (raw) {
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) { res.status(400).json({ error: "invalid_date" }); return; }
+      if (d.getTime() > Date.now() + 60_000) { res.status(400).json({ error: "future_date" }); return; }
+      closedAt = d;
+    }
+
     const prevState = conv.state;
     await prisma.conversation.update({
       where: { waId },
-      data: { state: "CLOSED", closedAt: conv.closedAt ?? new Date() },
+      data: { state: "CLOSED", closedAt },
     });
 
     const session = getSession(waId);
