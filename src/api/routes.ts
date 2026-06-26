@@ -417,7 +417,14 @@ apiRouter.post("/conversations/:waId/send", async (req, res) => {
   // ventana de 24h cerrada — sendText ya marca la ventana y avisa al panel).
   // No persistimos ni mostramos como enviado un mensaje que no salió.
   if (!waMsgId) {
-    res.status(502).json({ ok: false, error: "send_failed" });
+    const conv = await prisma.conversation
+      .findUnique({ where: { waId }, select: { windowExpired: true } })
+      .catch(() => null);
+    const windowExpired = !!conv?.windowExpired;
+    res.status(windowExpired ? 409 : 502).json({
+      ok: false,
+      error: windowExpired ? "window_expired" : "send_failed",
+    });
     return;
   }
 

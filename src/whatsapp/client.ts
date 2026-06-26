@@ -42,7 +42,9 @@ export async function sendText(to: string, body: string): Promise<string | null>
     const code = e.response?.data?.error?.code;
     if (WINDOW_EXPIRED_CODES.has(code)) {
       console.warn(`[wa.windowExpired] ${to}`);
-      markWindowExpired(to).catch(() => {});
+      // Awaited: el flag debe quedar persistido antes de retornar para que la
+      // ruta /send pueda leerlo y devolver el error "window_expired" al panel.
+      await markWindowExpired(to).catch(() => {});
     } else {
       console.error("[wa.sendText]", e.response?.data ?? e.message);
     }
