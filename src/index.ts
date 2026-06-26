@@ -7,6 +7,7 @@ import { webhookRouter } from "./api/webhook";
 import { config } from "./config";
 import { prisma } from "./db";
 import { notifyOwner } from "./owner";
+import { sweepHotLeads } from "./bot/hotRecovery";
 
 const app = express();
 
@@ -129,8 +130,12 @@ function scheduleDailyReport(): void {
   }, delay).unref();
 }
 
+// Marcador de versión — sube el cierre con: recuperación de leads calientes,
+// cierre asuntivo en CONFIRM_ORDER y split A/B 80/20. Cutover: 2026-06-19.
+export const RELEASE = "2026-06-19-closerate-v1";
+
 app.listen(config.port, () => {
-  console.log(`[freskabox-bot] listening on :${config.port}`);
+  console.log(`[freskabox-bot] listening on :${config.port} | release: ${RELEASE}`);
 });
 
 // Check for due reminders every 10 minutes
@@ -155,5 +160,9 @@ setInterval(async () => {
     console.error("[reminder.checker]", e.message);
   }
 }, 10 * 60 * 1000).unref();
+
+// Recupera leads calientes estancados a un paso del cierre (cada 10 min).
+sweepHotLeads().catch(() => {});
+setInterval(() => sweepHotLeads().catch(() => {}), 10 * 60 * 1000).unref();
 
 scheduleDailyReport();

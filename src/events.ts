@@ -7,6 +7,7 @@ export type DashboardEvent =
       direction: "inbound" | "outbound";
       body: string;
       messageType: string;
+      mediaUrl?: string;
       at: number;
     }
   | {
@@ -39,7 +40,9 @@ export type DashboardEvent =
       type: "window_expired";
       waId: string;
       at: number;
-    };
+    }
+  | { type: "owner_window_expired"; at: number }
+  | { type: "owner_window_open"; at: number };
 
 class TypedEmitter extends EventEmitter {
   emitDashboard(e: DashboardEvent) {

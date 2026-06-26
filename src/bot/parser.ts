@@ -23,6 +23,9 @@ export interface ClaudeReply {
   cartUpdate: CartItem[] | null;
   fields: SessionFields | null;
   reminder: ReminderEntry | null;
+  // true cuando no se pudo obtener una respuesta válida del modelo.
+  // El handler NO debe enviar nada al cliente en este caso.
+  error?: boolean;
 }
 
 const VALID_STATES = new Set(STATES);
@@ -109,12 +112,15 @@ export function parseClaudeReply(
     };
   }
 
+  // No se pudo extraer un mensaje válido. Señalamos error en vez de filtrar
+  // texto crudo del modelo o un mensaje fuera de marca al cliente.
   return {
-    message: cleaned.replace(/[`{}[\]]/g, "").trim() || "Cuéntame más reina 💛",
+    message: "",
     state: fallbackState,
     cartUpdate: null,
     fields: null,
     reminder: null,
+    error: true,
   };
 }
 

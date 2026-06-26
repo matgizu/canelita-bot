@@ -180,13 +180,20 @@ export async function sendMedia(
   mediaId: string,
   type: MediaType,
   caption?: string,
+  filename?: string,
 ): Promise<string | null> {
   try {
     const payload: Record<string, any> = {
       messaging_product: "whatsapp",
       to,
       type,
-      [type]: { id: mediaId, ...(caption ? { caption } : {}) },
+      [type]: {
+        id: mediaId,
+        // WhatsApp audio (notas de voz) NO admite caption — incluirlo da error.
+        ...(caption && type !== "audio" ? { caption } : {}),
+        // WhatsApp shows documents (PDFs) with this filename to the recipient.
+        ...(type === "document" && filename ? { filename } : {}),
+      },
     };
     const res = await http.post(`/${phoneId}/messages`, payload);
     return res.data?.messages?.[0]?.id ?? null;

@@ -438,12 +438,39 @@ export function detectPhotoRequest(message: string): boolean {
 
 const VIDEO_TRIGGERS = [
   "video",
+  // Cómo funciona / lo quiero ver funcionando
   "como funciona",
   "cómo funciona",
   "ver como funciona",
   "ver cómo funciona",
   "lo quiero ver funcionar",
   "ver funcionando",
+  "como sirve",
+  "para que sirve",
+  // Cómo se pone / instala / usa
+  "como se pone",
+  "como se instala",
+  "como se coloca",
+  "como se usa",
+  "como se arma",
+  "como se monta",
+  "como se engancha",
+  "como lo pongo",
+  "como lo instalo",
+  "como lo coloco",
+  "como se acomoda",
+  "como se ajusta",
+  // No le queda claro / no entiende
+  "no me queda claro",
+  "no me quedo claro",
+  "no me queda muy claro",
+  "no entiendo como",
+  "no entendi como",
+  "no entiendo bien",
+  "no me queda claro como",
+  "como es eso",
+  "no se como es",
+  "no entiendo como es",
 ];
 
 export function detectVideoRequest(message: string): boolean {

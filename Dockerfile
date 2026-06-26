@@ -16,7 +16,11 @@ RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache openssl
+# ffmpeg: transcodifica las notas de voz del panel a OGG/Opus para WhatsApp.
+# Usamos el binario del sistema (musl-compatible) vía FFMPEG_PATH en vez del de
+# ffmpeg-static, que está compilado para glibc y no corre en Alpine.
+RUN apk add --no-cache openssl ffmpeg
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
 
 COPY package*.json ./
 RUN npm ci --omit=dev

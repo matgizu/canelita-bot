@@ -23,6 +23,8 @@ model Conversation {
   adSource          String?
   adHeadline        String?
   ctwaClid          String?
+  adHistory         Json      @default("[]")
+  wabaId            String?
   labels            String[]  @default([])
   windowExpired     Boolean   @default(false)
   discountOffered   Boolean   @default(false)

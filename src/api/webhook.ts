@@ -1,6 +1,7 @@
 import express, { Request, Response, Router } from "express";
 import { handleInbound, InboundEvent } from "../bot/handler";
 import { verifyChallenge, verifySignature } from "../whatsapp/verify";
+import { notifyOwnerError } from "../owner";
 
 export const webhookRouter = Router();
 
@@ -36,13 +37,21 @@ webhookRouter.post(
       return;
     }
 
-    setImmediate(() => processWebhook(body).catch((e) => console.error("[webhook]", e)));
+    setImmediate(() =>
+      processWebhook(body).catch((e) => {
+        console.error("[webhook]", e);
+        notifyOwnerError("Falló el procesamiento de un webhook entrante.", e?.message).catch(() => {});
+      }),
+    );
   },
 );
 
 async function processWebhook(body: any): Promise<void> {
   const entries = Array.isArray(body?.entry) ? body.entry : [];
   for (const entry of entries) {
+    // entry.id is the WhatsApp Business Account ID — the only place Meta exposes
+    // it. Needed for CTWA Conversions API attribution.
+    const wabaId: string | undefined = entry?.id ? String(entry.id) : undefined;
     const changes = Array.isArray(entry.changes) ? entry.changes : [];
     for (const change of changes) {
       const value = change?.value ?? {};
@@ -54,7 +63,13 @@ async function processWebhook(body: any): Promise<void> {
       }
       for (const m of messages) {
         const ev = parseMessage(m, nameByWaId);
-        if (ev) handleInbound(ev).catch((e) => console.error("[handleInbound]", e));
+        if (ev) {
+          ev.wabaId = wabaId;
+          handleInbound(ev).catch((e) => {
+            console.error("[handleInbound]", e);
+            notifyOwnerError(`Error inesperado atendiendo a +${ev.waId}.`, e?.message).catch(() => {});
+          });
+        }
       }
     }
   }
@@ -83,6 +98,12 @@ function parseMessage(m: any, names: Map<string, string>): InboundEvent | null {
   }
   if (m.type === "image") {
     return { waId, customerName, whatsappMsgId, type: "image", mediaId: m.image?.id, text: m.image?.caption ?? "", referral };
+  }
+  if (m.type === "video") {
+    return { waId, customerName, whatsappMsgId, type: "video", mediaId: m.video?.id, text: m.video?.caption ?? "", referral };
+  }
+  if (m.type === "document") {
+    return { waId, customerName, whatsappMsgId, type: "document", mediaId: m.document?.id, filename: m.document?.filename, text: m.document?.caption ?? "", referral };
   }
   if (m.type === "interactive") {
     const reply =

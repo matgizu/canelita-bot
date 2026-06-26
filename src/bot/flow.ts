@@ -154,13 +154,22 @@ export const TIMING = {
 
 export type Strategy = "A" | "B";
 
+// A cierra mejor que B en datos reales (1.8% vs 1.2%), así que reducimos la
+// exposición de B a 20% — seguimos midiéndola sin sangrar conversiones.
 export function randomStrategy(): Strategy {
-  return Math.random() < 0.5 ? "A" : "B";
+  return Math.random() < 0.8 ? "A" : "B";
 }
 
 export interface CartItem {
   variant: "pack3" | "pack6";
   quantity: number;
+}
+
+export interface AdTouch {
+  sourceId?: string;
+  headline?: string;
+  ctwaClid?: string;
+  at: number;
 }
 
 export interface Session {
@@ -174,9 +183,11 @@ export interface Session {
   altPhone?: string;
   idNumber?: string;
   email?: string;
-  adSource?: string;
-  adHeadline?: string;
-  ctwaClid?: string;
+  adSource?: string;   // primer anuncio (origen de descubrimiento)
+  adHeadline?: string; // titular del primer anuncio
+  ctwaClid?: string;   // último ctwa_clid (para atribución de conversión vía CAPI)
+  adHistory?: AdTouch[]; // todos los anuncios por los que ha entrado (para el panel)
+  wabaId?: string;
   address?: string;
   reference?: string;
   city?: string;

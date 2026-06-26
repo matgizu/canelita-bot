@@ -6,6 +6,7 @@ export type SpecialCase =
   | "payment_proof"
   | "testimonials_request"
   | "not_interested"
+  | "come_back_later"
   | null;
 
 export interface SpecialCaseResult {
@@ -14,6 +15,7 @@ export interface SpecialCaseResult {
   disableBot: boolean;
   notifyTelegram: boolean;
   closeOrder?: boolean;
+  reminder?: { note: string; daysFromNow: number };
 }
 
 const norm = (s: string) =>
@@ -66,32 +68,117 @@ const TESTIMONIALS_TRIGGERS = [
   "me muestras fotos",
 ];
 
-// Definitive "stop contacting me" signals — short messages only (see usage),
-// to avoid matching "no gracias, pero sí me interesa el pack x6" type replies
-// where the customer is still engaging.
+// Short, possibly-ambiguous opt-outs — apply word count guard (≤8 words).
+// "no gracias" in a long message can be a polite preface before a real question.
 const NOT_INTERESTED_TRIGGERS = [
   "no gracias",
   "no, gracias",
   "no lo necesito",
   "no me interesa",
   "no me interesan",
+  "nome interesa",
+  "nome interesan",
+  "nome imteresa",
+  "no minteresa",
   "ya no quiero",
   "no quiero nada",
+  "no insistas",
+  "no insistan",
+  "ya dije que no",
+];
+
+// Unambiguous "stop messaging me" signals — no word count limit.
+// These phrases cannot appear in a genuinely engaged message.
+const HARD_OPT_OUT_TRIGGERS = [
   "dejame de escribir",
   "déjame de escribir",
   "dejen de escribirme",
   "dejame de molestar",
   "déjame de molestar",
+  "dejen de molestar",
   "no me escribas mas",
   "no me escribas más",
   "no escribas mas",
   "no escribas más",
   "no me molestes",
+  "no molesten",
   "no molestes mas",
   "no molestes más",
-  "no insistas",
-  "no insistan",
-  "ya dije que no",
+  "tanta insistidera",
+  "tanta insistencia",
+  "tan insistentes",
+  "no jodan",
+  "no joda",
+  "dejen de joder",
+  "siguen jodiendo",
+  "siguen molestando",
+  "se les dice que no",
+  "ya les dije",
+  "ya les dije que no",
+  "ya le dije",
+  "ya les dije",
+  "no manden mas mensajes",
+  "no manden más mensajes",
+  "no me manden",
+  "bloquear",
+  "voy a bloquear",
+  "los voy a bloquear",
+];
+
+const COME_BACK_TRIGGERS = [
+  "te aviso",
+  "te confirmo",
+  "te digo despues",
+  "te digo después",
+  "te escribo despues",
+  "te escribo después",
+  "te escribo mas tarde",
+  "te escribo más tarde",
+  "vuelvo despues",
+  "vuelvo después",
+  "vuelvo mas tarde",
+  "vuelvo más tarde",
+  "luego te escribo",
+  "luego te confirmo",
+  "luego te aviso",
+  "mañana te",
+  "lo pienso",
+  "lo consulto",
+  "pregunto a mi",
+  "pregunto con mi",
+  "consulto con mi",
+  "hablo con mi esposo",
+  "hablo con mi pareja",
+  "hablo con mi mama",
+  "hablo con mi mamá",
+  "se lo pregunto",
+  "se lo consulto",
+  "espérame",
+  "esperame",
+  "dame un momento",
+  "en un rato te",
+  "ahorita te aviso",
+  "ahorita te confirmo",
+  "ahorita te digo",
+  "déjame pensar",
+  "dejame pensar",
+  "voy a pensar",
+  "voy a consultarlo",
+  "voy a preguntarle",
+  "gracias por la info",
+  "gracias por la informacion",
+  "gracias por la información",
+  // "not right now" — temporal, not permanent opt-out
+  "en el momento no",
+  "por el momento no",
+  "por ahora no",
+  "ahorita no",
+  "no por ahora",
+  "no por el momento",
+  "no en este momento",
+  "no ahorita",
+  "no por los momentos",
+  "en este momento no",
 ];
 
 const PAYMENT_PROOF_TRIGGERS = [
@@ -116,6 +203,8 @@ const RESPONSES = {
   paymentProof: `Listo, ya recibí tu comprobante. Lo verifico en máximo 30 minutos y te confirmo el despacho 💛`,
 
   notInterested: `Listo, entendido — no te escribo más. Que tengas un excelente día 💛`,
+
+  comeBackLater: `Listo, sin afán 💛 Aquí estaré cuando quieras.`,
 };
 
 export interface DetectInput {
@@ -146,18 +235,45 @@ export function detectSpecialCase(input: DetectInput): SpecialCaseResult | null 
     };
   }
 
-  // Only treat as a definitive opt-out on short replies — a longer message
-  // containing "no gracias" is usually a polite preface to a different ask
-  // ("no gracias, pero sí me interesa el x6...") and should keep flowing
-  // through Claude rather than shutting the conversation down.
   const wordCount = q.split(/\s+/).filter(Boolean).length;
+  const noOrderState = input.state !== "CLOSED" && input.state !== "PAYMENT_METHOD";
+
+  // "te aviso", "lo consulto con mi esposo", "mañana te digo", "en el momento no", etc.
+  // Checked BEFORE not_interested so "en el momento no gracias" is treated as a
+  // deferral, not a permanent opt-out.
+  // Also catches plain "gracias" (1–2 words) outside of completed-order states.
+  const isGraciasAlone = wordCount <= 2 && q.startsWith("gracias");
+  if (
+    (matches(q, COME_BACK_TRIGGERS) && noOrderState) ||
+    (isGraciasAlone && noOrderState)
+  ) {
+    return {
+      type: "come_back_later",
+      response: RESPONSES.comeBackLater,
+      disableBot: false,
+      notifyTelegram: false,
+      reminder: { note: "Cliente indicó que avisará — hacer seguimiento.", daysFromNow: 1 },
+    };
+  }
+
+  // Hard opt-outs: unambiguous "stop messaging me" — no word count limit
+  if (matches(q, HARD_OPT_OUT_TRIGGERS)) {
+    return {
+      type: "not_interested",
+      response: RESPONSES.notInterested,
+      disableBot: true,
+      notifyTelegram: true,
+    };
+  }
+
+  // Soft opt-outs: short messages only — avoid false-positives in longer messages
+  // where "no gracias" is a polite preface before a genuine question.
   if (wordCount <= 8 && matches(q, NOT_INTERESTED_TRIGGERS)) {
     return {
       type: "not_interested",
       response: RESPONSES.notInterested,
       disableBot: true,
       notifyTelegram: true,
-      closeOrder: true,
     };
   }
 

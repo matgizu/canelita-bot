@@ -208,6 +208,33 @@
       display: flex; align-items: center; justify-content: center;
     }
     #media-btn:hover { background: #e5e7eb; }
+    #mic-btn {
+      width: 38px; height: 38px; background: #f3f4f6; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 18px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #mic-btn:hover { background: #e5e7eb; }
+    #media-preview audio { height: 32px; max-width: 220px; }
+    #recording-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 8px; font-size: 12px; margin-bottom: 6px;
+    }
+    #recording-row .rec-label { color: var(--muted); }
+    #recording-row #rec-timer { font-variant-numeric: tabular-nums; font-weight: 600; color: #dc2626; }
+    #recording-row .rec-dot {
+      width: 10px; height: 10px; border-radius: 50%; background: #dc2626;
+      flex-shrink: 0; animation: rec-pulse 1s ease-in-out infinite;
+    }
+    @keyframes rec-pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+    #rec-cancel {
+      margin-left: auto; padding: 6px 10px; background: #f3f4f6; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 8px; font-size: 12px; cursor: pointer; flex-shrink: 0;
+    }
+    #rec-stop {
+      padding: 6px 14px; background: #dc2626; color: #fff; border: none;
+      border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;
+    }
     #media-preview {
       display: flex; align-items: center; gap: 8px;
       padding: 8px 10px; background: #f8f9fa; border-radius: 8px;
@@ -216,6 +243,16 @@
     #media-preview img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
     #media-preview .mp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #media-preview .mp-size { color: var(--muted); flex-shrink: 0; }
+    .doc-bubble {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; background: #fff; border: 1px solid var(--border);
+      border-radius: 8px; text-decoration: none; color: inherit; max-width: 240px;
+    }
+    .doc-bubble:hover { background: #f8f9fa; }
+    .doc-bubble .doc-ic { font-size: 24px; flex-shrink: 0; }
+    .doc-bubble .doc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .doc-bubble .doc-dl { color: var(--muted); flex-shrink: 0; }
+    .mw video { background: #000; }
     #media-caption {
       flex: 1; padding: 6px 10px; border: 1px solid var(--border);
       border-radius: 8px; font-size: 12px; outline: none; font-family: inherit;
@@ -814,6 +851,8 @@
       <div id="composer">
         <div id="media-preview" hidden>
           <img id="mp-thumb" src="" alt="" hidden>
+          <span id="mp-icon" hidden style="font-size:28px;flex-shrink:0">📄</span>
+          <audio id="mp-audio" controls preload="metadata" hidden></audio>
           <span class="mp-name" id="mp-name"></span>
           <span class="mp-size" id="mp-size"></span>
         </div>
@@ -822,9 +861,17 @@
           <button id="media-send" onclick="sendMediaFile()">Enviar</button>
           <button id="media-cancel" onclick="cancelMedia()">✕</button>
         </div>
+        <div id="recording-row" hidden>
+          <span class="rec-dot"></span>
+          <span id="rec-timer">0:00</span>
+          <span class="rec-label">Grabando nota de voz…</span>
+          <button id="rec-cancel" onclick="cancelRecording()">✕ Cancelar</button>
+          <button id="rec-stop" onclick="stopRecording()">⏹ Detener</button>
+        </div>
         <div id="composer-row">
-          <input type="file" id="file-input" accept="image/*,video/*" style="display:none" onchange="onFileSelected(event)">
-          <button id="media-btn" title="Enviar foto o video" onclick="document.getElementById('file-input').click()">📎</button>
+          <input type="file" id="file-input" accept="image/*,video/*,audio/*,application/pdf,.pdf" style="display:none" onchange="onFileSelected(event)">
+          <button id="media-btn" title="Enviar foto, video o PDF" onclick="document.getElementById('file-input').click()">📎</button>
+          <button id="mic-btn" title="Grabar nota de voz" onclick="startRecording()">🎤</button>
           <textarea id="msg-input" rows="1"
             placeholder="Mensaje manual (Enter para enviar, Shift+Enter nueva línea)…"
             onkeydown="onKey(event)" oninput="grow(this)"></textarea>
@@ -1247,28 +1294,13 @@ function bubbleHtml(m) {
     </div>`;
   }
 
-  const isAudio = (m.type === 'audio' || m.type === 'voice') && m.mediaUrl;
-  const isImage = m.type === 'image' && m.mediaUrl;
-
   // Skip empty "other" messages (stickers, reactions) — nothing to show
   if (m.type === 'other' && !m.body) return '';
 
-  const content = isAudio
-    ? `<div class="audio-player">
-        🎤
-        <audio controls preload="none" src="/api/media/${m.mediaUrl}"></audio>
-       </div>
-       ${m.body && m.body !== '[audio]' ? `<div class="bubble" style="margin-top:4px">${x(m.body)}</div>` : ''}`
-    : isImage
-    ? `<div class="bubble img-bubble">
-        <img src="/api/media/${m.mediaUrl}" alt="imagen" loading="lazy"
-             style="max-width:220px;max-height:300px;border-radius:8px;display:block;cursor:pointer"
-             onclick="window.open('/api/media/${m.mediaUrl}','_blank')">
-        ${m.body && m.body !== '[imagen]' ? `<div style="margin-top:4px;font-size:13px">${x(m.body)}</div>` : ''}
-       </div>`
-    : `<div class="bubble">${x(m.body)}</div>`;
+  const media   = mediaInner(m.type, m.mediaUrl, m.body);
+  const content = media || `<div class="bubble">${x(m.body)}</div>`;
 
-  const tag = !isAudio && !isImage && m.type && m.type !== 'text'
+  const tag = !media && m.type && m.type !== 'text' && m.type !== 'manual'
     ? `<span class="mtag">${m.type}</span>` : '';
 
   const delBtn = out && m.whatsappMsgId
@@ -1282,6 +1314,60 @@ function bubbleHtml(m) {
     </div>`;
 }
 
+// Strips a leading "[type: name]" label and returns the trailing caption (if any).
+function captionHtml(body, placeholder) {
+  if (!body) return '';
+  let cap = body;
+  const mm = body.match(/^\[[^\]]*\]\s*([\s\S]*)$/);
+  if (mm) cap = mm[1];
+  cap = cap.trim();
+  if (!cap || cap === placeholder) return '';
+  return `<div style="margin-top:4px;font-size:13px">${x(cap)}</div>`;
+}
+
+// Pulls a readable filename out of a document body label.
+function docName(body) {
+  if (!body) return 'Documento';
+  const m = body.match(/^\[(?:document|documento):\s*(.+?)\]/i);
+  if (m) return m[1];
+  if (/^\[documento\]?$/i.test(body.trim())) return 'Documento';
+  return body.trim() || 'Documento';
+}
+
+// Unified media renderer for every message type. Returns '' when there's no
+// media (caller falls back to a plain text bubble).
+function mediaInner(type, mediaUrl, body) {
+  if (!mediaUrl) return '';
+  const url = `/api/media/${mediaUrl}`;
+  if (type === 'audio' || type === 'voice') {
+    return `<div class="audio-player">🎤 <audio controls preload="none" src="${url}"></audio></div>`
+      + captionHtml(body, '[audio]');
+  }
+  if (type === 'image') {
+    return `<div class="bubble img-bubble">
+        <img src="${url}" alt="imagen" loading="lazy"
+             style="max-width:220px;max-height:300px;border-radius:8px;display:block;cursor:pointer"
+             onclick="window.open('${url}','_blank')">
+        ${captionHtml(body, '[imagen]')}
+       </div>`;
+  }
+  if (type === 'video') {
+    return `<div class="bubble img-bubble">
+        <video controls preload="metadata" src="${url}"
+               style="max-width:240px;max-height:320px;border-radius:8px;display:block"></video>
+        ${captionHtml(body, '[video]')}
+       </div>`;
+  }
+  if (type === 'document') {
+    return `<a class="doc-bubble" href="${url}" target="_blank" rel="noopener">
+        <span class="doc-ic">📄</span>
+        <span class="doc-name">${x(docName(body))}</span>
+        <span class="doc-dl">⬇</span>
+       </a>`;
+  }
+  return '';
+}
+
 function appendBubble(d) {
   const box = document.getElementById('messages');
   if (!box) return;
@@ -1293,19 +1379,13 @@ function appendBubble(d) {
     div.className = 'mw outbound';
     div.innerHTML = remarketingContent(d.messageType, d.body)
       + `<div class="mtime">${t}<span class="mtag">remarketing</span></div>`;
-  } else if (d.messageType === 'image' && d.mediaUrl) {
-    div.className = `mw ${out?'outbound':'inbound'}`;
-    div.innerHTML = `<div class="bubble img-bubble">
-      <img src="/api/media/${d.mediaUrl}" alt="imagen" loading="lazy"
-           style="max-width:220px;max-height:300px;border-radius:8px;display:block;cursor:pointer"
-           onclick="window.open('/api/media/${d.mediaUrl}','_blank')">
-      ${d.body && d.body !== '[imagen]' ? `<div style="margin-top:4px;font-size:13px">${x(d.body)}</div>` : ''}
-    </div><div class="mtime">${t}</div>`;
   } else if (!d.body && d.messageType === 'other') {
     return; // skip empty stickers/reactions
   } else {
     div.className = `mw ${out?'outbound':'inbound'}`;
-    div.innerHTML = `<div class="bubble">${x(d.body)}</div><div class="mtime">${t}</div>`;
+    const media = mediaInner(d.messageType, d.mediaUrl, d.body);
+    const inner = media || `<div class="bubble">${x(d.body)}</div>`;
+    div.innerHTML = inner + `<div class="mtime">${t}</div>`;
   }
 
   box.appendChild(div);
@@ -1387,8 +1467,16 @@ function renderInfoTab() {
       <div class="isec-title">Sesión</div>
       ${row('Estado',    `<span class="sbadge s-${d.state}">${slabel(d.state)}</span>`)}
       ${row('Objeciones', d.objectionCount ?? 0)}
-      ${d.adHeadline ? row('Anuncio', x(d.adHeadline)) : ''}
-      ${d.adSource   ? row('Ad ID',   x(d.adSource))   : ''}
+      ${(Array.isArray(d.adHistory) && d.adHistory.length)
+        ? row('Anuncios', d.adHistory.map((a, i) => {
+            const label = x(a.headline || a.sourceId || '—');
+            const id  = a.sourceId ? ` <span style="color:var(--muted);font-size:11px">#${x(a.sourceId)}</span>` : '';
+            const tag = i === d.adHistory.length - 1
+              ? ' <span style="color:#059669;font-size:10px;font-weight:600">(último)</span>'
+              : (i === 0 ? ' <span style="color:var(--muted);font-size:10px">(origen)</span>' : '');
+            return `${i + 1}. ${label}${id}${tag}`;
+          }).join('<br>'))
+        : ((d.adHeadline ? row('Anuncio', x(d.adHeadline)) : '') + (d.adSource ? row('Ad ID', x(d.adSource)) : ''))}
       ${row('Creado',    d.createdAt ? new Date(d.createdAt).toLocaleDateString('es-CO') : '—')}
     </div>`;
 }
@@ -1810,7 +1898,14 @@ let selectedFile = null;
 
 function onFileSelected(e) {
   const file = e.target.files[0];
+  e.target.value = '';
   if (!file) return;
+  presentMediaPreview(file);
+}
+
+// Muestra la previsualización para cualquier archivo (foto/video/pdf/audio) o
+// una nota de voz recién grabada, y arma el botón Enviar.
+function presentMediaPreview(file) {
   selectedFile = file;
 
   const preview  = document.getElementById('media-preview');
@@ -1818,41 +1913,125 @@ function onFileSelected(e) {
   const nameEl   = document.getElementById('mp-name');
   const sizeEl   = document.getElementById('mp-size');
   const thumb    = document.getElementById('mp-thumb');
+  const icon     = document.getElementById('mp-icon');
+  const audioEl  = document.getElementById('mp-audio');
+  const caption  = document.getElementById('media-caption');
   const msgInput = document.getElementById('msg-input');
 
   nameEl.textContent = file.name;
   sizeEl.textContent = formatBytes(file.size);
 
+  thumb.hidden = true;
+  icon.hidden = true;
+  audioEl.hidden = true;
+
+  const isAudio = file.type.startsWith('audio/');
+
   if (file.type.startsWith('image/')) {
     thumb.src = URL.createObjectURL(file);
     thumb.hidden = false;
+  } else if (isAudio) {
+    audioEl.src = URL.createObjectURL(file);
+    audioEl.hidden = false;
   } else {
-    thumb.hidden = true;
+    // PDF / document → show a doc icon; video → film icon
+    icon.textContent = file.type.startsWith('video/') ? '🎥' : '📄';
+    icon.hidden = false;
   }
+
+  // WhatsApp ignora el pie de texto en audios → ocultamos el campo.
+  caption.hidden = isAudio;
 
   preview.hidden = false;
   sendRow.hidden = false;
   sendRow.style.display = 'flex';
   msgInput.disabled = true;
   document.getElementById('send-btn').disabled = true;
-  e.target.value = '';
 }
 
 function cancelMedia() {
   selectedFile = null;
+  const audioEl = document.getElementById('mp-audio');
+  if (audioEl.src) { URL.revokeObjectURL(audioEl.src); audioEl.removeAttribute('src'); }
   document.getElementById('media-preview').hidden = true;
   document.getElementById('media-send-row').hidden = true;
   document.getElementById('msg-input').disabled = false;
   document.getElementById('send-btn').disabled = false;
   document.getElementById('mp-thumb').src = '';
-  document.getElementById('media-caption').value = '';
+  document.getElementById('mp-icon').hidden = true;
+  audioEl.hidden = true;
+  const caption = document.getElementById('media-caption');
+  caption.hidden = false;
+  caption.value = '';
 }
+
+/* ── Grabación de nota de voz ── */
+let mediaRecorder = null;
+let recChunks = [];
+let recTimer = null;
+let recStartAt = 0;
+
+async function startRecording() {
+  if (!selected) { alert('Selecciona una conversación primero'); return; }
+  if (mediaRecorder) return; // ya grabando
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+    alert('Tu navegador no permite grabar audio.');
+    return;
+  }
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    alert('No se pudo acceder al micrófono. Revisa los permisos del navegador.');
+    return;
+  }
+
+  // Elegimos el mejor formato que soporte el navegador; el servidor lo
+  // transcodifica a OGG/Opus de todas formas.
+  const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
+    .find((t) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+
+  recChunks = [];
+  mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+  mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    stream.getTracks().forEach((t) => t.stop());
+    const type = mediaRecorder.mimeType || mime || 'audio/webm';
+    const blob = new Blob(recChunks, { type });
+    mediaRecorder = null;
+    stopRecTimer();
+    document.getElementById('recording-row').hidden = true;
+    if (cancelledRec || !blob.size) { cancelledRec = false; return; }
+    const ext = type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : 'webm';
+    presentMediaPreview(new File([blob], `nota-de-voz.${ext}`, { type }));
+  };
+
+  cancelledRec = false;
+  mediaRecorder.start();
+  recStartAt = Date.now();
+  document.getElementById('recording-row').hidden = false;
+  document.getElementById('rec-timer').textContent = '0:00';
+  recTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - recStartAt) / 1000);
+    document.getElementById('rec-timer').textContent =
+      `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }, 250);
+}
+
+let cancelledRec = false;
+function stopRecording()  { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }
+function cancelRecording(){ cancelledRec = true; stopRecording(); }
+function stopRecTimer()   { if (recTimer) { clearInterval(recTimer); recTimer = null; } }
 
 async function sendMediaFile() {
   if (!selectedFile || !selected) return;
   const btn     = document.getElementById('media-send');
-  const caption = document.getElementById('media-caption').value.trim();
+  const isAudio = selectedFile.type.startsWith('audio/');
+  // WhatsApp ignora el caption en audios, así que ni lo enviamos.
+  const caption = isAudio ? '' : document.getElementById('media-caption').value.trim();
   btn.disabled  = true;
+  btn.textContent = 'Enviando…';
 
   const form = new FormData();
   form.append('file', selectedFile, selectedFile.name);
@@ -1864,20 +2043,27 @@ async function sendMediaFile() {
     });
     const data = await res.json();
     if (data.ok) {
-      const type = selectedFile.type.startsWith('image/') ? '🖼' : '🎥';
+      // Mirror the server-side label so docName/caption parsing matches.
       appendBubble({
         direction: 'outbound',
-        type: data.type,
-        body: `${type} ${selectedFile.name}${caption ? '\n' + caption : ''}`,
-        createdAt: new Date().toISOString(),
+        messageType: data.type,
+        mediaUrl: data.mediaId,
+        body: data.type === 'audio'
+          ? '[audio]'
+          : `[${data.type}: ${selectedFile.name}]${caption ? ' ' + caption : ''}`,
+        at: Date.now(),
       });
     } else {
-      alert('Error enviando archivo: ' + (data.error || 'desconocido'));
+      const msg = data.error === 'audio_transcode_failed'
+        ? 'No se pudo procesar la nota de voz. Intenta de nuevo.'
+        : (data.error || 'desconocido');
+      alert('Error enviando archivo: ' + msg);
     }
   } catch { alert('Error de conexión'); }
 
   cancelMedia();
   btn.disabled = false;
+  btn.textContent = 'Enviar';
 }
 
 function formatBytes(b) {

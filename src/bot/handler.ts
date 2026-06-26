@@ -1,9 +1,9 @@
 import { askClaude } from "../claude/client";
 import { events } from "../events";
 import { prisma } from "../db";
-import { getOrLoadSession, getSession, setAutomation } from "../sessions";
+import { getOrLoadSession, getSession, setAutomation, isAutomationPaused } from "../sessions";
 import { notify, notifyPhoto } from "../telegram";
-import { notifyOwner, markOwnerWindowOpen } from "../owner";
+import { notifyOwner, notifyOwnerError, markOwnerWindowOpen } from "../owner";
 import { handleOwnerMessage } from "./ownerHandler";
 import { findCombo, formatCOP } from "../products";
 import { getConfig } from "../botConfig";
@@ -18,6 +18,7 @@ import {
   sendVideoUrl,
 } from "../whatsapp/client";
 import { config } from "../config";
+import { sendConversionEvent } from "../meta/capi";
 import { transcribeAudio } from "../whatsapp/transcribe";
 import { sanitizeOutput } from "./blocklist";
 import {
@@ -46,10 +47,13 @@ import { detectSpecialCase, TELEGRAM_TEMPLATES } from "./specialCases";
 export interface InboundEvent {
   waId: string;
   customerName?: string;
-  type: "text" | "audio" | "image" | "other";
+  type: "text" | "audio" | "image" | "video" | "document" | "other";
   text?: string;
   mediaId?: string;
+  filename?: string;
   whatsappMsgId?: string;
+  // WhatsApp Business Account ID (entry.id from the webhook) — used for CTWA CAPI.
+  wabaId?: string;
   referral?: {
     sourceId?: string;
     headline?: string;
@@ -68,10 +72,46 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
     session.customerName = ev.customerName;
   }
 
-  if (ev.referral && !session.adSource) {
-    session.adSource   = ev.referral.sourceId;
-    session.adHeadline = ev.referral.headline;
-    session.ctwaClid   = ev.referral.ctwaClid;
+  // Keep the WABA id fresh on the session so conversion events can be attributed.
+  if (ev.wabaId) session.wabaId = ev.wabaId;
+
+  if (ev.referral) {
+    const ref = ev.referral;
+    const firstTouch = !session.adSource;
+
+    // adSource/adHeadline = PRIMER toque: el origen de descubrimiento no se
+    // sobrescribe aunque vuelva por otro anuncio.
+    if (firstTouch) {
+      session.adSource   = ref.sourceId;
+      session.adHeadline = ref.headline;
+    }
+
+    // ctwaClid = ÚLTIMO toque: el CAPI debe atribuir la conversión al anuncio
+    // (p.ej. remarketing) que realmente la cerró, no al de descubrimiento.
+    if (ref.ctwaClid) session.ctwaClid = ref.ctwaClid;
+
+    // Historial completo de anuncios por los que ha entrado (para el panel).
+    // No duplica si vuelve por el mismo anuncio consecutivamente.
+    session.adHistory = session.adHistory ?? [];
+    const last = session.adHistory[session.adHistory.length - 1];
+    if (!last || last.sourceId !== ref.sourceId || last.ctwaClid !== ref.ctwaClid) {
+      session.adHistory.push({
+        sourceId: ref.sourceId,
+        headline: ref.headline,
+        ctwaClid: ref.ctwaClid,
+        at: Date.now(),
+      });
+    }
+
+    // Señal top-of-funnel: sólo en el primer contacto desde un anuncio CTWA.
+    if (firstTouch && ref.ctwaClid) {
+      sendConversionEvent({
+        eventName: "Contact",
+        ctwaClid: ref.ctwaClid,
+        wabaId: session.wabaId ?? config.whatsapp.wabaId,
+        eventId: `contact_${session.waId}`,
+      }).catch(() => {});
+    }
   }
 
   if (ev.whatsappMsgId) {
@@ -101,7 +141,7 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
         messageType: ev.type,
         at: Date.now(),
       });
-      if (session.automationEnabled) {
+      if (session.automationEnabled && !(await isAutomationPaused(session.waId))) {
         await sendText(
           ev.waId,
           "¡Hola! No pude escuchar bien el audio 🎤 ¿Me escribes tu pregunta? Así te respondo enseguida 💛",
@@ -125,20 +165,34 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
     imageMediaId = ev.mediaId;
   }
 
-  await persistInbound(session, ev, text);
+  // Friendly placeholder shown when the customer sends media without a caption.
+  const placeholder =
+    ev.type === "image"    ? "[imagen]" :
+    ev.type === "video"    ? "[video]" :
+    ev.type === "document" ? `[documento${ev.filename ? ": " + ev.filename : ""}]` :
+    ev.type === "audio"    ? "[audio]" : "";
+
+  await persistInbound(session, ev, text || placeholder);
 
   cancelRemarketing(ev.waId);
   events.emitDashboard({
     type: "message",
     waId: ev.waId,
     direction: "inbound",
-    body: text || (hasImage ? "[imagen]" : "[audio]"),
+    body: text || placeholder,
     messageType: ev.type,
-    mediaUrl: hasImage ? imageMediaId : undefined,
+    mediaUrl: ev.mediaId ?? undefined,
+    filename: ev.filename ?? undefined,
     at: Date.now(),
-  });
+  } as any);
 
   if (!session.automationEnabled) return;
+
+  // Media sin texto (imagen/video/documento/sticker sin caption) se muestra en
+  // el panel pero NO dispara respuesta automática: el bot no puede "leerla" y un
+  // texto vacío rompería la llamada a la API de Claude (400) y dejaría un turno
+  // vacío en el historial que tumbaría toda la conversación.
+  if (ev.type !== "text" && !text.trim()) return;
 
   enqueueInbound(
     ev.waId,
@@ -155,6 +209,10 @@ async function processCombined(
   imageMediaId?: string,
 ): Promise<void> {
   if (!session.automationEnabled) return;
+  // Authoritative re-check against the DB: the captured `session` can be a
+  // stale/orphaned object that still reads enabled after a dashboard pause.
+  // This is the final gate before we actually send, so it must not be skipped.
+  if (await isAutomationPaused(session.waId)) return;
 
   const dynCfg = await getConfig();
   if (dynCfg.botPaused) return;
@@ -192,6 +250,11 @@ async function processCombined(
     scheduleFullSequence(session);
     return;
   }
+
+  // Defensa final: si después de combinar no queda texto real, no seguimos.
+  // Un combined vacío metería un turno vacío al historial y rompería la
+  // llamada a Claude (400) para toda la conversación.
+  if (!combined.trim()) return;
 
   const reactionEmoji = reactionFor(combined);
 
@@ -269,6 +332,7 @@ async function processCombined(
   let nextState: State = session.state;
   let cartUpdate: CartItem[] | null = null;
   let detectedObjectionType: string | null = null;
+  let aiError = false;
 
   if (objection && session.state !== "GREETING") {
     session.objectionCount += 1;
@@ -281,6 +345,7 @@ async function processCombined(
     }
   } else {
     const reply = await askClaude(session, combined);
+    aiError = reply.error === true;
     claudeText = reply.message;
     let proposedState = isValidTransition(session.state, reply.state)
       ? reply.state
@@ -299,6 +364,19 @@ async function processCombined(
         .create({ data: { waId: session.waId, note: reply.reminder.note, dueAt } })
         .catch((e: any) => console.error("[reminder.create]", e.message));
     }
+  }
+
+  // Error de IA: no enviamos nada fuera de marca al cliente. Avisamos al dueño
+  // (con throttle) para que entre a contestar manualmente y no se pierda el lead.
+  if (aiError) {
+    // Quitamos el turno del cliente que acabamos de agregar: sin respuesta del
+    // asistente quedarían dos turnos "user" seguidos y la próxima llamada a la
+    // API fallaría. Así el historial se mantiene consistente para el reintento.
+    if (session.history[session.history.length - 1]?.role === "user") {
+      session.history.pop();
+    }
+    notifyAiError(session.waId, session.customerName);
+    return;
   }
 
   const sanitized = sanitizeOutput(claudeText);
@@ -328,6 +406,7 @@ async function processCombined(
 
   if (detectVideoRequest(combined) && config.product.videoUrl) {
     await sendVideoUrl(session.waId, config.product.videoUrl);
+    await persistMediaOutbound(session, config.product.videoUrl, "video");
   }
 
   const outboundMsgId = await sendInParts(session.waId, sanitized);
@@ -434,6 +513,8 @@ async function ensureConversation(session: Session) {
       adSource:   session.adSource,
       adHeadline: session.adHeadline,
       ctwaClid:   session.ctwaClid,
+      adHistory:  (session.adHistory ?? []) as any,
+      ...(session.wabaId ? { wabaId: session.wabaId } as any : {}),
     },
     update: {
       state: session.state,
@@ -450,6 +531,8 @@ async function ensureConversation(session: Session) {
       adSource:   session.adSource   ?? undefined,
       adHeadline: session.adHeadline ?? undefined,
       ctwaClid:   session.ctwaClid   ?? undefined,
+      adHistory:  (session.adHistory ?? []) as any,
+      ...(session.wabaId ? { wabaId: session.wabaId } as any : {}),
       cart: session.cart as any,
       lastInboundAt: new Date(session.lastInboundAt),
     },
@@ -549,6 +632,19 @@ export async function persistOrderIfNeeded(session: Session) {
 
       notifyOwner(`🛒 *Nuevo pedido*\n\n${orderSummary(session, total)}`).catch(() => {});
       notify(TELEGRAM_TEMPLATES.newOrder(session.waId, orderSummary(session, total)));
+
+      // Tell Meta this CTWA lead converted, so the ad can attribute & optimize
+      // for real purchases. Deduped per order; safe no-op without a ctwa_clid.
+      if (session.ctwaClid) {
+        sendConversionEvent({
+          eventName: "Purchase",
+          ctwaClid: session.ctwaClid,
+          wabaId: session.wabaId ?? config.whatsapp.wabaId,
+          eventId: `purchase_${order.id}`,
+          value: total,
+          currency: "COP",
+        }).catch(() => {});
+      }
     } else {
       await prisma.order.update({
         where: { id: existing!.id },
@@ -577,6 +673,19 @@ function hasMinimumOrderData(session: Session): boolean {
     !!(session.fullName || session.customerName) &&
     !!session.address
   );
+}
+
+// Throttle de avisos de error de IA al dueño: máximo uno cada 5 minutos para
+// no inundar Telegram si la API se cae afectando muchas conversaciones.
+let lastAiErrorNotifyAt = 0;
+function notifyAiError(waId: string, customerName?: string) {
+  const now = Date.now();
+  if (now - lastAiErrorNotifyAt < 5 * 60 * 1000) return;
+  lastAiErrorNotifyAt = now;
+  const who = customerName ? `${customerName} (+${waId})` : `+${waId}`;
+  const body = `⚠️ *Error de IA*\n\nEl bot no pudo responderle a ${who} y se quedó callado para no mandar algo roto.\n\nEntra a contestarle manualmente desde el panel.`;
+  notify(body); // Telegram (dashboard)
+  notifyOwner(body).catch(() => {}); // WhatsApp directo al dueño
 }
 
 async function persistMediaOutbound(session: Session, url: string, type: "image" | "video") {

@@ -9,6 +9,7 @@ import { cancelRemarketing } from "../bot/remarketing";
 import { persistOrderIfNeeded } from "../bot/handler";
 import { ownerWindowStatus } from "../owner";
 import { deleteMessage, mimeToMediaType, sendInParts, sendMedia, uploadMedia } from "../whatsapp/client";
+import { transcodeToWhatsappVoice } from "../whatsapp/audio";
 import { sanitizeOutput } from "../bot/blocklist";
 import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
 
@@ -457,12 +458,29 @@ apiRouter.post(
     const mime    = req.file.mimetype;
     const type    = mimeToMediaType(mime);
 
-    const mediaId = await uploadMedia(req.file.buffer, mime, req.file.originalname);
+    // El audio (nota de voz grabada en el navegador o archivo subido) se
+    // transcodifica a OGG/Opus: es el único formato que WhatsApp muestra como
+    // nota de voz y el que acepta sin importar en qué grabó el navegador.
+    let buffer   = req.file.buffer;
+    let upMime   = mime;
+    let upName   = req.file.originalname;
+    if (type === "audio") {
+      const ogg = await transcodeToWhatsappVoice(buffer);
+      if (!ogg) { res.status(502).json({ error: "audio_transcode_failed" }); return; }
+      buffer = ogg;
+      upMime = "audio/ogg";
+      upName = "nota-de-voz.ogg";
+    }
+
+    const mediaId = await uploadMedia(buffer, upMime, upName);
     if (!mediaId) { res.status(502).json({ error: "upload_failed" }); return; }
 
-    await sendMedia(waId, mediaId, type, caption);
+    // WhatsApp ignora el caption en audios; no lo enviamos para esos.
+    await sendMedia(waId, mediaId, type, type === "audio" ? undefined : caption, upName);
 
-    const label = `[${type}: ${req.file.originalname}]${caption ? " " + caption : ""}`;
+    const label = type === "audio"
+      ? "[audio]"
+      : `[${type}: ${req.file.originalname}]${caption ? " " + caption : ""}`;
 
     try {
       const conv = await prisma.conversation.upsert({
@@ -471,7 +489,7 @@ apiRouter.post(
         update: { lastOutboundAt: new Date() },
       });
       await prisma.message.create({
-        data: { conversationId: conv.id, direction: "outbound", type, body: label },
+        data: { conversationId: conv.id, direction: "outbound", type, body: label, mediaUrl: mediaId },
       });
     } catch (e: any) {
       console.error("[send-media.persist]", e.message);
@@ -479,7 +497,7 @@ apiRouter.post(
 
     events.emitDashboard({
       type: "message", waId, direction: "outbound",
-      body: label, messageType: type, at: Date.now(),
+      body: label, messageType: type, mediaUrl: mediaId, at: Date.now(),
     });
 
     res.json({ ok: true, type, mediaId });

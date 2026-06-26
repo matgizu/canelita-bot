@@ -80,6 +80,8 @@ export async function getOrLoadSession(waId: string): Promise<Session> {
         adSource:   conv.adSource   ?? undefined,
         adHeadline: conv.adHeadline ?? undefined,
         ctwaClid:   conv.ctwaClid   ?? undefined,
+        adHistory:  ((conv as any).adHistory as Session["adHistory"]) ?? [],
+        wabaId:     ((conv as any).wabaId as string) ?? undefined,
       };
 
       sessions.set(waId, session);
@@ -106,6 +108,34 @@ export function setAutomation(waId: string, enabled: boolean): Session {
   const s = getSession(waId);
   s.automationEnabled = enabled;
   return s;
+}
+
+// Authoritative pause check used right before the bot replies. The in-memory
+// session object can go stale: getOrLoadSession awaits the DB and then
+// overwrites the Map, so a pause toggled during that load — or under
+// concurrent inbound messages — can leave the handler holding an orphaned
+// session whose automationEnabled is still true. The DB is the source of
+// truth (the dashboard pause endpoint writes it synchronously), so we trust
+// it before sending. Also reconciles the in-memory copy so future fast-path
+// checks are correct. On DB error we return false to avoid blocking
+// legitimate replies.
+export async function isAutomationPaused(waId: string): Promise<boolean> {
+  try {
+    const conv = await prisma.conversation.findUnique({
+      where: { waId },
+      select: { automationEnabled: true },
+    });
+    if (!conv) return false;
+    if (!conv.automationEnabled) {
+      const s = sessions.get(waId);
+      if (s) s.automationEnabled = false;
+      return true;
+    }
+    return false;
+  } catch (e: any) {
+    console.error("[sessions.isAutomationPaused]", e.message);
+    return false;
+  }
 }
 
 // Updates a session already held in memory, without creating one if absent —

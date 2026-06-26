@@ -20,6 +20,20 @@ export const config = {
     apiVersion: optional("WHATSAPP_API_VERSION", "v21.0"),
   },
 
+  // Meta Conversions API for Business Messaging (CTWA CAPI).
+  // Sends conversion events (Purchase, Contact) back to Meta so click-to-WhatsApp
+  // ads can attribute and optimize for real sales.
+  meta: {
+    // Dataset / pixel that receives the events. Defaults to "Píxel Entrenubes".
+    datasetId: optional("CAPI_DATASET_ID", "962416301588536"),
+    // Token with whatsapp_business_manage_events scope. Falls back to the
+    // WhatsApp token, which already carries that scope in this project.
+    token: optional("CAPI_TOKEN") || optional("WHATSAPP_TOKEN"),
+    apiVersion: optional("WHATSAPP_API_VERSION", "v21.0"),
+    // Master switch — set CAPI_ENABLED=false to silence all event sending.
+    enabled: optional("CAPI_ENABLED", "true") !== "false",
+  },
+
   anthropic: {
     apiKey: required("ANTHROPIC_API_KEY"),
   },
