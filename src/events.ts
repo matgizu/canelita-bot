@@ -41,6 +41,14 @@ export type DashboardEvent =
       waId: string;
       at: number;
     }
+  | {
+      type: "message_failed";
+      waId: string;
+      msgId?: string;
+      code?: number;
+      reason: string;
+      at: number;
+    }
   | { type: "owner_window_expired"; at: number }
   | { type: "owner_window_open"; at: number };
 

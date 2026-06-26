@@ -1168,6 +1168,19 @@ function connectSSE() {
     if (d.waId === selected) updateWindowExpiredBar();
   });
 
+  // WhatsApp avisa de forma asíncrona si un mensaje NO se entregó. Lo marcamos
+  // en el chat y avisamos si es la conversación abierta.
+  es.addEventListener('message_failed', e => {
+    const d = JSON.parse(e.data);
+    markLastOutboundFailed(d.waId, d.reason);
+    if (d.waId === selected) {
+      const motivo = d.code === 131047 || d.code === 131026
+        ? 'La ventana de 24h está cerrada. Envía una plantilla aprobada y espera a que el cliente responda.'
+        : (d.reason || 'WhatsApp lo rechazó');
+      alert('⚠️ El último mensaje NO se entregó.\n\nMotivo: ' + motivo);
+    }
+  });
+
   es.onerror = () => {
     dot.className = 'sse-dot';
     lbl.textContent = `Reconectando en ${Math.round(sseRetry/1000)}s…`;
@@ -2081,6 +2094,24 @@ function formatBytes(b) {
   if (b < 1024) return b + ' B';
   if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
   return (b/1048576).toFixed(1) + ' MB';
+}
+
+// Marca el último mensaje saliente del chat abierto como NO entregado cuando
+// WhatsApp reporta un fallo asíncrono.
+function markLastOutboundFailed(waId, reason) {
+  if (waId !== selected) return;
+  const msgs = document.getElementById('messages');
+  if (!msgs) return;
+  const outs = msgs.querySelectorAll('.mw.outbound');
+  const last = outs[outs.length - 1];
+  if (!last || last.querySelector('.fail-tag')) return;
+  const tag = document.createElement('span');
+  tag.className = 'fail-tag';
+  tag.title = reason || 'No entregado';
+  tag.textContent = ' ❌ no entregado';
+  tag.style.color = '#dc2626';
+  tag.style.fontWeight = '600';
+  (last.querySelector('.mtime') || last).appendChild(tag);
 }
 
 /* ─────────────────────────────────────

@@ -5,9 +5,9 @@ import { prisma } from "../db";
 import { events } from "../events";
 
 // WhatsApp error code: message window expired (24h / 72h CTWA)
-const WINDOW_EXPIRED_CODES = new Set([131047, 131026]);
+export const WINDOW_EXPIRED_CODES = new Set([131047, 131026]);
 
-async function markWindowExpired(waId: string): Promise<void> {
+export async function markWindowExpired(waId: string): Promise<void> {
   try {
     await prisma.conversation.updateMany({
       where: { waId },

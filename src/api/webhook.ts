@@ -2,6 +2,8 @@ import express, { Request, Response, Router } from "express";
 import { handleInbound, InboundEvent } from "../bot/handler";
 import { verifyChallenge, verifySignature } from "../whatsapp/verify";
 import { notifyOwnerError } from "../owner";
+import { events } from "../events";
+import { markWindowExpired, WINDOW_EXPIRED_CODES } from "../whatsapp/client";
 
 export const webhookRouter = Router();
 
@@ -71,8 +73,55 @@ async function processWebhook(body: any): Promise<void> {
           });
         }
       }
+
+      // Estados de entrega que reporta WhatsApp de forma ASÍNCRONA. WhatsApp
+      // acepta el envío con 200 y luego, por aquí, avisa si el mensaje se
+      // entregó, se leyó o FALLÓ. Sin esto, un mensaje rechazado (ventana de
+      // 24h cerrada, límite de calidad, número no permitido en cuenta demo,
+      // etc.) quedaba como "enviado" en el panel sin avisar a nadie.
+      const statuses = Array.isArray(value.statuses) ? value.statuses : [];
+      for (const s of statuses) {
+        handleStatus(s).catch((e) => console.error("[status]", e?.message));
+      }
     }
   }
+}
+
+async function handleStatus(s: any): Promise<void> {
+  const status: string | undefined = s?.status; // sent | delivered | read | failed
+  const waId: string | undefined = s?.recipient_id;
+  const msgId: string | undefined = s?.id;
+  if (!status || !waId) return;
+
+  if (status !== "failed") return; // delivered/read/sent: no acción por ahora
+
+  const err = Array.isArray(s.errors) ? s.errors[0] : undefined;
+  const code: number | undefined = err?.code;
+  const reason: string =
+    err?.error_data?.details || err?.title || err?.message || "motivo desconocido";
+
+  console.error(`[wa.status.failed] to=${waId} code=${code ?? "?"} :: ${reason}`);
+
+  // Si fue por ventana cerrada, marca la conversación (muestra la barra en el panel).
+  if (code !== undefined && WINDOW_EXPIRED_CODES.has(code)) {
+    markWindowExpired(waId).catch(() => {});
+  }
+
+  // Avisa al panel en tiempo real para que NO se vea como entregado.
+  events.emitDashboard({
+    type: "message_failed",
+    waId,
+    msgId,
+    code,
+    reason,
+    at: Date.now(),
+  });
+
+  // Y avisa al dueño por WhatsApp (con throttle por tipo de error).
+  notifyOwnerError(
+    `Un mensaje a +${waId} NO se entregó.`,
+    `Código ${code ?? "?"}: ${reason}`,
+  ).catch(() => {});
 }
 
 function parseMessage(m: any, names: Map<string, string>): InboundEvent | null {
