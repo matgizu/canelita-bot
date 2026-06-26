@@ -1785,13 +1785,21 @@ async function sendMsg() {
   const btn = document.getElementById('send-btn');
   btn.disabled = true;
   try {
-    await fetch(`/api/conversations/${selected}/send`, {
+    const res = await fetch(`/api/conversations/${selected}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
     });
-    input.value = '';
-    input.style.height = 'auto';
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      input.value = '';
+      input.style.height = 'auto';
+    } else if (data.error === 'window_expired') {
+      alert('No se envió: la ventana de 24h con este cliente está cerrada. '
+        + 'Envía una plantilla aprobada y espera a que responda.');
+    } else {
+      alert('No se pudo enviar el mensaje (WhatsApp lo rechazó). El texto sigue en el cuadro.');
+    }
   } catch { alert('Error enviando mensaje'); }
   btn.disabled = false;
   input.focus();
@@ -2053,6 +2061,9 @@ async function sendMediaFile() {
           : `[${data.type}: ${selectedFile.name}]${caption ? ' ' + caption : ''}`,
         at: Date.now(),
       });
+    } else if (data.error === 'window_expired') {
+      alert('No se envió: la ventana de 24h con este cliente está cerrada. '
+        + 'Envía una plantilla aprobada y espera a que responda para poder mandarle media.');
     } else {
       const msg = data.error === 'audio_transcode_failed'
         ? 'No se pudo procesar la nota de voz. Intenta de nuevo.'

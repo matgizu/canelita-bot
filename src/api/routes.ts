@@ -413,6 +413,14 @@ apiRouter.post("/conversations/:waId/send", async (req, res) => {
   const waId = req.params.waId;
   const waMsgId = await sendInParts(waId, sanitized);
 
+  // sendText/sendInParts devuelve null cuando WhatsApp rechaza el envío (incl.
+  // ventana de 24h cerrada — sendText ya marca la ventana y avisa al panel).
+  // No persistimos ni mostramos como enviado un mensaje que no salió.
+  if (!waMsgId) {
+    res.status(502).json({ ok: false, error: "send_failed" });
+    return;
+  }
+
   const session = getSession(waId);
   session.lastOutboundAt = Date.now();
 
@@ -476,7 +484,17 @@ apiRouter.post(
     if (!mediaId) { res.status(502).json({ error: "upload_failed" }); return; }
 
     // WhatsApp ignora el caption en audios; no lo enviamos para esos.
-    await sendMedia(waId, mediaId, type, type === "audio" ? undefined : caption, upName);
+    const sent = await sendMedia(waId, mediaId, type, type === "audio" ? undefined : caption, upName);
+
+    // Si WhatsApp lo rechazó (p.ej. ventana de 24h cerrada), NO lo guardamos ni
+    // lo mostramos como enviado: el panel debe reflejar la realidad.
+    if (!sent.ok) {
+      res.status(sent.windowExpired ? 409 : 502).json({
+        ok: false,
+        error: sent.windowExpired ? "window_expired" : (sent.error || "send_failed"),
+      });
+      return;
+    }
 
     const label = type === "audio"
       ? "[audio]"
@@ -489,7 +507,7 @@ apiRouter.post(
         update: { lastOutboundAt: new Date() },
       });
       await prisma.message.create({
-        data: { conversationId: conv.id, direction: "outbound", type, body: label, mediaUrl: mediaId },
+        data: { conversationId: conv.id, direction: "outbound", type, body: label, mediaUrl: mediaId, whatsappMsgId: sent.id ?? null },
       });
     } catch (e: any) {
       console.error("[send-media.persist]", e.message);
@@ -500,7 +518,7 @@ apiRouter.post(
       body: label, messageType: type, mediaUrl: mediaId, at: Date.now(),
     });
 
-    res.json({ ok: true, type, mediaId });
+    res.json({ ok: true, type, mediaId, msgId: sent.id });
   },
 );
 

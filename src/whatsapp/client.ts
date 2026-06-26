@@ -175,13 +175,20 @@ export async function uploadMedia(
   }
 }
 
+export interface SendMediaResult {
+  ok: boolean;
+  id?: string | null;
+  windowExpired?: boolean;
+  error?: string;
+}
+
 export async function sendMedia(
   to: string,
   mediaId: string,
   type: MediaType,
   caption?: string,
   filename?: string,
-): Promise<string | null> {
+): Promise<SendMediaResult> {
   try {
     const payload: Record<string, any> = {
       messaging_product: "whatsapp",
@@ -196,10 +203,20 @@ export async function sendMedia(
       },
     };
     const res = await http.post(`/${phoneId}/messages`, payload);
-    return res.data?.messages?.[0]?.id ?? null;
+    return { ok: true, id: res.data?.messages?.[0]?.id ?? null };
   } catch (e: any) {
+    const code = e.response?.data?.error?.code;
+    const message = e.response?.data?.error?.message ?? e.message;
+    // Fuera de la ventana de 24h WhatsApp rechaza todo media de formato libre.
+    // Igual que sendText: marcamos la ventana (avisa al panel) y reportamos el
+    // fallo para que la ruta NO lo muestre como enviado.
+    if (WINDOW_EXPIRED_CODES.has(code)) {
+      console.warn(`[wa.windowExpired] ${to}`);
+      markWindowExpired(to).catch(() => {});
+      return { ok: false, windowExpired: true, error: "window_expired" };
+    }
     console.error("[wa.sendMedia]", e.response?.data ?? e.message);
-    return null;
+    return { ok: false, error: message };
   }
 }
 
