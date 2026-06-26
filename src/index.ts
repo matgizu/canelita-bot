@@ -8,6 +8,7 @@ import { config } from "./config";
 import { prisma } from "./db";
 import { notifyOwner } from "./owner";
 import { sweepHotLeads } from "./bot/hotRecovery";
+import { sendStatsToOwner } from "./reports/statsReport";
 
 const app = express();
 
@@ -130,6 +131,23 @@ function scheduleDailyReport(): void {
   }, delay).unref();
 }
 
+// Reporte semanal completo (mes / 14d / 7d / 3d + anuncios): lunes 8am COL.
+function scheduleWeeklyStats(): void {
+  // Lunes 8am COL = lunes 13:00 UTC (UTC-5, sin DST).
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCHours(13, 0, 0, 0);
+  while (next.getUTCDay() !== 1 || next.getTime() <= now.getTime()) {
+    next.setUTCDate(next.getUTCDate() + 1);
+    next.setUTCHours(13, 0, 0, 0);
+  }
+  const delay = next.getTime() - now.getTime();
+  setTimeout(() => {
+    sendStatsToOwner().catch(() => {});
+    setInterval(() => sendStatsToOwner().catch(() => {}), 7 * 24 * 60 * 60 * 1000).unref();
+  }, delay).unref();
+}
+
 // Marcador de versión — sube el cierre con: recuperación de leads calientes,
 // cierre asuntivo en CONFIRM_ORDER y split A/B 80/20. Cutover: 2026-06-19.
 export const RELEASE = "2026-06-19-closerate-v1";
@@ -166,3 +184,4 @@ sweepHotLeads().catch(() => {});
 setInterval(() => sweepHotLeads().catch(() => {}), 10 * 60 * 1000).unref();
 
 scheduleDailyReport();
+scheduleWeeklyStats();
