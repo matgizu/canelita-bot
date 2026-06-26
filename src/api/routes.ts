@@ -431,7 +431,10 @@ apiRouter.patch("/conversations/:waId/close", async (req, res) => {
     if (!conv) { res.status(404).json({ error: "not_found" }); return; }
 
     const prevState = conv.state;
-    await prisma.conversation.update({ where: { waId }, data: { state: "CLOSED" } });
+    await prisma.conversation.update({
+      where: { waId },
+      data: { state: "CLOSED", closedAt: conv.closedAt ?? new Date() },
+    });
 
     const session = getSession(waId);
     session.state = "CLOSED" as any;
@@ -455,7 +458,7 @@ apiRouter.patch("/conversations/:waId/reopen", async (req, res) => {
     if (conv.state !== "CLOSED") { res.status(400).json({ error: "not_closed" }); return; }
 
     const reopenState = "PAYMENT_METHOD";
-    await prisma.conversation.update({ where: { waId }, data: { state: reopenState } });
+    await prisma.conversation.update({ where: { waId }, data: { state: reopenState, closedAt: null } });
 
     // Cancel any pending orders so they don't count as sales
     await prisma.order.updateMany({

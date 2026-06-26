@@ -165,6 +165,11 @@
     .mw.outbound .bubble { background: var(--brand-light); border: 1px solid var(--brand-border); border-bottom-right-radius: 3px; }
     .mtime { font-size: 10px; color: var(--muted); margin-top: 2px; padding: 0 3px; }
     .mtag  { background: #f3f4f6; padding: 1px 5px; border-radius: 6px; margin-left: 4px; font-size: 9px; }
+    .day-divider { display: flex; align-items: center; justify-content: center; margin: 14px 0 8px; }
+    .day-divider span {
+      background: #e5e7eb; color: #4b5563; font-size: 10px; font-weight: 600;
+      padding: 3px 12px; border-radius: 12px; text-transform: capitalize; letter-spacing: .2px;
+    }
     .del-btn {
       display: none; cursor: pointer; background: none; border: none;
       font-size: 13px; opacity: 0.5; padding: 0 2px; line-height: 1;
@@ -1306,13 +1311,24 @@ async function selectConv(waId) {
   await loadDetail(waId);
 }
 
+let chatLastDay = null; // día del último mensaje pintado (para los divisores)
+
 function renderChat() {
   if (!detail) return;
   renderHeader();
   updateWindowExpiredBar();
   const msgs = detail.messages || [];
   const box  = document.getElementById('messages');
-  box.innerHTML = msgs.map(bubbleHtml).join('');
+  let html = '', lastDay = null;
+  for (const m of msgs) {
+    const b = bubbleHtml(m);
+    if (!b) continue; // saltamos vacíos para no dejar un divisor huérfano
+    const k = dayKey(m.createdAt);
+    if (k !== lastDay) { html += dayDivider(m.createdAt); lastDay = k; }
+    html += b;
+  }
+  chatLastDay = lastDay;
+  box.innerHTML = html;
   box.scrollTop = box.scrollHeight;
 }
 
@@ -1347,15 +1363,33 @@ function remarketingContent(type, body) {
   return imgs + `<div class="bubble" style="margin-top:${isTestimonials?'4':'0'}px">${x(text)}</div>`;
 }
 
+// ── Helpers de fecha para el chat ──
+function dayKey(iso) { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+function fullDateTime(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('es-CO', { weekday:'long', day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function dayDividerLabel(iso) {
+  const k = dayKey(iso);
+  const now = new Date();
+  if (k === dayKey(now)) return 'Hoy';
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (k === dayKey(y)) return 'Ayer';
+  return new Date(iso).toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+function dayDivider(iso) { return `<div class="day-divider"><span>${x(dayDividerLabel(iso))}</span></div>`; }
+
 function bubbleHtml(m) {
   const out = m.direction === 'outbound';
   const t   = new Date(m.createdAt).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+  const tt  = fullDateTime(m.createdAt);
 
   if (m.type && m.type.startsWith('remarketing')) {
     return `
     <div class="mw outbound">
       ${remarketingContent(m.type, m.body)}
-      <div class="mtime">${t}<span class="mtag">remarketing</span></div>
+      <div class="mtime" title="${x(tt)}">${t}<span class="mtag">remarketing</span></div>
     </div>`;
   }
 
@@ -1375,7 +1409,7 @@ function bubbleHtml(m) {
   return `
     <div class="mw ${out?'outbound':'inbound'}">
       ${content}
-      <div class="mtime">${t}${tag}${delBtn}</div>
+      <div class="mtime" title="${x(tt)}">${t}${tag}${delBtn}</div>
     </div>`;
 }
 
@@ -1436,21 +1470,31 @@ function mediaInner(type, mediaUrl, body) {
 function appendBubble(d) {
   const box = document.getElementById('messages');
   if (!box) return;
+  if (!d.body && d.messageType === 'other') return; // skip empty stickers/reactions
   const out = d.direction === 'outbound';
   const t   = new Date(d.at).toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
-  const div = document.createElement('div');
+  const tt  = fullDateTime(d.at);
 
+  // Inserta el divisor de día si cambió la fecha respecto al último mensaje.
+  const k = dayKey(d.at);
+  if (k !== chatLastDay) {
+    const dv = document.createElement('div');
+    dv.className = 'day-divider';
+    dv.innerHTML = `<span>${x(dayDividerLabel(d.at))}</span>`;
+    box.appendChild(dv);
+    chatLastDay = k;
+  }
+
+  const div = document.createElement('div');
   if (d.messageType && d.messageType.startsWith('remarketing')) {
     div.className = 'mw outbound';
     div.innerHTML = remarketingContent(d.messageType, d.body)
-      + `<div class="mtime">${t}<span class="mtag">remarketing</span></div>`;
-  } else if (!d.body && d.messageType === 'other') {
-    return; // skip empty stickers/reactions
+      + `<div class="mtime" title="${x(tt)}">${t}<span class="mtag">remarketing</span></div>`;
   } else {
     div.className = `mw ${out?'outbound':'inbound'}`;
     const media = mediaInner(d.messageType, d.mediaUrl, d.body);
     const inner = media || `<div class="bubble">${x(d.body)}</div>`;
-    div.innerHTML = inner + `<div class="mtime">${t}</div>`;
+    div.innerHTML = inner + `<div class="mtime" title="${x(tt)}">${t}</div>`;
   }
 
   box.appendChild(div);
@@ -1543,7 +1587,8 @@ function renderInfoTab() {
             return `${i + 1}. ${label}${id}${tag}`;
           }).join('<br>'))
         : ((d.adHeadline ? row('Anuncio', x(d.adHeadline)) : '') + (d.adSource ? row('Ad ID', x(d.adSource)) : ''))}
-      ${row('Creado',    d.createdAt ? new Date(d.createdAt).toLocaleDateString('es-CO') : '—')}
+      ${row('Creado',    d.createdAt ? fullDateTime(d.createdAt) : '—')}
+      ${d.closedAt ? row('Venta cerrada', `<span style="color:#059669;font-weight:600">${x(fullDateTime(d.closedAt))}</span>`) : ''}
     </div>`;
 }
 
@@ -1941,7 +1986,7 @@ async function closeConv(waId) {
     if (c) c.state = 'CLOSED';
     renderSidebar();
     renderStats();
-    if (waId === selected) { renderHeader(); renderInfoTab(); }
+    if (waId === selected) await loadDetail(waId); // refresca con la fecha de cierre
   } catch { alert('Error de conexión'); }
 }
 
@@ -1954,7 +1999,7 @@ async function reopenConv(waId) {
     if (c) c.state = 'PAYMENT_METHOD';
     renderSidebar();
     renderStats();
-    if (waId === selected) { renderHeader(); renderInfoTab(); }
+    if (waId === selected) await loadDetail(waId); // refresca (limpia la fecha de cierre)
   } catch { alert('Error de conexión'); }
 }
 

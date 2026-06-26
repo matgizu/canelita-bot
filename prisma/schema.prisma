@@ -39,6 +39,8 @@ model Conversation {
   pendingOrder      Json?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  // Fecha/hora exacta en que se cerró la venta (CLOSED). Se limpia al reabrir.
+  closedAt          DateTime?
   lastInboundAt     DateTime  @default(now())
   lastOutboundAt    DateTime  @default(now())
   messages          Message[]

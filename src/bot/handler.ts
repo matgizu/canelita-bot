@@ -429,6 +429,10 @@ async function processCombined(
 
   if (nextState === "CLOSED") {
     await persistOrderIfNeeded(session);
+    // Sella la fecha/hora del cierre la PRIMERA vez (where closedAt: null).
+    prisma.conversation
+      .updateMany({ where: { waId: session.waId, closedAt: null }, data: { closedAt: new Date() } })
+      .catch((e: any) => console.error("[closedAt]", e.message));
     cancelRemarketing(session.waId);
   } else if (nextState === "CONFIRM_ORDER" || nextState === "ADDRESS_COLLECTION" || nextState === "PAYMENT_METHOD") {
     cancelRemarketing(session.waId);
