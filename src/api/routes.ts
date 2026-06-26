@@ -293,26 +293,97 @@ apiRouter.get("/conversations/:waId", async (req, res) => {
 });
 
 apiRouter.patch("/conversations/:waId/labels", async (req, res) => {
-  const labels: string[] = (req.body?.labels ?? [])
-    .filter((l: unknown) => typeof l === "string" && l.trim())
-    .map((l: string) => l.trim().slice(0, 40))
-    .slice(0, 15);
+  const waId = req.params.waId;
+  const labels: string[] = Array.from(
+    new Set(
+      (req.body?.labels ?? [])
+        .filter((l: unknown) => typeof l === "string" && l.trim())
+        .map((l: string) => l.trim().slice(0, 40)),
+    ),
+  ).slice(0, 30) as string[];
 
-  await prisma.conversation
-    .upsert({
-      where: { waId: req.params.waId },
-      create: { waId: req.params.waId, labels },
-      update: { labels },
-    })
-    .catch((e) => console.error("[labels]", e.message));
+  try {
+    // Conservamos la fecha/hora original de cada etiqueta ya aplicada y le
+    // ponemos timestamp a las nuevas. Las que se quitaron salen del meta.
+    const existing = await prisma.conversation.findUnique({
+      where: { waId },
+      select: { labelMeta: true },
+    });
+    const prevMeta = (existing?.labelMeta ?? {}) as Record<string, string>;
+    const now = new Date().toISOString();
+    const labelMeta: Record<string, string> = {};
+    for (const name of labels) labelMeta[name] = prevMeta[name] ?? now;
 
-  events.emitDashboard({
-    type: "labels_update",
-    waId: req.params.waId,
-    labels,
-    at: Date.now(),
-  });
-  res.json({ ok: true, labels });
+    await prisma.conversation.upsert({
+      where: { waId },
+      create: { waId, labels, labelMeta },
+      update: { labels, labelMeta },
+    });
+
+    // Alimenta el catálogo global para reutilizar la etiqueta luego.
+    if (labels.length) {
+      await prisma.tag
+        .createMany({ data: labels.map((name) => ({ name })), skipDuplicates: true })
+        .catch((e) => console.error("[labels.catalog]", e.message));
+    }
+
+    events.emitDashboard({ type: "labels_update", waId, labels, labelMeta, at: Date.now() });
+    res.json({ ok: true, labels, labelMeta });
+  } catch (e: any) {
+    console.error("[labels]", e.message);
+    res.status(500).json({ error: "labels_failed" });
+  }
+});
+
+/* ── Catálogo de etiquetas custom (reutilizables / para filtrar) ────────── */
+
+apiRouter.get("/tags", async (_req, res) => {
+  try {
+    // Catálogo = etiquetas creadas + las efectivamente aplicadas, con conteo de
+    // uso para que el dueño vea cuáles usa más.
+    const [tags, convs] = await Promise.all([
+      prisma.tag.findMany({ select: { name: true } }),
+      prisma.conversation.findMany({ select: { labels: true } }),
+    ]);
+    const counts = new Map<string, number>();
+    for (const t of tags) counts.set(t.name, 0);
+    for (const c of convs) {
+      for (const name of c.labels ?? []) counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    const result = Array.from(counts, ([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    res.json(result);
+  } catch (e: any) {
+    console.error("[tags.list]", e.message);
+    res.status(500).json({ error: "fetch_failed" });
+  }
+});
+
+apiRouter.post("/tags", async (req, res) => {
+  const name = String(req.body?.name ?? "").trim().slice(0, 40);
+  if (!name) { res.status(400).json({ error: "name_required" }); return; }
+  try {
+    const tag = await prisma.tag.upsert({
+      where: { name },
+      create: { name },
+      update: {},
+    });
+    res.json({ ok: true, tag });
+  } catch (e: any) {
+    console.error("[tags.create]", e.message);
+    res.status(500).json({ error: "create_failed" });
+  }
+});
+
+apiRouter.delete("/tags/:name", async (req, res) => {
+  const name = String(req.params.name ?? "").trim();
+  try {
+    await prisma.tag.deleteMany({ where: { name } });
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("[tags.delete]", e.message);
+    res.status(500).json({ error: "delete_failed" });
+  }
 });
 
 apiRouter.get("/orders", async (_req, res) => {

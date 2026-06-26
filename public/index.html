@@ -538,6 +538,24 @@
       font-weight: 600; cursor: pointer;
     }
     .label-input-row button:hover { opacity: .85; }
+    .label-chip .chip-date { font-weight: 400; opacity: .65; font-size: 9px; }
+    .tag-catalog { margin-top: 10px; }
+    .tag-catalog .cat-title {
+      font-size: 10px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .4px; margin-bottom: 5px;
+    }
+    .tag-catalog-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      background: #f3f4f6; color: #374151; cursor: pointer;
+      border: 1px dashed #cbd5e1;
+    }
+    .tag-pill:hover { background: #e5e7eb; border-color: #94a3b8; }
+    .tag-pill.applied { opacity: .4; cursor: default; border-style: solid; }
+    .tag-pill .cnt { opacity: .55; font-weight: 400; }
+    .tag-pill .del { opacity: .45; padding-left: 2px; }
+    .tag-pill .del:hover { opacity: 1; color: #dc2626; }
 
     /* ── Orders overlay ── */
     #orders-overlay {
@@ -831,6 +849,9 @@
         <option value="PAYMENT_METHOD">Pago</option>
         <option value="CLOSED">✓ Ventas cerradas</option>
       </select>
+      <select id="label-filter" onchange="doLabelFilter(this.value)">
+        <option value="">🏷️ Todas las etiquetas</option>
+      </select>
     </div>
     <div id="conv-list"></div>
   </aside>
@@ -1014,6 +1035,8 @@ let selected = null;
 let detail   = null;
 let q        = '';
 let stateFilter = '';
+let labelFilter = '';
+let tagCatalog  = [];   // [{name, count}] — etiquetas custom reutilizables
 let tab      = 'info';
 
 /* ─────────────────────────────────────
@@ -1021,6 +1044,7 @@ let tab      = 'info';
 ───────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   await loadConvs();
+  await loadTags();
   await loadMetrics();
   setInterval(loadMetrics, 60_000);
   connectSSE();
@@ -1040,6 +1064,25 @@ async function loadConvs() {
     renderSidebar();
     renderStats();
   } catch(e) { console.error('loadConvs', e); }
+}
+
+// Catálogo de etiquetas custom (reutilizables / para filtrar).
+async function loadTags() {
+  try {
+    tagCatalog = await fetch('/api/tags').then(r => r.json());
+    if (!Array.isArray(tagCatalog)) tagCatalog = [];
+  } catch(e) { console.error('loadTags', e); tagCatalog = []; }
+  renderLabelFilter();
+  if (detail) renderTagCatalog();
+}
+
+function renderLabelFilter() {
+  const sel = document.getElementById('label-filter');
+  if (!sel) return;
+  const cur = labelFilter;
+  sel.innerHTML = '<option value="">🏷️ Todas las etiquetas</option>'
+    + tagCatalog.map(t => `<option value="${x(t.name)}">${x(t.name)} (${t.count})</option>`).join('');
+  sel.value = cur;
 }
 
 async function loadMetrics() {
@@ -1217,11 +1260,13 @@ function stopPolling() {
 ───────────────────────────────────── */
 function doFilter(v) { q = v.toLowerCase(); renderSidebar(); }
 function doStateFilter(v) { stateFilter = v; renderSidebar(); }
+function doLabelFilter(v) { labelFilter = v; renderSidebar(); }
 
 function renderSidebar() {
   const list   = document.getElementById('conv-list');
   let items = convs;
   if (stateFilter) items = items.filter(c => c.state === stateFilter);
+  if (labelFilter) items = items.filter(c => (c.labels||[]).includes(labelFilter));
   if (q) items = items.filter(c =>
     (c.customerName||'').toLowerCase().includes(q) ||
     c.waId.includes(q));
@@ -1464,13 +1509,14 @@ function renderInfoTab() {
     <div class="isec">
       <div class="isec-title">Etiquetas</div>
       <div class="labels-wrap" id="labels-chips">
-        ${(d.labels||[]).map(l => labelChip(l)).join('')}
+        ${(d.labels||[]).map(l => labelChip(l, (d.labelMeta||{})[l])).join('')}
       </div>
       <div class="label-input-row">
-        <input type="text" id="label-input" placeholder="Nueva etiqueta…" maxlength="40"
+        <input type="text" id="label-input" placeholder="Crear nueva etiqueta…" maxlength="40"
           onkeydown="if(event.key==='Enter'){addLabel();event.preventDefault();}">
-        <button onclick="addLabel()">+ Agregar</button>
+        <button onclick="addLabel()">+ Crear</button>
       </div>
+      <div class="tag-catalog" id="tag-catalog">${tagCatalogHtml()}</div>
     </div>
 
     ${cart.length ? `
@@ -1579,8 +1625,41 @@ function switchTab(name) {
 /* ─────────────────────────────────────
    LABELS
 ───────────────────────────────────── */
-function labelChip(label) {
-  return `<span class="label-chip">${x(label)}<span class="rm" onclick="removeLabel('${x(label)}')">×</span></span>`;
+function fmtTagDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('es-CO', { day:'2-digit', month:'2-digit' })
+    + ' ' + d.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+}
+
+function labelChip(label, meta) {
+  const date = fmtTagDate(meta);
+  const dateHtml = date
+    ? ` <span class="chip-date" title="Etiquetada el ${x(date)}">${x(date)}</span>` : '';
+  return `<span class="label-chip">${x(label)}${dateHtml}<span class="rm" onclick="removeLabel('${x(label)}')">×</span></span>`;
+}
+
+// Catálogo reutilizable: clic en una etiqueta guardada para aplicarla al chat.
+function tagCatalogHtml() {
+  if (!tagCatalog.length) return '<div class="cat-title">Aún no has creado etiquetas</div>';
+  const applied = new Set((detail && detail.labels) || []);
+  return '<div class="cat-title">Guardadas — clic para aplicar</div>'
+    + '<div class="tag-catalog-wrap">'
+    + tagCatalog.map(t => {
+        const on = applied.has(t.name);
+        const del = t.count === 0
+          ? `<span class="del" title="Quitar del catálogo" onclick="event.stopPropagation();deleteTag('${x(t.name)}')">🗑</span>`
+          : '';
+        return `<span class="tag-pill${on?' applied':''}"${on?'':` onclick="applyTag('${x(t.name)}')"`}>`
+          + `${x(t.name)} <span class="cnt">${t.count}</span>${del}</span>`;
+      }).join('')
+    + '</div>';
+}
+
+function renderTagCatalog() {
+  const el = document.getElementById('tag-catalog');
+  if (el) el.innerHTML = tagCatalogHtml();
 }
 
 async function addLabel() {
@@ -1589,9 +1668,23 @@ async function addLabel() {
   if (!val || !selected || !detail) return;
   const current = Array.isArray(detail.labels) ? detail.labels : [];
   if (current.includes(val)) { input.value = ''; return; }
-  const labels = [...current, val];
-  await saveLabels(labels);
+  await saveLabels([...current, val]);
   input.value = '';
+}
+
+async function applyTag(name) {
+  if (!selected || !detail) return;
+  const current = Array.isArray(detail.labels) ? detail.labels : [];
+  if (current.includes(name)) return;
+  await saveLabels([...current, name]);
+}
+
+async function deleteTag(name) {
+  if (!confirm(`¿Quitar "${name}" del catálogo?`)) return;
+  try {
+    await fetch(`/api/tags/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    await loadTags();
+  } catch(e) { console.error('deleteTag', e); }
 }
 
 async function removeLabel(label) {
@@ -1602,18 +1695,19 @@ async function removeLabel(label) {
 
 async function saveLabels(labels) {
   try {
-    await fetch(`/api/conversations/${selected}/labels`, {
+    const res = await fetch(`/api/conversations/${selected}/labels`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ labels }),
     });
-    if (detail) detail.labels = labels;
-    // update chips live
+    const data = await res.json().catch(() => ({}));
+    const meta = data.labelMeta || (detail && detail.labelMeta) || {};
+    if (detail) { detail.labels = labels; detail.labelMeta = meta; }
     const wrap = document.getElementById('labels-chips');
-    if (wrap) wrap.innerHTML = labels.map(l => labelChip(l)).join('');
-    // update sidebar conv
+    if (wrap) wrap.innerHTML = labels.map(l => labelChip(l, meta[l])).join('');
     const c = convs.find(c => c.waId === selected);
     if (c) c.labels = labels;
+    await loadTags(); // refresca catálogo, conteos y filtro
   } catch(e) { console.error('saveLabels', e); }
 }
 

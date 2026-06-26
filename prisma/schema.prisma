@@ -26,6 +26,9 @@ model Conversation {
   adHistory         Json      @default("[]")
   wabaId            String?
   labels            String[]  @default([])
+  // Fecha/hora en que se aplicó cada etiqueta custom: { "nombre": "ISO" }.
+  // Las etiquetas de estado (Saludo/Interés/Cerrado) NO viven aquí, viven en `state`.
+  labelMeta         Json      @default("{}")
   windowExpired     Boolean   @default(false)
   discountOffered   Boolean   @default(false)
   state             String    @default("GREETING")
@@ -115,4 +118,12 @@ model BotConfig {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// Catálogo de etiquetas custom creadas por el dueño, para reutilizarlas y
+// filtrar. Independiente del estado del embudo.
+model Tag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
 }

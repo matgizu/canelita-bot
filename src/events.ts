@@ -34,6 +34,7 @@ export type DashboardEvent =
       type: "labels_update";
       waId: string;
       labels: string[];
+      labelMeta?: Record<string, string>;
       at: number;
     }
   | {
