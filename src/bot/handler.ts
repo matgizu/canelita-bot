@@ -68,6 +68,13 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
   }
   const session = await getOrLoadSession(ev.waId);
   session.lastInboundAt = Date.now();
+
+  // Cualquier mensaje entrante del cliente REABRE la ventana de 24h. Limpiamos
+  // el flag persistido para que el panel vuelva a habilitar el envío; sin esto
+  // quedaba marcado como expirado para siempre y bloqueaba el cuadro de texto.
+  prisma.conversation
+    .updateMany({ where: { waId: ev.waId }, data: { windowExpired: false } })
+    .catch(() => {});
   if (ev.customerName && !session.customerName) {
     session.customerName = ev.customerName;
   }

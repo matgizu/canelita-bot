@@ -1125,6 +1125,13 @@ function connectSSE() {
     }
     c._preview      = d.body;
     c.lastInboundAt = new Date(d.at).toISOString();
+    // Un mensaje ENTRANTE reabre la ventana de 24h: limpiamos el flag para
+    // rehabilitar el envío en el panel sin necesidad de recargar.
+    if (d.direction === 'inbound') {
+      c.windowExpired = false;
+      if (detail && detail.waId === d.waId) detail.windowExpired = false;
+      if (d.waId === selected) updateWindowExpiredBar();
+    }
     renderSidebar();
     renderStats();
     if (d.waId === selected) appendBubble(d);
