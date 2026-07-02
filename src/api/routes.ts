@@ -12,6 +12,7 @@ import { deleteMessage, mimeToMediaType, sendInParts, sendMedia, uploadMedia } f
 import { transcodeToWhatsappVoice } from "../whatsapp/audio";
 import { sanitizeOutput } from "../bot/blocklist";
 import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
+import { buildAuditData } from "../reports/audit";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -613,6 +614,16 @@ apiRouter.post(
     res.json({ ok: true, type, mediaId, msgId: sent.id });
   },
 );
+
+apiRouter.get("/audit", async (_req, res) => {
+  try {
+    const data = await buildAuditData();
+    res.json(data);
+  } catch (e: any) {
+    console.error("[audit]", e.message);
+    res.status(500).json({ error: "audit_failed" });
+  }
+});
 
 apiRouter.get("/metrics/strategies", async (_req, res) => {
   try {
