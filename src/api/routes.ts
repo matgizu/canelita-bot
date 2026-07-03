@@ -25,43 +25,48 @@ apiRouter.get("/owner-status", (_req, res) => {
   res.json({ windowOpen: ownerWindowStatus() });
 });
 
-apiRouter.get("/metrics", async (_req, res) => {
+apiRouter.get("/metrics", async (req, res) => {
   try {
-    const [
-      total,
-      closed,
-      repliedRows,
-      todayRows,
-    ] = await Promise.all([
-      prisma.conversation.count(),
-      prisma.conversation.count({ where: { state: "CLOSED" } }),
-      // Conversations where the customer sent ≥2 inbound messages (replied after greeting)
+    // Ventana opcional [from, to). Sin parámetros = todo el histórico.
+    const fromRaw = req.query.from ? new Date(String(req.query.from)) : null;
+    const toRaw   = req.query.to   ? new Date(String(req.query.to))   : null;
+    if (fromRaw && isNaN(fromRaw.getTime())) { res.status(400).json({ error: "invalid_from" }); return; }
+    if (toRaw   && isNaN(toRaw.getTime()))   { res.status(400).json({ error: "invalid_to" }); return; }
+    const from = fromRaw ?? new Date("1970-01-01T00:00:00Z");
+    const to   = toRaw   ?? new Date("9999-12-31T00:00:00Z");
+
+    const dateFilter = { createdAt: { gte: from, lt: to } };
+
+    const [leads, closed, inbound, repliedRows] = await Promise.all([
+      // Conversaciones nuevas (leads) en la ventana
+      prisma.conversation.count({ where: dateFilter }),
+      // Ventas cerradas = pedidos no cancelados creados en la ventana
+      prisma.order.count({ where: { status: { not: "CANCELLED" }, ...dateFilter } }),
+      // Mensajes recibidos (entrantes) en la ventana
+      prisma.message.count({ where: { direction: "inbound", ...dateFilter } }),
+      // Leads de la ventana que respondieron (≥2 mensajes entrantes)
       prisma.$queryRaw<[{ count: bigint }]>`
         SELECT COUNT(*) AS count FROM (
-          SELECT "conversationId"
-          FROM "Message"
-          WHERE direction = 'inbound'
-          GROUP BY "conversationId"
+          SELECT m."conversationId"
+          FROM freskabox."Message" m
+          JOIN freskabox."Conversation" c ON c.id = m."conversationId"
+          WHERE m.direction = 'inbound'
+            AND c."createdAt" >= ${from} AND c."createdAt" < ${to}
+          GROUP BY m."conversationId"
           HAVING COUNT(*) >= 2
         ) sub
-      `,
-      // Conversations created today
-      prisma.$queryRaw<[{ count: bigint }]>`
-        SELECT COUNT(*) AS count FROM "Conversation"
-        WHERE "createdAt" >= CURRENT_DATE
       `,
     ]);
 
     const replied = Number(repliedRows[0]?.count ?? 0);
-    const today   = Number(todayRows[0]?.count ?? 0);
 
     res.json({
-      total,
-      closed,
+      leads,
       replied,
-      today,
-      responseRate: total > 0 ? replied / total : 0,
-      closeRate:    total > 0 ? closed / total   : 0,
+      closed,
+      inbound,
+      responseRate: leads > 0 ? replied / leads : 0,
+      closeRate:    leads > 0 ? closed  / leads : 0,
     });
   } catch (e: any) {
     console.error("[metrics]", e.message);

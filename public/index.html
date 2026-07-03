@@ -64,6 +64,23 @@
     .metric-value.red    { background: #450a0a; color: #f87171; }
     .metric-value.gray   { background: #1f2937; color: #9ca3af; }
     .metric-divider { width: 1px; height: 22px; background: #374151; flex-shrink: 0; }
+    #metrics-period {
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    }
+    #metrics-period select, #metrics-period input[type="date"] {
+      background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+      border-radius: 6px; font-size: 11px; padding: 3px 7px; outline: none;
+      font-family: inherit; cursor: pointer;
+    }
+    #metrics-period select:focus, #metrics-period input:focus { border-color: var(--brand); }
+    #metrics-period .mp-icon { font-size: 12px; color: #64748b; }
+    #metrics-period .mp-range { display: none; align-items: center; gap: 4px; }
+    #metrics-period .mp-range.show { display: flex; }
+    #metrics-period .mp-range span { font-size: 10px; color: #64748b; }
+    #metrics-period button {
+      background: var(--brand); color: #fff; border: none; border-radius: 6px;
+      font-size: 11px; font-weight: 600; padding: 3px 9px; cursor: pointer;
+    }
 
     /* ── Layout ── */
     #layout { display: flex; flex: 1; overflow: hidden; }
@@ -872,6 +889,23 @@
 
 <!-- Metrics bar -->
 <div id="metrics-bar">
+  <div id="metrics-period">
+    <span class="mp-icon">📅</span>
+    <select id="mp-preset" onchange="onPeriodChange()">
+      <option value="today">Hoy</option>
+      <option value="yesterday">Ayer</option>
+      <option value="7d">Últimos 7 días</option>
+      <option value="30d">Últimos 30 días</option>
+      <option value="all" selected>Todo</option>
+      <option value="custom">Personalizado…</option>
+    </select>
+    <span class="mp-range" id="mp-range">
+      <input type="date" id="mp-from" onchange="applyCustomPeriod()">
+      <span>→</span>
+      <input type="date" id="mp-to" onchange="applyCustomPeriod()">
+    </span>
+  </div>
+  <div class="metric-divider"></div>
   <div class="metric-item">
     <span class="metric-label">Tasa de respuesta</span>
     <span class="metric-value gray" id="m-response">…</span>
@@ -883,8 +917,13 @@
   </div>
   <div class="metric-divider"></div>
   <div class="metric-item">
-    <span class="metric-label">Hoy</span>
+    <span class="metric-label" id="m-leads-label">Nuevas</span>
     <span class="metric-value gray" id="m-today">…</span>
+  </div>
+  <div class="metric-divider"></div>
+  <div class="metric-item">
+    <span class="metric-label">Mensajes recibidos</span>
+    <span class="metric-value gray" id="m-inbound">…</span>
   </div>
   <div class="metric-divider"></div>
   <div class="metric-item">
@@ -1190,9 +1229,53 @@ function renderLabelFilter() {
   sel.value = cur;
 }
 
+// Período seleccionado para la barra de métricas. from/to null = todo el histórico.
+let metricsPeriod = { from: null, to: null };
+
+// Inicio del día COL (UTC-5) desplazado `offset` días, como instante UTC.
+function colDayStart(offset = 0) {
+  const shift = new Date(Date.now() - 5 * 3600 * 1000);
+  return new Date(Date.UTC(shift.getUTCFullYear(), shift.getUTCMonth(), shift.getUTCDate() + offset, 5, 0, 0));
+}
+function colFromDateStr(str) { return new Date(str + 'T05:00:00.000Z'); } // 00:00 COL de esa fecha
+
+function onPeriodChange() {
+  const preset = document.getElementById('mp-preset').value;
+  const rangeEl = document.getElementById('mp-range');
+  rangeEl.classList.toggle('show', preset === 'custom');
+  const now = new Date();
+  if (preset === 'today')       metricsPeriod = { from: colDayStart(0),  to: now };
+  else if (preset === 'yesterday') metricsPeriod = { from: colDayStart(-1), to: colDayStart(0) };
+  else if (preset === '7d')     metricsPeriod = { from: new Date(Date.now() - 7 * 864e5),  to: now };
+  else if (preset === '30d')    metricsPeriod = { from: new Date(Date.now() - 30 * 864e5), to: now };
+  else if (preset === 'all')    metricsPeriod = { from: null, to: null };
+  else if (preset === 'custom') {
+    // Prefill con ayer→hoy si está vacío; no recarga hasta elegir fechas.
+    const f = document.getElementById('mp-from'), t = document.getElementById('mp-to');
+    if (!f.value) f.value = new Date(Date.now() - 5 * 3600 * 1000 - 864e5).toISOString().slice(0, 10);
+    if (!t.value) t.value = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+    applyCustomPeriod();
+    return;
+  }
+  loadMetrics();
+}
+
+function applyCustomPeriod() {
+  const fs = document.getElementById('mp-from').value;
+  const ts = document.getElementById('mp-to').value;
+  if (!fs || !ts) return;
+  // 'to' inclusive: sumamos 1 día al final del rango.
+  metricsPeriod = { from: colFromDateStr(fs), to: new Date(colFromDateStr(ts).getTime() + 864e5) };
+  loadMetrics();
+}
+
 async function loadMetrics() {
   try {
-    const d = await fetch('/api/metrics').then(r => r.json());
+    const qs = new URLSearchParams();
+    if (metricsPeriod.from) qs.set('from', metricsPeriod.from.toISOString());
+    if (metricsPeriod.to)   qs.set('to',   metricsPeriod.to.toISOString());
+    const url = '/api/metrics' + (qs.toString() ? '?' + qs.toString() : '');
+    const d = await fetch(url).then(r => r.json());
 
     // Response rate: >45% green, 30-45% orange, <30% red
     const rr  = d.responseRate ?? 0;
@@ -1207,7 +1290,8 @@ async function loadMetrics() {
     setMetric('m-close', crPct, crColor);
 
     // Plain numbers
-    setMetric('m-today',   d.today   ?? 0, 'gray');
+    setMetric('m-today',   d.leads   ?? 0, 'gray');
+    setMetric('m-inbound', d.inbound ?? 0, 'gray');
     setMetric('m-replied', d.replied ?? 0, 'gray');
     setMetric('m-closed',  d.closed  ?? 0, 'gray');
   } catch(e) { console.warn('loadMetrics', e); }
