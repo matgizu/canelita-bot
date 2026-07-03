@@ -13,6 +13,7 @@ import { transcodeToWhatsappVoice } from "../whatsapp/audio";
 import { sanitizeOutput } from "../bot/blocklist";
 import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
 import { buildAuditData } from "../reports/audit";
+import { computeDropiPnl } from "../reports/dropiPnl";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -627,6 +628,23 @@ apiRouter.get("/audit", async (_req, res) => {
   } catch (e: any) {
     console.error("[audit]", e.message);
     res.status(500).json({ error: "audit_failed" });
+  }
+});
+
+// Estado de resultados a partir de un export de órdenes de Dropi (xlsx/csv).
+apiRouter.post("/pnl", upload.single("file"), async (req, res) => {
+  if (!req.file) { res.status(400).json({ error: "no_file" }); return; }
+  try {
+    const data = await computeDropiPnl(req.file.buffer, req.file.originalname || "archivo");
+    res.json(data);
+  } catch (e: any) {
+    console.error("[pnl]", e.message);
+    const known: Record<string, string> = {
+      empty_file: "El archivo está vacío o no se pudo leer.",
+      no_worksheet: "No se encontró una hoja de datos en el archivo.",
+      no_status_column: "No se encontró la columna de estado de guía (ESTATUS).",
+    };
+    res.status(400).json({ error: known[e.message] ?? "No se pudo procesar el archivo. Verifica que sea el export de órdenes de Dropi." });
   }
 });
 

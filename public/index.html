@@ -775,6 +775,65 @@
     .aud-mover .adid { font-family: ui-monospace, monospace; color: #93c5fd; font-size: 11px; flex: 1; }
     .aud-mover .chg { font-weight: 700; }
     .aud-note { font-size: 11px; color: #475569; border-top: 1px solid #1e293b; padding-top: 12px; line-height: 1.5; }
+
+    /* ── Estado de resultados (P&L) — pantalla completa ── */
+    #pnl-overlay {
+      position: fixed; inset: 0; background: #0b1120; z-index: 250;
+      display: flex; flex-direction: column;
+    }
+    #pnl-header {
+      display: flex; align-items: center; gap: 12px; padding: 14px 24px;
+      border-bottom: 1px solid #1e293b; flex-shrink: 0;
+    }
+    #pnl-header h2 { color: #fff; font-size: 16px; font-weight: 700; flex: 1; }
+    #pnl-header .pnl-file { font-size: 12px; color: #64748b; }
+    #pnl-reset-btn, #pnl-close {
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+      border-radius: 8px; cursor: pointer; font-size: 12px; padding: 6px 12px;
+    }
+    #pnl-close { width: 34px; padding: 6px 0; }
+    #pnl-reset-btn:hover, #pnl-close:hover { background: #334155; color: #fff; }
+    #pnl-body { flex: 1; overflow-y: auto; padding: 28px; }
+    #pnl-drop {
+      max-width: 620px; margin: 8vh auto 0; border: 2px dashed #334155;
+      border-radius: 16px; padding: 56px 32px; text-align: center; cursor: pointer;
+      background: #0f172a; transition: border-color .15s, background .15s;
+    }
+    #pnl-drop.drag { border-color: var(--brand); background: #10241d; }
+    #pnl-drop .pd-icon { font-size: 48px; }
+    #pnl-drop h3 { color: #e2e8f0; font-size: 16px; margin: 12px 0 6px; }
+    #pnl-drop p { color: #64748b; font-size: 13px; line-height: 1.6; }
+    #pnl-drop .pd-btn {
+      display: inline-block; margin-top: 16px; background: var(--brand); color: #fff;
+      border-radius: 8px; padding: 10px 20px; font-size: 13px; font-weight: 600;
+    }
+    .pnl-content { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+    .pnl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .pnl-kpi { background: #111a2e; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; }
+    .pnl-kpi .k-lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; }
+    .pnl-kpi .k-val { font-size: 22px; font-weight: 800; color: #f1f5f9; margin-top: 6px; }
+    .pnl-kpi .k-val.green { color: #34d399; }
+    .pnl-kpi .k-val.red { color: #f87171; }
+    .pnl-kpi .k-sub { font-size: 11px; color: #64748b; margin-top: 4px; }
+    .pnl-section { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; }
+    .pnl-section h3 { color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 14px; }
+    .pnl-line { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid #1e293b; font-size: 13px; }
+    .pnl-line:first-of-type { border-top: none; }
+    .pnl-line .lbl { color: #94a3b8; }
+    .pnl-line .val { color: #e2e8f0; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pnl-line.minus .val { color: #f87171; }
+    .pnl-line.total { border-top: 2px solid #334155; margin-top: 4px; padding-top: 12px; }
+    .pnl-line.total .lbl, .pnl-line.total .val { font-size: 15px; font-weight: 800; color: #f1f5f9; }
+    .pnl-line.total .val.green { color: #34d399; }
+    .pnl-two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .pnl-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .pnl-table th { text-align: left; color: #64748b; font-size: 10px; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid #1e293b; }
+    .pnl-table td { padding: 7px 8px; color: #cbd5e1; border-bottom: 1px solid #1e293b; }
+    .pnl-table td.num, .pnl-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .pnl-badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: #1e293b; color: #93c5fd; }
+    .pnl-warn { background: #422006; border: 1px solid #7c4a03; color: #fbbf24; border-radius: 10px; padding: 12px 16px; font-size: 12px; }
+    .pnl-note { font-size: 11px; color: #475569; line-height: 1.6; }
+    .pnl-loading { text-align: center; color: #94a3b8; padding: 60px; font-size: 14px; }
     #pipeline-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.65);
       display: flex; align-items: stretch; justify-content: stretch;
@@ -878,6 +937,7 @@
   <button id="templates-btn" onclick="openTemplates()">📋 Plantillas</button>
   <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
   <button id="audit-btn" onclick="openAudit()">🔍 Auditoría</button>
+  <button id="pnl-btn" onclick="openPnl()">💵 Estado de resultados</button>
   <button id="pipeline-btn" onclick="openPipeline()">📊 Pipeline</button>
   <button id="ab-btn" onclick="openAB()">🧪 A/B</button>
   <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
@@ -1141,6 +1201,26 @@
       <div class="ab-funnel" id="ab-funnel-section"></div>
       <div class="ab-note" id="ab-note"></div>
     </div>
+  </div>
+</div>
+
+<!-- Estado de resultados (P&L) — pantalla completa -->
+<div id="pnl-overlay" hidden>
+  <div id="pnl-header">
+    <h2>💵 Estado de resultados</h2>
+    <span class="pnl-file" id="pnl-file"></span>
+    <button id="pnl-reset-btn" onclick="resetPnl()" hidden>Subir otro archivo</button>
+    <button id="pnl-close" onclick="closePnl()">✕</button>
+  </div>
+  <div id="pnl-body">
+    <div id="pnl-drop" onclick="document.getElementById('pnl-file-input').click()">
+      <div class="pd-icon">📄</div>
+      <h3>Sube el export de órdenes de Dropi</h3>
+      <p>Arrastra el archivo aquí o haz clic para elegirlo.<br>Formatos: Excel (.xlsx) o CSV.<br>Se excluyen automáticamente las guías CANCELADO y RECHAZADO.</p>
+      <span class="pd-btn">Elegir archivo</span>
+      <input type="file" id="pnl-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="onPnlFile(event)">
+    </div>
+    <div id="pnl-result"></div>
   </div>
 </div>
 
@@ -2619,6 +2699,119 @@ async function openAudit() {
   }
 }
 function closeAudit() { document.getElementById('audit-overlay').hidden = true; }
+
+/* ── Estado de resultados (P&L) ── */
+function openPnl() {
+  document.getElementById('pnl-overlay').hidden = false;
+  resetPnl();
+  setupPnlDrop();
+}
+function closePnl() { document.getElementById('pnl-overlay').hidden = true; }
+function resetPnl() {
+  document.getElementById('pnl-drop').hidden = false;
+  document.getElementById('pnl-result').innerHTML = '';
+  document.getElementById('pnl-file').textContent = '';
+  document.getElementById('pnl-reset-btn').hidden = true;
+  const inp = document.getElementById('pnl-file-input');
+  if (inp) inp.value = '';
+}
+
+let pnlDropReady = false;
+function setupPnlDrop() {
+  if (pnlDropReady) return;
+  pnlDropReady = true;
+  const dz = document.getElementById('pnl-drop');
+  ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) uploadPnl(f); });
+}
+function onPnlFile(e) { const f = e.target.files[0]; if (f) uploadPnl(f); }
+
+async function uploadPnl(file) {
+  document.getElementById('pnl-drop').hidden = true;
+  document.getElementById('pnl-file').textContent = file.name;
+  document.getElementById('pnl-result').innerHTML = '<div class="pnl-loading">⏳ Procesando ' + x(file.name) + '…</div>';
+  const form = new FormData();
+  form.append('file', file, file.name);
+  try {
+    const res = await fetch('/api/pnl', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) {
+      document.getElementById('pnl-result').innerHTML = '<div class="pnl-warn">⚠️ ' + x(data.error || 'No se pudo procesar') + '</div>';
+      document.getElementById('pnl-reset-btn').hidden = false;
+      return;
+    }
+    renderPnl(data);
+    document.getElementById('pnl-reset-btn').hidden = false;
+  } catch {
+    document.getElementById('pnl-result').innerHTML = '<div class="pnl-warn">⚠️ Error de conexión al subir el archivo.</div>';
+    document.getElementById('pnl-reset-btn').hidden = false;
+  }
+}
+
+function pcop(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
+
+function renderPnl(d) {
+  const p = d.pnl, g = d.groups;
+  const kpis = `<div class="pnl-grid">
+    <div class="pnl-kpi"><div class="k-lbl">Ingresos (entregados)</div><div class="k-val green">${pcop(p.income)}</div><div class="k-sub">${g.delivered.count} pedidos entregados</div></div>
+    <div class="pnl-kpi"><div class="k-lbl">Resultado neto</div><div class="k-val ${p.netResult >= 0 ? 'green' : 'red'}">${pcop(p.netResult)}</div><div class="k-sub">ganancia − devoluciones</div></div>
+    <div class="pnl-kpi"><div class="k-lbl">Pendiente (en tránsito)</div><div class="k-val">${pcop(p.pendingPotential)}</div><div class="k-sub">${g.inTransit.count} pedidos en camino</div></div>
+    <div class="pnl-kpi"><div class="k-lbl">Tasa de entrega</div><div class="k-val">${(p.deliveryRate*100).toFixed(1)}%</div><div class="k-sub">devolución ${(p.returnRate*100).toFixed(1)}% (${g.returned.count})</div></div>
+  </div>`;
+
+  const statement = `<div class="pnl-section">
+    <h3>Estado de resultados — pedidos entregados</h3>
+    <div class="pnl-line"><span class="lbl">Ingresos (recaudo COD)</span><span class="val">${pcop(p.income)}</span></div>
+    <div class="pnl-line minus"><span class="lbl">(−) Costo de producto (proveedor)</span><span class="val">−${pcop(p.supplier)}</span></div>
+    <div class="pnl-line minus"><span class="lbl">(−) Flete</span><span class="val">−${pcop(p.flete)}</span></div>
+    <div class="pnl-line minus"><span class="lbl">(−) Comisión Dropi</span><span class="val">−${pcop(p.commission)}</span></div>
+    <div class="pnl-line total"><span class="lbl">= Ganancia neta entregados</span><span class="val green">${pcop(p.netDelivered)}</span></div>
+    <div class="pnl-line minus"><span class="lbl">(−) Pérdida por devoluciones (${g.returned.count})</span><span class="val">−${pcop(p.returnLoss)}</span></div>
+    <div class="pnl-line total"><span class="lbl">= Resultado neto realizado</span><span class="val green">${pcop(p.netResult)}</span></div>
+  </div>`;
+
+  const statusRows = d.statusBreakdown.map(s => `<tr><td>${x(s.status)}</td><td class="num">${s.count}</td></tr>`).join('');
+  const counts = `<div class="pnl-section">
+    <h3>Pedidos por estado de guía</h3>
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">${d.totalRows} en el archivo · <b style="color:#e2e8f0">${d.counted} contados</b> · ${d.excluded.total} excluidos (${d.excluded.cancelado} cancelado, ${d.excluded.rechazado} rechazado)</div>
+    <table class="pnl-table"><thead><tr><th>Estado</th><th class="num">Pedidos</th></tr></thead><tbody>${statusRows}</tbody></table>
+  </div>`;
+
+  const db = d.db;
+  const dbCross = `<div class="pnl-section">
+    <h3>Corroboración con la base de datos</h3>
+    <div class="pnl-two">
+      <div>
+        <div class="pnl-line"><span class="lbl">Pedidos Dropi (contados)</span><span class="val">${d.counted}</span></div>
+        <div class="pnl-line"><span class="lbl">Pedidos en la DB (no cancelados)</span><span class="val">${db.orders}</span></div>
+        <div class="pnl-line"><span class="lbl">Venta DB</span><span class="val">${pcop(db.revenue)}</span></div>
+      </div>
+      <div>
+        <div class="pnl-line"><span class="lbl">✅ En ambos sistemas</span><span class="val">${db.inBoth}</span></div>
+        <div class="pnl-line"><span class="lbl">🟠 Solo en Dropi</span><span class="val">${db.dropiOnly}</span></div>
+        <div class="pnl-line"><span class="lbl">🔵 Solo en la DB</span><span class="val">${db.dbOnly}</span></div>
+      </div>
+    </div>
+  </div>`;
+
+  const listTable = (title, rows, cols) => `<div class="pnl-section">
+    <h3>${title}</h3>
+    <table class="pnl-table"><thead><tr>${cols}</tr></thead><tbody>${rows || '<tr><td colspan="3" style="color:#64748b">Ninguno</td></tr>'}</tbody></table>
+  </div>`;
+  const dropiOnlyRows = db.dropiOnlyList.map(o => `<tr><td>${x(o.name || '—')}</td><td>${x(o.phone)}</td><td>${x(o.status)}</td><td class="num">${pcop(o.value)}</td></tr>`).join('');
+  const dbOnlyRows = db.dbOnlyList.map(o => `<tr><td>${x(o.name || '—')}</td><td>${x(o.phone)}</td><td class="num">${pcop(o.value)}</td></tr>`).join('');
+  const discrepancies = `<div class="pnl-two">
+    ${listTable('🟠 Solo en Dropi (no las cerró el bot)', dropiOnlyRows, '<th>Cliente</th><th>Teléfono</th><th>Estado</th><th class="num">Valor</th>')}
+    ${listTable('🔵 Solo en la DB (cerradas pero sin despachar en Dropi)', dbOnlyRows, '<th>Cliente</th><th>Teléfono</th><th class="num">Valor</th>')}
+  </div>`;
+
+  const warns = (d.warnings && d.warnings.length) ? `<div class="pnl-warn">⚠️ ${d.warnings.map(x).join('<br>')}</div>` : '';
+  const note = `<div class="pnl-note">💡 Los ingresos y la ganancia se calculan solo sobre pedidos ENTREGADOS (recaudo real). Los "en tránsito" son potenciales. La pérdida por devolución = flete de ida + flete de retorno (el producto vuelve al proveedor). La corroboración cruza por número de teléfono normalizado.</div>`;
+
+  document.getElementById('pnl-result').innerHTML =
+    `<div class="pnl-content">${warns}${kpis}${statement}<div class="pnl-two">${counts}${dbCross}</div>${discrepancies}${note}</div>`;
+}
 
 function audCop(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
 function audPct(x) { return (x * 100).toFixed(1) + '%'; }
