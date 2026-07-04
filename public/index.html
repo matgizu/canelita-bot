@@ -834,6 +834,18 @@
     .pnl-warn { background: #422006; border: 1px solid #7c4a03; color: #fbbf24; border-radius: 10px; padding: 12px 16px; font-size: 12px; }
     .pnl-note { font-size: 11px; color: #475569; line-height: 1.6; }
     .pnl-loading { text-align: center; color: #94a3b8; padding: 60px; font-size: 14px; }
+    .pnl-scen-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .pnl-scen { border: 1px solid #1e293b; border-radius: 12px; padding: 16px; background: #111a2e; }
+    .pnl-scen.pesimista { border-color: #7c2d12; }
+    .pnl-scen.realista  { border-color: #10b981; box-shadow: 0 0 0 1px #10b981; }
+    .pnl-scen.optimista { border-color: #1e40af; }
+    .pnl-scen .s-name { font-size: 12px; font-weight: 700; color: #e2e8f0; display: flex; align-items: center; gap: 6px; }
+    .pnl-scen .s-rate { font-size: 11px; color: #94a3b8; margin: 2px 0 12px; }
+    .pnl-scen .s-total { font-size: 22px; font-weight: 800; color: #34d399; }
+    .pnl-scen .s-total-lbl { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: .4px; }
+    .pnl-scen .s-line { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; padding: 3px 0; }
+    .pnl-scen .s-line .v { color: #cbd5e1; font-variant-numeric: tabular-nums; }
+    .pnl-scen .s-sep { border-top: 1px solid #1e293b; margin: 8px 0; }
     #pipeline-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.65);
       display: flex; align-items: stretch; justify-content: stretch;
@@ -2771,6 +2783,28 @@ function renderPnl(d) {
     <div class="pnl-line total"><span class="lbl">= Resultado neto realizado</span><span class="val green">${pcop(p.netResult)}</span></div>
   </div>`;
 
+  let projection = '';
+  if (d.projection) {
+    const pj = d.projection;
+    const icons = { pesimista: '🔻', realista: '🎯', optimista: '🔼' };
+    const cards = pj.scenarios.map(s => `
+      <div class="pnl-scen ${s.key}">
+        <div class="s-name">${icons[s.key] || ''} ${x(s.label)}</div>
+        <div class="s-rate">${(s.rate*100).toFixed(1)}% de entrega · ${s.deliveredExpected.toFixed(1)} de ${pj.inTransitCount} en tránsito</div>
+        <div class="s-total-lbl">Resultado total proyectado</div>
+        <div class="s-total">${pcop(s.totalNet)}</div>
+        <div class="s-sep"></div>
+        <div class="s-line"><span>Neto ya realizado</span><span class="v">${pcop(d.pnl.netResult)}</span></div>
+        <div class="s-line"><span>+ Ganancia de en tránsito</span><span class="v">${pcop(s.profitFromPending)}</span></div>
+        <div class="s-line"><span>− Pérdida devoluciones est.</span><span class="v">−${pcop(s.returnLossExpected)}</span></div>
+      </div>`).join('');
+    projection = `<div class="pnl-section">
+      <h3>Proyección al resolver los ${pj.inTransitCount} pedidos en tránsito</h3>
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:14px">Aplica la tasa de entrega observada (${(pj.observedRate*100).toFixed(1)}%) y un margen del ${(pj.margin*100).toFixed(1)}% sobre el recaudo. Los escenarios optimista/pesimista usan el intervalo de confianza (95%) de la tasa de entrega.</div>
+      <div class="pnl-scen-grid">${cards}</div>
+    </div>`;
+  }
+
   const statusRows = d.statusBreakdown.map(s => `<tr><td>${x(s.status)}</td><td class="num">${s.count}</td></tr>`).join('');
   const counts = `<div class="pnl-section">
     <h3>Pedidos por estado de guía</h3>
@@ -2810,7 +2844,7 @@ function renderPnl(d) {
   const note = `<div class="pnl-note">💡 Los ingresos y la ganancia se calculan solo sobre pedidos ENTREGADOS (recaudo real). Los "en tránsito" son potenciales. La pérdida por devolución = flete de ida + flete de retorno (el producto vuelve al proveedor). La corroboración cruza por número de teléfono normalizado.</div>`;
 
   document.getElementById('pnl-result').innerHTML =
-    `<div class="pnl-content">${warns}${kpis}${statement}<div class="pnl-two">${counts}${dbCross}</div>${discrepancies}${note}</div>`;
+    `<div class="pnl-content">${warns}${kpis}${statement}${projection}<div class="pnl-two">${counts}${dbCross}</div>${discrepancies}${note}</div>`;
 }
 
 function audCop(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }

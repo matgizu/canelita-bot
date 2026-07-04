@@ -101,6 +101,17 @@ const normPhone = (p: string | undefined): string => {
   return s;
 };
 
+// Intervalo de confianza de Wilson (95%) para una proporción — da cotas
+// realistas para los escenarios optimista/pesimista a partir de la muestra.
+function wilson(pos: number, n: number, z = 1.96): { low: number; high: number } {
+  if (n === 0) return { low: 0, high: 0 };
+  const p = pos / n;
+  const d = 1 + (z * z) / n;
+  const centre = p + (z * z) / (2 * n);
+  const spread = z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n));
+  return { low: Math.max(0, (centre - spread) / d), high: Math.min(1, (centre + spread) / d) };
+}
+
 // ── Tipos de salida ────────────────────────────────────────────────────────
 
 export interface PnlResult {
@@ -117,6 +128,17 @@ export interface PnlResult {
     income: number; supplier: number; flete: number; commission: number;
     netDelivered: number; returnLoss: number; netResult: number; pendingPotential: number;
     deliveryRate: number; returnRate: number;
+  };
+  projection: null | {
+    inTransitCount: number;
+    pendingPotential: number;
+    observedRate: number;
+    margin: number;
+    scenarios: Array<{
+      key: string; label: string; rate: number;
+      deliveredExpected: number; incomeExpected: number;
+      profitFromPending: number; returnLossExpected: number; totalNet: number;
+    }>;
   };
   statusBreakdown: Array<{ status: string; count: number }>;
   db: {
@@ -194,6 +216,42 @@ export async function computeDropiPnl(buffer: Buffer, fileName: string): Promise
   const returnLoss = G.returned.fleteIda + G.returned.returnFlete;
   const netResult = G.delivered.profit - returnLoss;
 
+  // ── Proyección de los pedidos en tránsito bajo 3 escenarios de entrega ──
+  // Margen = ganancia por peso recaudado en entregados. Pérdida media por
+  // devolución = pérdida total de devoluciones / nº de devoluciones.
+  let projection: PnlResult["projection"] = null;
+  if (G.inTransit.count > 0 && resolved > 0) {
+    const margin = G.delivered.income > 0 ? G.delivered.profit / G.delivered.income : 0;
+    const avgReturnLoss = G.returned.count > 0 ? returnLoss / G.returned.count : 0;
+    const observed = G.delivered.count / resolved;
+    const { low, high } = wilson(G.delivered.count, resolved);
+    const scenario = (key: string, label: string, rateRaw: number) => {
+      const rate = Math.max(0, Math.min(1, rateRaw));
+      const incomeExpected = G.inTransit.potential * rate;
+      const profitFromPending = incomeExpected * margin;
+      const returnLossExpected = G.inTransit.count * (1 - rate) * avgReturnLoss;
+      return {
+        key, label, rate,
+        deliveredExpected: G.inTransit.count * rate,
+        incomeExpected,
+        profitFromPending,
+        returnLossExpected,
+        totalNet: netResult + profitFromPending - returnLossExpected,
+      };
+    };
+    projection = {
+      inTransitCount: G.inTransit.count,
+      pendingPotential: G.inTransit.potential,
+      observedRate: observed,
+      margin,
+      scenarios: [
+        scenario("pesimista", "Pesimista", low),
+        scenario("realista", "Realista (tasa actual)", observed),
+        scenario("optimista", "Optimista", high),
+      ],
+    };
+  }
+
   // ── Cruce con la base de datos ──
   const dbOrders = await prisma.order.findMany({
     where: { status: { not: "CANCELLED" } },
@@ -237,6 +295,7 @@ export async function computeDropiPnl(buffer: Buffer, fileName: string): Promise
       deliveryRate: resolved ? G.delivered.count / resolved : 0,
       returnRate: resolved ? G.returned.count / resolved : 0,
     },
+    projection,
     statusBreakdown: Array.from(statusCount, ([status, count]) => ({ status, count })).sort((a, b) => b.count - a.count),
     db: {
       orders: dbOrders.length,
