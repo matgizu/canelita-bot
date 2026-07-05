@@ -2800,7 +2800,7 @@ function renderPnl(d) {
       </div>`).join('');
     projection = `<div class="pnl-section">
       <h3>Proyección al resolver los ${pj.inTransitCount} pedidos en tránsito</h3>
-      <div style="font-size:12px;color:#94a3b8;margin-bottom:14px">Aplica la tasa de entrega observada (${(pj.observedRate*100).toFixed(1)}%) y un margen del ${(pj.margin*100).toFixed(1)}% sobre el recaudo. Los escenarios optimista/pesimista usan el intervalo de confianza (95%) de la tasa de entrega.</div>
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:14px">Utilidad esperada de esos pedidos si se entregaran todos: <b style="color:#e2e8f0">${pcop(pj.expectedProfitAll)}</b> — calculada <b>por pedido</b> (venta − proveedor − flete − comisión), así refleja los descuentos de cada uno. Cada escenario realiza esa utilidad según su tasa de entrega; la realista usa la tasa observada (${(pj.observedRate*100).toFixed(1)}%) y la optimista/pesimista el intervalo de confianza (95%).</div>
       <div class="pnl-scen-grid">${cards}</div>
     </div>`;
   }

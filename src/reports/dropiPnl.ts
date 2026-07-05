@@ -121,7 +121,7 @@ export interface PnlResult {
   excluded: { total: number; cancelado: number; rechazado: number };
   groups: {
     delivered: { count: number; income: number; supplier: number; flete: number; commission: number; profit: number };
-    inTransit: { count: number; potential: number };
+    inTransit: { count: number; potential: number; supplier: number; flete: number; commission: number };
     returned: { count: number; fleteIda: number; returnFlete: number };
   };
   pnl: {
@@ -132,8 +132,8 @@ export interface PnlResult {
   projection: null | {
     inTransitCount: number;
     pendingPotential: number;
+    expectedProfitAll: number; // utilidad esperada si TODOS los en tránsito se entregan (por pedido)
     observedRate: number;
-    margin: number;
     scenarios: Array<{
       key: string; label: string; rate: number;
       deliveredExpected: number; incomeExpected: number;
@@ -177,7 +177,7 @@ export async function computeDropiPnl(buffer: Buffer, fileName: string): Promise
 
   const G = {
     delivered: { count: 0, income: 0, supplier: 0, flete: 0, commission: 0, profit: 0 },
-    inTransit: { count: 0, potential: 0 },
+    inTransit: { count: 0, potential: 0, supplier: 0, flete: 0, commission: 0 },
     returned: { count: 0, fleteIda: 0, returnFlete: 0 },
   };
   const excluded = { total: 0, cancelado: 0, rechazado: 0 };
@@ -208,6 +208,9 @@ export async function computeDropiPnl(buffer: Buffer, fileName: string): Promise
     } else {
       G.inTransit.count++;
       G.inTransit.potential += sale;
+      G.inTransit.supplier += numOf(r[col.supplier]);
+      G.inTransit.flete += numOf(r[col.flete]);
+      G.inTransit.commission += numOf(r[col.commission]);
     }
   }
 
@@ -221,19 +224,22 @@ export async function computeDropiPnl(buffer: Buffer, fileName: string): Promise
   // devolución = pérdida total de devoluciones / nº de devoluciones.
   let projection: PnlResult["projection"] = null;
   if (G.inTransit.count > 0 && resolved > 0) {
-    const margin = G.delivered.income > 0 ? G.delivered.profit / G.delivered.income : 0;
+    // Utilidad esperada calculada POR PEDIDO (venta − proveedor − flete −
+    // comisión), no con un margen fijo: así refleja los descuentos de cada uno.
+    const expectedProfitAll =
+      G.inTransit.potential - G.inTransit.supplier - G.inTransit.flete - G.inTransit.commission;
     const avgReturnLoss = G.returned.count > 0 ? returnLoss / G.returned.count : 0;
     const observed = G.delivered.count / resolved;
     const { low, high } = wilson(G.delivered.count, resolved);
     const scenario = (key: string, label: string, rateRaw: number) => {
       const rate = Math.max(0, Math.min(1, rateRaw));
-      const incomeExpected = G.inTransit.potential * rate;
-      const profitFromPending = incomeExpected * margin;
+      // Se realiza la fracción entregada de esa utilidad esperada.
+      const profitFromPending = expectedProfitAll * rate;
       const returnLossExpected = G.inTransit.count * (1 - rate) * avgReturnLoss;
       return {
         key, label, rate,
         deliveredExpected: G.inTransit.count * rate,
-        incomeExpected,
+        incomeExpected: G.inTransit.potential * rate,
         profitFromPending,
         returnLossExpected,
         totalNet: netResult + profitFromPending - returnLossExpected,
@@ -242,8 +248,8 @@ export async function computeDropiPnl(buffer: Buffer, fileName: string): Promise
     projection = {
       inTransitCount: G.inTransit.count,
       pendingPotential: G.inTransit.potential,
+      expectedProfitAll,
       observedRate: observed,
-      margin,
       scenarios: [
         scenario("pesimista", "Pesimista", low),
         scenario("realista", "Realista (tasa actual)", observed),
