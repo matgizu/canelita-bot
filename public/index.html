@@ -846,6 +846,13 @@
     .pnl-scen .s-line { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; padding: 3px 0; }
     .pnl-scen .s-line .v { color: #cbd5e1; font-variant-numeric: tabular-nums; }
     .pnl-scen .s-sep { border-top: 1px solid #1e293b; margin: 8px 0; }
+    .pnl-scen .s-afterspend { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #334155; font-size: 12px; display: flex; justify-content: space-between; }
+    .pnl-scen .s-afterspend .v { font-weight: 800; }
+    .pnl-spend-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .pnl-spend-row label { font-size: 13px; color: #94a3b8; }
+    #pnl-spend { background: #0b1120; border: 1px solid #334155; color: #f1f5f9; border-radius: 8px; padding: 9px 12px; font-size: 14px; width: 200px; outline: none; font-variant-numeric: tabular-nums; }
+    #pnl-spend:focus { border-color: var(--brand); }
+    .pnl-pos { color: #34d399; } .pnl-neg { color: #f87171; }
     #pipeline-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.65);
       display: flex; align-items: stretch; justify-content: stretch;
@@ -2763,7 +2770,10 @@ async function uploadPnl(file) {
 
 function pcop(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
 
+let pnlData = null;
+
 function renderPnl(d) {
+  pnlData = d;
   const p = d.pnl, g = d.groups;
   const kpis = `<div class="pnl-grid">
     <div class="pnl-kpi"><div class="k-lbl">Ingresos (entregados)</div><div class="k-val green">${pcop(p.income)}</div><div class="k-sub">${g.delivered.count} pedidos entregados</div></div>
@@ -2840,11 +2850,68 @@ function renderPnl(d) {
     ${listTable('🔵 Solo en la DB (cerradas pero sin despachar en Dropi)', dbOnlyRows, '<th>Cliente</th><th>Teléfono</th><th class="num">Valor</th>')}
   </div>`;
 
+  const profit = `<div class="pnl-section">
+    <h3>Rentabilidad con inversión en pauta</h3>
+    <div class="pnl-spend-row">
+      <label for="pnl-spend">💸 Gasto en pauta (COP):</label>
+      <input type="number" id="pnl-spend" placeholder="0" min="0" step="1000" oninput="renderProfit()">
+    </div>
+    <div id="pnl-profit-out"></div>
+  </div>`;
+
   const warns = (d.warnings && d.warnings.length) ? `<div class="pnl-warn">⚠️ ${d.warnings.map(x).join('<br>')}</div>` : '';
   const note = `<div class="pnl-note">💡 Los ingresos y la ganancia se calculan solo sobre pedidos ENTREGADOS (recaudo real). Los "en tránsito" son potenciales. La pérdida por devolución = flete de ida + flete de retorno (el producto vuelve al proveedor). La corroboración cruza por número de teléfono normalizado.</div>`;
 
   document.getElementById('pnl-result').innerHTML =
-    `<div class="pnl-content">${warns}${kpis}${statement}${projection}<div class="pnl-two">${counts}${dbCross}</div>${discrepancies}${note}</div>`;
+    `<div class="pnl-content">${warns}${kpis}${statement}${profit}${projection}<div class="pnl-two">${counts}${dbCross}</div>${discrepancies}${note}</div>`;
+
+  // Restaura el gasto en pauta guardado y calcula la rentabilidad.
+  const saved = localStorage.getItem('pnl_ad_spend');
+  if (saved && Number(saved) > 0) document.getElementById('pnl-spend').value = saved;
+  renderProfit();
+}
+
+function renderProfit() {
+  const d = pnlData;
+  const out = document.getElementById('pnl-profit-out');
+  if (!d || !out) return;
+  const spend = Number(document.getElementById('pnl-spend').value) || 0;
+  localStorage.setItem('pnl_ad_spend', String(spend));
+  if (spend <= 0) {
+    out.innerHTML = '<div class="pnl-note">Ingresa el gasto en pauta del período para ver ROAS, costo por venta y la utilidad neta después de pauta.</div>';
+    return;
+  }
+  const income = d.pnl.income;                 // recaudo real (entregados)
+  const net = d.pnl.netResult;                 // utilidad neta realizada
+  const delivered = d.groups.delivered.count;
+  const roas = income / spend;
+  const cpa = delivered ? spend / delivered : 0;
+  const afterSpend = net - spend;
+  const roi = spend ? (afterSpend / spend) * 100 : 0;
+  const cls = v => v >= 0 ? 'pnl-pos' : 'pnl-neg';
+
+  const kpis = `<div class="pnl-grid">
+    <div class="pnl-kpi"><div class="k-lbl">ROAS realizado</div><div class="k-val ${roas>=1?'green':'red'}">${roas.toFixed(2)}x</div><div class="k-sub">recaudo ÷ pauta</div></div>
+    <div class="pnl-kpi"><div class="k-lbl">Utilidad después de pauta</div><div class="k-val ${afterSpend>=0?'green':'red'}">${pcop(afterSpend)}</div><div class="k-sub">neto realizado − pauta</div></div>
+    <div class="pnl-kpi"><div class="k-lbl">Costo por venta (CPA)</div><div class="k-val">${pcop(cpa)}</div><div class="k-sub">${delivered} ventas entregadas</div></div>
+    <div class="pnl-kpi"><div class="k-lbl">ROI</div><div class="k-val ${roi>=0?'green':'red'}">${roi.toFixed(0)}%</div><div class="k-sub">retorno sobre la pauta</div></div>
+  </div>`;
+
+  // Proyección después de pauta (si hay pedidos en tránsito).
+  let proj = '';
+  if (d.projection) {
+    const rows = d.projection.scenarios.map(s => {
+      const v = s.totalNet - spend;
+      const roasP = (income + s.incomeExpected) / spend;
+      return `<tr><td>${x(s.label)}</td><td class="num">${(s.rate*100).toFixed(1)}%</td><td class="num">${roasP.toFixed(2)}x</td><td class="num ${v>=0?'pnl-pos':'pnl-neg'}">${pcop(v)}</td></tr>`;
+    }).join('');
+    proj = `<div style="margin-top:16px">
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Proyección después de pauta (al resolverse los pedidos en tránsito):</div>
+      <table class="pnl-table"><thead><tr><th>Escenario</th><th class="num">Entrega</th><th class="num">ROAS proy.</th><th class="num">Utilidad tras pauta</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+  }
+
+  out.innerHTML = kpis + proj;
 }
 
 function audCop(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
