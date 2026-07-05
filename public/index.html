@@ -809,6 +809,8 @@
     }
     .pnl-content { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
     .pnl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .pnl-grid-fit { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+    .pnl-kpi.hero { border-color: #10b981; box-shadow: 0 0 0 1px #10b981; }
     .pnl-kpi { background: #111a2e; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; }
     .pnl-kpi .k-lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; }
     .pnl-kpi .k-val { font-size: 22px; font-weight: 800; color: #f1f5f9; margin-top: 6px; }
@@ -2886,13 +2888,14 @@ function renderProfit() {
   const delivered = d.groups.delivered.count;
   const roas = income / spend;
   const cpa = delivered ? spend / delivered : 0;
-  const afterSpend = net - spend;
+  const afterSpend = net - spend;              // utilidad libre de todo (incl. pauta)
   const roi = spend ? (afterSpend / spend) * 100 : 0;
-  const cls = v => v >= 0 ? 'pnl-pos' : 'pnl-neg';
+  const perOrder = delivered ? afterSpend / delivered : 0; // ganancia limpia por pedido entregado
 
-  const kpis = `<div class="pnl-grid">
-    <div class="pnl-kpi"><div class="k-lbl">ROAS realizado</div><div class="k-val ${roas>=1?'green':'red'}">${roas.toFixed(2)}x</div><div class="k-sub">recaudo ÷ pauta</div></div>
+  const kpis = `<div class="pnl-grid-fit">
+    <div class="pnl-kpi hero"><div class="k-lbl">Ganancia libre por pedido</div><div class="k-val ${perOrder>=0?'green':'red'}">${pcop(perOrder)}</div><div class="k-sub">limpio tras TODO (incl. pauta) · por venta entregada</div></div>
     <div class="pnl-kpi"><div class="k-lbl">Utilidad después de pauta</div><div class="k-val ${afterSpend>=0?'green':'red'}">${pcop(afterSpend)}</div><div class="k-sub">neto realizado − pauta</div></div>
+    <div class="pnl-kpi"><div class="k-lbl">ROAS realizado</div><div class="k-val ${roas>=1?'green':'red'}">${roas.toFixed(2)}x</div><div class="k-sub">recaudo ÷ pauta</div></div>
     <div class="pnl-kpi"><div class="k-lbl">Costo por venta (CPA)</div><div class="k-val">${pcop(cpa)}</div><div class="k-sub">${delivered} ventas entregadas</div></div>
     <div class="pnl-kpi"><div class="k-lbl">ROI</div><div class="k-val ${roi>=0?'green':'red'}">${roi.toFixed(0)}%</div><div class="k-sub">retorno sobre la pauta</div></div>
   </div>`;
@@ -2903,11 +2906,13 @@ function renderProfit() {
     const rows = d.projection.scenarios.map(s => {
       const v = s.totalNet - spend;
       const roasP = (income + s.incomeExpected) / spend;
-      return `<tr><td>${x(s.label)}</td><td class="num">${(s.rate*100).toFixed(1)}%</td><td class="num">${roasP.toFixed(2)}x</td><td class="num ${v>=0?'pnl-pos':'pnl-neg'}">${pcop(v)}</td></tr>`;
+      const totalDelivered = delivered + s.deliveredExpected;
+      const perOrderP = totalDelivered ? v / totalDelivered : 0;
+      return `<tr><td>${x(s.label)}</td><td class="num">${(s.rate*100).toFixed(1)}%</td><td class="num">${roasP.toFixed(2)}x</td><td class="num ${v>=0?'pnl-pos':'pnl-neg'}">${pcop(v)}</td><td class="num ${perOrderP>=0?'pnl-pos':'pnl-neg'}">${pcop(perOrderP)}</td></tr>`;
     }).join('');
     proj = `<div style="margin-top:16px">
       <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Proyección después de pauta (al resolverse los pedidos en tránsito):</div>
-      <table class="pnl-table"><thead><tr><th>Escenario</th><th class="num">Entrega</th><th class="num">ROAS proy.</th><th class="num">Utilidad tras pauta</th></tr></thead><tbody>${rows}</tbody></table>
+      <table class="pnl-table"><thead><tr><th>Escenario</th><th class="num">Entrega</th><th class="num">ROAS proy.</th><th class="num">Utilidad tras pauta</th><th class="num">Libre/pedido</th></tr></thead><tbody>${rows}</tbody></table>
     </div>`;
   }
 
