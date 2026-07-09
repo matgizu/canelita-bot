@@ -3,7 +3,6 @@ import { sendText } from "../whatsapp/client";
 import { Session, msUntilNextDayColTime, buildRemarketingMsg } from "./flow";
 import { events } from "../events";
 import { prisma } from "../db";
-import { patchSessionIfLoaded } from "../sessions";
 import { getConfig } from "../botConfig";
 
 interface Tracker {
@@ -68,16 +67,11 @@ async function fireTouch(waId: string, type: string) {
     // Also skip if the customer has already shared their data (name + address or city)
     if (conv.fullName && (conv.address || conv.city)) return;
 
-    const msg = type === "t3" ? buildRemarketingMsg(cfg.pack3Price, cfg.remarketingDiscount) : null;
+    const msg = type === "t3" ? buildRemarketingMsg(cfg.pack3Price) : null;
     if (!msg) return;
     await sendRemarketingText(waId, conv.id, msg, type);
-
-    // t3 offers a $10.000 discount — remember it so the rest of the
-    // conversation (and the final order total) honors that price.
-    if (type === "t3" && !conv.discountOffered) {
-      await prisma.conversation.update({ where: { waId }, data: { discountOffered: true } });
-      patchSessionIfLoaded(waId, { discountOffered: true });
-    }
+    // El remarketing ya NO ofrece descuento: no se activa discountOffered, así
+    // que el precio del pedido y el contexto de la IA quedan al precio normal.
   } catch (e: any) {
     console.error(`[remarketing.${type}]`, e.message);
   }

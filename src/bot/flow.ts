@@ -117,14 +117,11 @@ Envío gratis a toda Colombia 🇨🇴 y pagas cuando lo recibes — sin riesgo.
 ¿Cuántas repisas tiene tu nevera?`;
 }
 
-export function buildRemarketingMsg(pack3Price: number, discount: number): string {
-  const discountedPrice = pack3Price - discount;
-  return `Hola, solo para avisarte que hoy te puedo aplicar $${discount.toLocaleString("es-CO")} de descuento en tu pedido.\n\nPack x3 → $${discountedPrice.toLocaleString("es-CO")} — envío gratis, pagas cuando lo recibes 🇨🇴\n\n¿Lo cerramos?`;
+// Mensaje de remarketing SIN descuento: recuerda el producto al precio normal
+// y empuja al cierre con el argumento de contraentrega (sin riesgo).
+export function buildRemarketingMsg(pack3Price: number): string {
+  return `Hola, te escribo para saber si te animas con los cajones organizadores de nevera 🌿\n\nEl pack x3 sigue en $${pack3Price.toLocaleString("es-CO")} con envío gratis a toda Colombia y pagas cuando lo recibes, sin riesgo.\n\n¿Lo pedimos hoy?`;
 }
-
-export const REMARKETING_MESSAGES = {
-  t3: `Hola, solo para avisarte que hoy te puedo aplicar $10.000 de descuento en tu pedido.\n\nPack x3 → $59.900 — envío gratis, pagas cuando lo recibes 🇨🇴\n\n¿Lo cerramos?`,
-};
 
 // Helper: ms until colHour:00 on the next COL calendar day (COL = UTC-5, no DST).
 // Correctly handles sessions created late at night COL time.
