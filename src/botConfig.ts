@@ -17,7 +17,7 @@ const DEFAULTS: DynConfig = {
   remarketingDiscount: 10000,
   botPaused: false,
   nequiNumber: process.env.NEQUI_NUMBER ?? "3124743435",
-  availableColors: ["Rosa pastel", "Blanco", "Verde menta"],
+  availableColors: ["Blanco", "Verde menta", "Rosado"],
 };
 
 let cache: { cfg: DynConfig; at: number } | null = null;

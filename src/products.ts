@@ -47,7 +47,7 @@ export const PRODUCT_INFO = {
   presentation: "Cajón retráctil que se engancha en la repisa de la nevera",
   materials: ["Plástico ABS alimentario libre de BPA", "Apto lavavajillas"],
   dimensions: "Extensible de 23 cm a 35 cm — cabe en neveras estándar de 1 o 2 puertas",
-  colors: ["Rosa pastel", "Blanco", "Verde menta"],
+  colors: ["Blanco", "Verde menta", "Rosado"],
   benefits: [
     "Organiza frutas, verduras y sobrantes sin que todo se mezcle",
     "Crea una repisa extra aprovechando el espacio vertical de la nevera",
