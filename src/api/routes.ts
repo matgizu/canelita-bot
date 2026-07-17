@@ -22,6 +22,58 @@ const upload = multer({
 
 export const apiRouter = Router();
 
+// Mensaje que se envía automáticamente al ponerle a la conversación una etiqueta
+// que empiece por "DESPACHADA". [nombre] se reemplaza por el nombre del cliente.
+const DESPACHADA_MSG =
+  "[nombre], Tu pedido ha sido enviado!\nEn un par de horas te llegará un mensaje de texto con el número de la guía!\n\nCualquier duda que tengas nos escribes!\ngracias por confiar en nosotros!";
+
+function fillName(template: string, name?: string | null): string {
+  const first = (name || "").trim().split(/\s+/)[0] || "";
+  // Con nombre: reemplaza [nombre]. Sin nombre: quita "[nombre], " para no dejar
+  // una coma suelta al inicio.
+  return first
+    ? template.replace(/\[nombre\]/gi, first)
+    : template.replace(/\[nombre\]\s*,?\s*/gi, "");
+}
+
+// Envía un texto manual al cliente por WhatsApp: sanitiza, respeta la ventana de
+// 24h, persiste y avisa al panel. Reutilizado por /send y por el disparador de
+// etiqueta. Devuelve el resultado para que el caller decida qué responder.
+async function sendManualText(
+  waId: string,
+  rawText: string,
+): Promise<{ ok: boolean; error?: string; windowExpired?: boolean }> {
+  const sanitized = sanitizeOutput(rawText);
+  if (!sanitized) return { ok: false, error: "empty" };
+
+  const waMsgId = await sendInParts(waId, sanitized);
+  if (!waMsgId) {
+    const conv = await prisma.conversation
+      .findUnique({ where: { waId }, select: { windowExpired: true } })
+      .catch(() => null);
+    const windowExpired = !!conv?.windowExpired;
+    return { ok: false, windowExpired, error: windowExpired ? "window_expired" : "send_failed" };
+  }
+
+  const session = getSession(waId);
+  session.lastOutboundAt = Date.now();
+  try {
+    const conv = await prisma.conversation.upsert({
+      where: { waId },
+      create: { waId, automationEnabled: session.automationEnabled },
+      update: { lastOutboundAt: new Date() },
+    });
+    await prisma.message.create({
+      data: { conversationId: conv.id, direction: "outbound", type: "manual", body: sanitized, whatsappMsgId: waMsgId ?? null },
+    });
+  } catch (e: any) {
+    console.error("[sendManualText.persist]", e.message);
+  }
+
+  events.emitDashboard({ type: "message", waId, direction: "outbound", body: sanitized, messageType: "manual", at: Date.now() });
+  return { ok: true };
+}
+
 apiRouter.get("/owner-status", (_req, res) => {
   res.json({ windowOpen: ownerWindowStatus() });
 });
@@ -314,9 +366,10 @@ apiRouter.patch("/conversations/:waId/labels", async (req, res) => {
     // ponemos timestamp a las nuevas. Las que se quitaron salen del meta.
     const existing = await prisma.conversation.findUnique({
       where: { waId },
-      select: { labelMeta: true },
+      select: { labelMeta: true, labels: true, fullName: true, customerName: true },
     });
     const prevMeta = (existing?.labelMeta ?? {}) as Record<string, string>;
+    const prevLabels = new Set(existing?.labels ?? []);
     const now = new Date().toISOString();
     const labelMeta: Record<string, string> = {};
     for (const name of labels) labelMeta[name] = prevMeta[name] ?? now;
@@ -336,6 +389,17 @@ apiRouter.patch("/conversations/:waId/labels", async (req, res) => {
 
     events.emitDashboard({ type: "labels_update", waId, labels, labelMeta, at: Date.now() });
     res.json({ ok: true, labels, labelMeta });
+
+    // Disparador: si se AGREGÓ (nueva) una etiqueta que empieza por "DESPACHADA",
+    // envía automáticamente el mensaje de despacho. Solo para etiquetas nuevas,
+    // así re-guardar las mismas etiquetas no reenvía el mensaje.
+    const newlyDespachada = labels.some((l) => !prevLabels.has(l) && /^despachad/i.test(l.trim()));
+    if (newlyDespachada) {
+      const name = existing?.fullName ?? existing?.customerName ?? null;
+      sendManualText(waId, fillName(DESPACHADA_MSG, name)).then((r) => {
+        if (!r.ok) console.warn(`[labels.despachada] no se envió a ${waId}: ${r.error}`);
+      }).catch((e) => console.error("[labels.despachada]", e.message));
+    }
   } catch (e: any) {
     console.error("[labels]", e.message);
     res.status(500).json({ error: "labels_failed" });
@@ -501,56 +565,11 @@ apiRouter.post("/conversations/:waId/send", async (req, res) => {
     res.status(400).json({ error: "missing_text" });
     return;
   }
-  const sanitized = sanitizeOutput(text);
-  const waId = req.params.waId;
-  const waMsgId = await sendInParts(waId, sanitized);
-
-  // sendText/sendInParts devuelve null cuando WhatsApp rechaza el envío (incl.
-  // ventana de 24h cerrada — sendText ya marca la ventana y avisa al panel).
-  // No persistimos ni mostramos como enviado un mensaje que no salió.
-  if (!waMsgId) {
-    const conv = await prisma.conversation
-      .findUnique({ where: { waId }, select: { windowExpired: true } })
-      .catch(() => null);
-    const windowExpired = !!conv?.windowExpired;
-    res.status(windowExpired ? 409 : 502).json({
-      ok: false,
-      error: windowExpired ? "window_expired" : "send_failed",
-    });
+  const r = await sendManualText(req.params.waId, text);
+  if (!r.ok) {
+    res.status(r.windowExpired ? 409 : 502).json({ ok: false, error: r.error });
     return;
   }
-
-  const session = getSession(waId);
-  session.lastOutboundAt = Date.now();
-
-  try {
-    const conv = await prisma.conversation.upsert({
-      where: { waId },
-      create: { waId, automationEnabled: session.automationEnabled },
-      update: { lastOutboundAt: new Date() },
-    });
-    await prisma.message.create({
-      data: {
-        conversationId: conv.id,
-        direction: "outbound",
-        type: "manual",
-        body: sanitized,
-        whatsappMsgId: waMsgId ?? null,
-      },
-    });
-  } catch (e: any) {
-    console.error("[send.persist]", e.message);
-  }
-
-  events.emitDashboard({
-    type: "message",
-    waId,
-    direction: "outbound",
-    body: sanitized,
-    messageType: "manual",
-    at: Date.now(),
-  });
-
   res.json({ ok: true });
 });
 

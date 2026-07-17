@@ -230,6 +230,24 @@
       display: flex; align-items: center; justify-content: center;
     }
     #media-btn:hover { background: #e5e7eb; }
+    #qr-wrap { position: relative; flex-shrink: 0; }
+    #qr-btn {
+      width: 38px; height: 38px; background: #f3f4f6; border: 1px solid var(--border);
+      border-radius: 10px; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #qr-btn:hover { background: #e5e7eb; }
+    #qr-menu {
+      position: absolute; bottom: 46px; left: 0; z-index: 60; width: 300px;
+      background: #fff; border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.18); overflow: hidden; padding: 4px;
+    }
+    .qr-item {
+      padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    }
+    .qr-item:hover { background: #f3f4f6; }
+    .qr-item .qr-title { font-size: 12px; font-weight: 600; color: #111827; }
+    .qr-item .qr-prev { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #mic-btn {
       width: 38px; height: 38px; background: #f3f4f6; border: 1px solid var(--border);
       border-radius: 10px; font-size: 18px; cursor: pointer; flex-shrink: 0;
@@ -1102,6 +1120,10 @@
         </div>
         <div id="composer-row">
           <input type="file" id="file-input" accept="image/*,video/*,audio/*,application/pdf,.pdf" style="display:none" onchange="onFileSelected(event)">
+          <div id="qr-wrap">
+            <button id="qr-btn" title="Respuestas predeterminadas" onclick="toggleQuickReplies(event)">⚡</button>
+            <div id="qr-menu" hidden></div>
+          </div>
           <button id="media-btn" title="Enviar foto, video o PDF" onclick="document.getElementById('file-input').click()">📎</button>
           <button id="mic-btn" title="Grabar nota de voz" onclick="startRecording()">🎤</button>
           <textarea id="msg-input" rows="1"
@@ -2465,6 +2487,51 @@ function copyOrderData(btn) {
 }
 function onKey(e)  { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } }
 function grow(el)  { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+/* ── Respuestas predeterminadas (quick replies) ──
+   La de "Pedido despachado" es la misma que se envía sola al etiquetar
+   "DESPACHADA…". [nombre] se reemplaza por el nombre del cliente. */
+const CANNED = [
+  { title: '📦 Pedido despachado', text: '[nombre], Tu pedido ha sido enviado!\nEn un par de horas te llegará un mensaje de texto con el número de la guía!\n\nCualquier duda que tengas nos escribes!\ngracias por confiar en nosotros!' },
+  { title: '✅ Pedido confirmado', text: '[nombre], tu pedido quedó confirmado ✨\nLlega en 2-4 días hábiles y pagas cuando lo recibes. ¡Gracias por tu compra!' },
+  { title: '💬 Seguimiento', text: '[nombre], ¿pudiste pensar en los cajones organizadores? Cualquier duda te ayudo con gusto 🌿' },
+];
+
+function qrFirstName() {
+  const d = detail;
+  const n = (d && (d.fullName || d.customerName)) || '';
+  return String(n).trim().split(/\s+/)[0] || '';
+}
+function fillNombre(t) {
+  const f = qrFirstName();
+  return f ? t.replace(/\[nombre\]/gi, f) : t.replace(/\[nombre\]\s*,?\s*/gi, '');
+}
+function toggleQuickReplies(e) {
+  if (e) e.stopPropagation();
+  if (!selected) { alert('Selecciona una conversación primero'); return; }
+  const menu = document.getElementById('qr-menu');
+  if (!menu.hidden) { menu.hidden = true; return; }
+  menu.innerHTML = CANNED.map((c, i) => `<div class="qr-item" onclick="pickQuickReply(${i})">
+    <div class="qr-title">${x(c.title)}</div>
+    <div class="qr-prev">${x(fillNombre(c.text).replace(/\n/g, ' '))}</div>
+  </div>`).join('');
+  menu.hidden = false;
+}
+function pickQuickReply(i) {
+  const c = CANNED[i];
+  if (!c) return;
+  const input = document.getElementById('msg-input');
+  input.value = fillNombre(c.text);
+  document.getElementById('qr-menu').hidden = true;
+  input.focus();
+  grow(input);
+}
+// Cierra el menú de respuestas al hacer clic afuera.
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('qr-menu');
+  const wrap = document.getElementById('qr-wrap');
+  if (menu && !menu.hidden && wrap && !wrap.contains(e.target)) menu.hidden = true;
+});
 
 /* ── Media upload ── */
 let selectedFile = null;
