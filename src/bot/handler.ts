@@ -354,6 +354,12 @@ async function processCombined(
     const reply = await askClaude(session, combined);
     aiError = reply.error === true;
     claudeText = reply.message;
+    // Aplica PRIMERO los datos que llegaron en este turno: si el cliente mandó
+    // nombre + dirección junto con el cierre, deben estar en la sesión ANTES de
+    // validar el cierre. Si no, hasMinimumOrderData corría con la dirección aún
+    // vacía y bloqueaba la venta, dejándola en ADDRESS_COLLECTION (cierre manual).
+    if (reply.fields) applyFields(session, reply.fields);
+    if (reply.cartUpdate) session.cart = reply.cartUpdate;
     let proposedState = isValidTransition(session.state, reply.state)
       ? reply.state
       : session.state;
@@ -364,7 +370,6 @@ async function processCombined(
     }
     nextState = proposedState;
     cartUpdate = reply.cartUpdate;
-    if (reply.fields) applyFields(session, reply.fields);
     if (reply.reminder) {
       const dueAt = new Date(Date.now() + reply.reminder.daysFromNow * 24 * 60 * 60 * 1000);
       prisma.reminder
@@ -392,7 +397,7 @@ async function processCombined(
     return;
   }
 
-  if (cartUpdate) session.cart = cartUpdate;
+  // (session.cart ya se actualizó arriba, antes de validar el cierre)
 
   if (reactionEmoji) {
     const lastInbound = await prisma.message.findFirst({
