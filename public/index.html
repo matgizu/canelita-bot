@@ -321,7 +321,21 @@
     }
     .irow { display: flex; gap: 6px; margin-bottom: 7px; align-items: flex-start; }
     .ilbl { font-size: 11px; color: var(--muted); min-width: 78px; flex-shrink: 0; padding-top: 1px; }
-    .ival { font-size: 12px; font-weight: 500; word-break: break-all; }
+    .ival { font-size: 12px; font-weight: 500; word-break: break-all; flex: 1; }
+    .copy-ic {
+      flex-shrink: 0; cursor: pointer; font-size: 12px; opacity: .5;
+      border: none; background: transparent; padding: 0 2px; line-height: 1;
+      color: inherit;
+    }
+    .copy-ic:hover { opacity: 1; }
+    .copy-ic.done { opacity: 1; color: #16a34a; }
+    .copy-order-btn {
+      width: 100%; margin-top: 8px; padding: 8px; border-radius: 8px;
+      background: #0f172a; color: #93c5fd; border: 1px solid #334155;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .copy-order-btn:hover { background: #1e293b; }
+    .copy-order-btn.done { background: #064e3b; color: #34d399; border-color: #065f46; }
 
     .toggle-btn {
       padding: 6px 12px; border-radius: 8px; white-space: nowrap;
@@ -1820,19 +1834,20 @@ function renderInfoTab() {
     <div class="isec">
       <div class="isec-title">Contacto</div>
       ${row('Nombre',    d.customerName)}
-      ${row('Completo',  d.fullName)}
+      ${rowCopy('Completo',  d.fullName)}
       ${row('Cédula',    d.idNumber)}
-      ${row('WhatsApp',  phone(d.waId))}
-      ${row('Cel alterno', d.altPhone)}
+      ${rowCopy('WhatsApp',  phone(d.waId), bareCel(d.waId))}
+      ${rowCopy('Cel alterno', d.altPhone, bareCel(d.altPhone))}
       ${row('Email',     d.email)}
     </div>
 
     <div class="isec">
       <div class="isec-title">Envío</div>
-      ${row('Ciudad',     d.city)}
-      ${row('Depto.',     d.department)}
-      ${row('Dirección',  d.address)}
-      ${row('Referencia', d.reference)}
+      ${rowCopy('Ciudad',     d.city)}
+      ${rowCopy('Depto.',     d.department)}
+      ${rowCopy('Dirección',  d.address)}
+      ${rowCopy('Referencia', d.reference)}
+      <button class="copy-order-btn" onclick="copyOrderData(this)">📋 Copiar datos del pedido</button>
     </div>
 
     <div class="isec">
@@ -2377,6 +2392,76 @@ function row(lbl, val) {
     <span class="ilbl">${lbl}</span>
     <span class="ival">${val || '—'}</span>
   </div>`;
+}
+
+// Teléfono en formato para despacho: 10 dígitos, sin +57 ni espacios.
+function bareCel(v) {
+  let s = String(v || '').replace(/\D/g, '');
+  if (s.length === 12 && s.startsWith('57')) s = s.slice(2); // 57XXXXXXXXXX → XXXXXXXXXX
+  return s;
+}
+
+// Escape seguro para atributos HTML (comillas dobles, <, >, &).
+function attrEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Fila con ícono de copiar. copyVal = lo que se copia (si difiere de lo mostrado).
+// El valor va en data-copy (robusto ante comillas en direcciones).
+function rowCopy(lbl, val, copyVal) {
+  const shown = val || '—';
+  const toCopy = (copyVal != null ? copyVal : val) || '';
+  const btn = toCopy
+    ? ` <button class="copy-ic" title="Copiar" data-copy="${attrEsc(toCopy)}" onclick="copyFromBtn(this)">📋</button>`
+    : '';
+  return `<div class="irow">
+    <span class="ilbl">${lbl}</span>
+    <span class="ival">${shown}</span>${btn}
+  </div>`;
+}
+function copyFromBtn(btn) { copyText(btn.dataset.copy || '', btn); }
+
+async function copyText(text, btn) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    if (btn) {
+      const prev = btn.textContent;
+      btn.textContent = '✓'; btn.classList.add('done');
+      setTimeout(() => { btn.textContent = prev; btn.classList.remove('done'); }, 1200);
+    }
+  } catch { alert('No se pudo copiar'); }
+}
+
+// Copia todos los datos de despacho de la conversación abierta.
+function copyOrderData(btn) {
+  const d = detail;
+  if (!d) return;
+  const cart = Array.isArray(d.cart) ? d.cart : [];
+  const items = cart.map(i => `${i.id === 'pack3' ? 'Pack x3' : 'Pack x6'} x${i.quantity}`).join(', ');
+  const lines = [
+    ['Nombre', d.fullName || d.customerName],
+    ['Celular', bareCel(d.waId)],
+    ['Cel alterno', bareCel(d.altPhone)],
+    ['Departamento', d.department],
+    ['Ciudad', d.city],
+    ['Dirección', d.address],
+    ['Referencia', d.reference],
+    ['Pedido', items],
+  ].filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`);
+  copyText(lines.join('\n'), null);
+  if (btn) {
+    btn.textContent = '✓ Datos copiados'; btn.classList.add('done');
+    setTimeout(() => { btn.textContent = '📋 Copiar datos del pedido'; btn.classList.remove('done'); }, 1400);
+  }
 }
 function onKey(e)  { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } }
 function grow(el)  { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
