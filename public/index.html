@@ -108,8 +108,23 @@
       display: flex; align-items: flex-start; gap: 10px;
       padding: 11px 14px; cursor: pointer;
       border-bottom: 1px solid #1f2937;
-      transition: background .12s;
+      transition: background .12s; position: relative;
     }
+    .conv-mark {
+      position: absolute; top: 6px; right: 8px; display: none;
+      background: transparent; border: none; cursor: pointer;
+      font-size: 13px; opacity: .65; padding: 2px;
+    }
+    .conv-item:hover .conv-mark { display: block; }
+    .conv-mark:hover { opacity: 1; }
+    .review-divider {
+      display: flex; align-items: center; gap: 8px; padding: 7px 14px;
+      background: rgba(245,158,11,.08);
+    }
+    .review-divider .rd-line { flex: 1; height: 1px; background: rgba(245,158,11,.4); }
+    .review-divider .rd-label { font-size: 10px; font-weight: 700; color: #f59e0b; white-space: nowrap; text-transform: uppercase; letter-spacing: .4px; }
+    .review-divider .rd-clear { cursor: pointer; color: #94a3b8; font-size: 14px; line-height: 1; }
+    .review-divider .rd-clear:hover { color: #f87171; }
     .conv-item:hover { background: var(--sidebar-hover); }
     .conv-item.active { background: #1e2a3a; border-left: 3px solid var(--brand); padding-left: 11px; }
     .ava {
@@ -1319,6 +1334,32 @@ let stateFilter = '';
 let labelFilter = '';
 let tagCatalog  = [];   // [{name, count}] — etiquetas custom reutilizables
 let tab      = 'info';
+// Marca personal de "revisado hasta aquí" (ms de lastInboundAt). Se guarda local.
+let reviewMarker = Number(localStorage.getItem('review_marker')) || null;
+
+function setReviewMarker(e, waId) {
+  if (e) e.stopPropagation();
+  const c = convs.find(x => x.waId === waId);
+  if (!c || !c.lastInboundAt) return;
+  reviewMarker = new Date(c.lastInboundAt).getTime();
+  localStorage.setItem('review_marker', String(reviewMarker));
+  renderSidebar();
+}
+function clearReviewMarker(e) {
+  if (e) e.stopPropagation();
+  reviewMarker = null;
+  localStorage.removeItem('review_marker');
+  renderSidebar();
+}
+function reviewDividerHtml() {
+  const when = new Date(reviewMarker).toLocaleString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  return `<div class="review-divider" title="Revisaste hasta aquí. Lo de arriba es más nuevo.">
+    <span class="rd-line"></span>
+    <span class="rd-label">✓ Revisado hasta aquí · ${when}</span>
+    <span class="rd-line"></span>
+    <span class="rd-clear" title="Quitar la marca" onclick="clearReviewMarker(event)">✕</span>
+  </div>`;
+}
 
 /* ─────────────────────────────────────
    BOOT
@@ -1601,8 +1642,19 @@ function renderSidebar() {
     list.innerHTML = `<div style="padding:24px;text-align:center;color:#6b7280;font-size:12px">Sin conversaciones</div>`;
     return;
   }
-  list.innerHTML = items.map(c => `
+
+  // El separador "Revisado hasta aquí" va justo ANTES de la primera conversación
+  // cuya última actividad es <= la marca (las de arriba son más nuevas).
+  let html = '';
+  let dividerDone = false;
+  for (const c of items) {
+    if (!dividerDone && reviewMarker && new Date(c.lastInboundAt).getTime() <= reviewMarker) {
+      html += reviewDividerHtml();
+      dividerDone = true;
+    }
+    html += `
     <div class="conv-item${c.waId===selected?' active':''}" onclick="selectConv('${c.waId}')">
+      <button class="conv-mark" title="Marcar: revisado hasta aquí" onclick="setReviewMarker(event,'${c.waId}')">⚑</button>
       <div class="ava">${initial(c)}</div>
       <div class="ci-body">
         <div class="ci-name">
@@ -1616,7 +1668,11 @@ function renderSidebar() {
         <span class="ci-time">${ago(c.lastInboundAt)}</span>
         <span class="sbadge s-${c.state}">${slabel(c.state)}</span>
       </div>
-    </div>`).join('');
+    </div>`;
+  }
+  // Si la marca es más vieja que todas (todo es nuevo), muéstrala al final.
+  if (reviewMarker && !dividerDone) html += reviewDividerHtml();
+  list.innerHTML = html;
 }
 
 /* ─────────────────────────────────────
