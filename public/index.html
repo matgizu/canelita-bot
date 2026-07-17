@@ -1356,10 +1356,10 @@ function clearReviewMarker(e) {
 function reviewDividerHtml() {
   const when = new Date(reviewMarker).toLocaleString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
   return `<div class="review-divider" title="Revisaste hasta aquí. Lo de arriba es más nuevo.">
+    <span class="rd-clear" title="Quitar la marca" onclick="clearReviewMarker(event)">✕</span>
     <span class="rd-line"></span>
     <span class="rd-label">✓ Revisado hasta aquí · ${when}</span>
     <span class="rd-line"></span>
-    <span class="rd-clear" title="Quitar la marca" onclick="clearReviewMarker(event)">✕</span>
   </div>`;
 }
 
