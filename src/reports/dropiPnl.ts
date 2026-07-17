@@ -95,7 +95,7 @@ const numOf = (v: string | undefined): number => {
   return isNaN(n) ? 0 : n;
 };
 
-const normPhone = (p: string | undefined): string => {
+const normPhone = (p: string | null | undefined): string => {
   let s = String(p || "").replace(/\D/g, "");
   if (s.length === 10) s = "57" + s;
   return s;
@@ -259,28 +259,44 @@ export async function computeDropiPnl(buffer: Buffer, fileName: string): Promise
   }
 
   // ── Cruce con la base de datos ──
+  // Una persona puede haber dado un CELULAR ALTERNO en el chat, y Dropi puede
+  // traer ese número (o el de WhatsApp). Por eso cada pedido de la DB se cruza
+  // por TODOS sus teléfonos: el de WhatsApp (waId), el alterno de la conversación
+  // y el alterno guardado en el propio pedido.
   const dbOrders = await prisma.order.findMany({
     where: { status: { not: "CANCELLED" } },
-    select: { total: true, conversation: { select: { waId: true, customerName: true } } },
+    select: { total: true, altPhone: true, conversation: { select: { waId: true, customerName: true, altPhone: true } } },
   });
   const dbRevenue = dbOrders.reduce((s, o) => s + o.total, 0);
-  const dbByPhone = new Map<string, { total: number; name: string }>();
-  for (const o of dbOrders) {
-    const p = normPhone(o.conversation?.waId);
-    if (!dbByPhone.has(p)) dbByPhone.set(p, { total: o.total, name: o.conversation?.customerName ?? "" });
-  }
-  const dropiByPhone = new Map<string, { value: number; name: string; status: string }>();
-  for (const d of dropiRows) if (!dropiByPhone.has(d.phone)) dropiByPhone.set(d.phone, { value: d.value, name: d.name, status: d.status });
 
+  // Teléfonos de Dropi (contados) → set para lookup rápido.
+  const dropiByPhone = new Map<string, { value: number; name: string; status: string }>();
+  for (const d of dropiRows) if (d.phone && !dropiByPhone.has(d.phone)) dropiByPhone.set(d.phone, { value: d.value, name: d.name, status: d.status });
+  const dropiPhoneSet = new Set(dropiByPhone.keys());
+
+  // Cada pedido de la DB con su conjunto de teléfonos normalizados.
+  const dbPhoneSet = new Set<string>();
+  const dbOrderPhones = dbOrders.map((o) => {
+    const phones = [o.conversation?.waId, o.conversation?.altPhone, o.altPhone]
+      .map(normPhone)
+      .filter((p) => p.length >= 10);
+    phones.forEach((p) => dbPhoneSet.add(p));
+    return { phones, name: o.conversation?.customerName ?? "", total: o.total };
+  });
+
+  // Solo en Dropi: teléfono de Dropi que no coincide con NINGÚN teléfono de la DB.
   let inBoth = 0;
   const dropiOnlyList: PnlResult["db"]["dropiOnlyList"] = [];
   for (const [phone, d] of dropiByPhone) {
-    if (dbByPhone.has(phone)) inBoth++;
+    if (dbPhoneSet.has(phone)) inBoth++;
     else dropiOnlyList.push({ phone, name: d.name, value: d.value, status: d.status });
   }
+  // Solo en la DB: pedido cuyos teléfonos (incl. alterno) no están en Dropi.
   const dbOnlyList: PnlResult["db"]["dbOnlyList"] = [];
-  for (const [phone, o] of dbByPhone) {
-    if (!dropiByPhone.has(phone)) dbOnlyList.push({ phone, name: o.name, value: o.total });
+  for (const o of dbOrderPhones) {
+    if (!o.phones.some((p) => dropiPhoneSet.has(p))) {
+      dbOnlyList.push({ phone: o.phones[0] ?? "", name: o.name, value: o.total });
+    }
   }
 
   return {

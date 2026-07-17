@@ -2862,7 +2862,7 @@ function renderPnl(d) {
   </div>`;
 
   const warns = (d.warnings && d.warnings.length) ? `<div class="pnl-warn">⚠️ ${d.warnings.map(x).join('<br>')}</div>` : '';
-  const note = `<div class="pnl-note">💡 Los ingresos y la ganancia se calculan solo sobre pedidos ENTREGADOS (recaudo real). Los "en tránsito" son potenciales. La pérdida por devolución = flete de ida + flete de retorno (el producto vuelve al proveedor). La corroboración cruza por número de teléfono normalizado.</div>`;
+  const note = `<div class="pnl-note">💡 Los ingresos y la ganancia se calculan solo sobre pedidos ENTREGADOS (recaudo real). Los "en tránsito" son potenciales. La pérdida por devolución = flete de ida + flete de retorno (el producto vuelve al proveedor). La corroboración cruza por teléfono (incluye el celular alterno que la persona haya dado en el chat, por si el pedido en Dropi quedó con ese número).</div>`;
 
   document.getElementById('pnl-result').innerHTML =
     `<div class="pnl-content">${warns}${kpis}${statement}${profit}${projection}<div class="pnl-two">${counts}${dbCross}</div>${discrepancies}${note}</div>`;
