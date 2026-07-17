@@ -2062,10 +2062,19 @@ async function removeLabel(label) {
 
 async function saveLabels(labels) {
   try {
+    // Si se AGREGA una etiqueta nueva que empieza por "DESPACHADA", pregunta si
+    // enviar el mensaje de despacho (opcional: para pedidos viejos, decir que no).
+    let sendDespachada = false;
+    const prev = new Set((detail && detail.labels) || []);
+    const newDesp = labels.some(l => !prev.has(l) && /^despachad/i.test(String(l).trim()));
+    if (newDesp) {
+      const name = qrFirstName() || 'el cliente';
+      sendDespachada = confirm(`📦 ¿Enviar el mensaje de "pedido despachado" a ${name}?\n\n(Aceptar = se lo envío ahora · Cancelar = solo pongo la etiqueta, sin mensaje)`);
+    }
     const res = await fetch(`/api/conversations/${selected}/labels`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ labels }),
+      body: JSON.stringify({ labels, sendDespachada }),
     });
     const data = await res.json().catch(() => ({}));
     const meta = data.labelMeta || (detail && detail.labelMeta) || {};

@@ -390,11 +390,13 @@ apiRouter.patch("/conversations/:waId/labels", async (req, res) => {
     events.emitDashboard({ type: "labels_update", waId, labels, labelMeta, at: Date.now() });
     res.json({ ok: true, labels, labelMeta });
 
-    // Disparador: si se AGREGÓ (nueva) una etiqueta que empieza por "DESPACHADA",
-    // envía automáticamente el mensaje de despacho. Solo para etiquetas nuevas,
-    // así re-guardar las mismas etiquetas no reenvía el mensaje.
+    // Disparador OPCIONAL: si se AGREGÓ (nueva) una etiqueta que empieza por
+    // "DESPACHADA" Y el panel confirmó el envío (sendDespachada), manda el
+    // mensaje de despacho. El panel pregunta antes, así etiquetar pedidos viejos
+    // no le escribe al cliente sin querer. Solo etiquetas nuevas.
+    const sendDespachada = req.body?.sendDespachada === true;
     const newlyDespachada = labels.some((l) => !prevLabels.has(l) && /^despachad/i.test(l.trim()));
-    if (newlyDespachada) {
+    if (sendDespachada && newlyDespachada) {
       const name = existing?.fullName ?? existing?.customerName ?? null;
       sendManualText(waId, fillName(DESPACHADA_MSG, name)).then((r) => {
         if (!r.ok) console.warn(`[labels.despachada] no se envió a ${waId}: ${r.error}`);
