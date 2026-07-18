@@ -154,3 +154,31 @@ model ProductMedia {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 }
+
+// Espejo del estado de envío de cada pedido en Dropi. El poller consulta la API
+// interna de Dropi, compara `stage` contra `lastNotifiedStage` y dispara el
+// mensaje de WhatsApp solo cuando la ETAPA cambia (idempotencia). `dropiOrderId`
+// es el id del pedido en Dropi (no el Order interno del bot).
+model DropiShipment {
+  id               Int       @id @default(autoincrement())
+  dropiOrderId     Int       @unique
+  shippingGuide    String?
+  phone            String    // normalizado 57XXXXXXXXXX
+  customerName     String?
+  carrier          String?
+  city             String?
+  rateType         String?   // CON RECAUDO | SIN RECAUDO
+  total            Int       @default(0)
+  status           String    // estado crudo actual de Dropi
+  previousStatus   String?
+  stage            String    // etapa derivada (ver statusMap.ts)
+  lastNotifiedStage String?  // última etapa por la que SÍ se notificó al cliente
+  notifyCount      Int       @default(0)
+  lastNotifiedAt   DateTime?
+  statusChangedAt  DateTime? // updated_at de Dropi cuando cambió el estado
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([stage])
+  @@index([phone])
+}

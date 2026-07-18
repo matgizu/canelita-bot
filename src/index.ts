@@ -10,6 +10,7 @@ import { prisma } from "./db";
 import { notifyOwner } from "./owner";
 import { sweepHotLeads } from "./bot/hotRecovery";
 import { sendStatsToOwner } from "./reports/statsReport";
+import { runDropiSync } from "./dropi/tracker";
 
 const app = express();
 
@@ -191,3 +192,16 @@ setInterval(() => sweepHotLeads().catch(() => {}), 10 * 60 * 1000).unref();
 
 scheduleDailyReport();
 scheduleWeeklyStats();
+
+// Barrido de estados de guía en Dropi → notifica a los clientes cómo va su
+// pedido. Se activa con DROPI_TRACKING_ENABLED=true. El primer barrido solo
+// siembra (no notifica); las transiciones posteriores disparan los mensajes.
+if (config.dropi.enabled) {
+  const everyMs = Math.max(5, config.dropi.pollMinutes) * 60 * 1000;
+  // Espera 30s tras arrancar para no competir con el resto del boot.
+  setTimeout(() => {
+    runDropiSync().catch((e) => console.error("[dropi.sync]", e.message));
+    setInterval(() => runDropiSync().catch((e) => console.error("[dropi.sync]", e.message)), everyMs).unref();
+  }, 30_000).unref();
+  console.log(`[dropi.sync] activo — cada ${config.dropi.pollMinutes} min (envío: ${config.dropi.sendEnabled ? "ON" : "DRY-RUN"})`);
+}
