@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Catálogo — FreskaBox</title>
+  <script>(function(){if(localStorage.getItem('fb-theme')==='light')document.documentElement.dataset.theme='light';})()</script>
   <link rel="stylesheet" href="/shared.css">
   <style>
     body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -98,6 +99,9 @@
     <a class="topnav-link" href="/audit">🔍 Auditoría</a>
     <a class="topnav-link" href="/pnl">💵 P&L</a>
     <a class="topnav-link" href="/">💬 Dashboard</a>
+  </div>
+  <div class="topnav-right">
+    <button class="theme-btn" onclick="toggleTheme()">☀️</button>
   </div>
 </nav>
 
@@ -328,6 +332,10 @@ async function newProduct() {
   const found = catProducts.find(pr => pr.id === p.id);
   if (found) renderCatDetail(found);
 }
+</script>
+<script>
+function toggleTheme(){const h=document.documentElement,l=h.dataset.theme==='light';if(l){delete h.dataset.theme;localStorage.removeItem('fb-theme');}else{h.dataset.theme='light';localStorage.setItem('fb-theme','light');}document.querySelectorAll('.theme-btn').forEach(b=>b.textContent=document.documentElement.dataset.theme==='light'?'🌙':'☀️');}
+document.querySelectorAll('.theme-btn').forEach(b=>b.textContent=document.documentElement.dataset.theme==='light'?'🌙':'☀️');
 </script>
 </body>
 </html>

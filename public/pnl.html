@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>P&L — FreskaBox</title>
+  <script>(function(){if(localStorage.getItem('fb-theme')==='light')document.documentElement.dataset.theme='light';})()</script>
   <link rel="stylesheet" href="/shared.css">
   <style>
     body { display: flex; flex-direction: column; min-height: 100vh; }
@@ -93,6 +94,7 @@
   </div>
   <div class="topnav-right">
     <button class="btn btn-secondary btn-sm" id="pnl-reset-btn" onclick="resetPnl()" hidden>↑ Subir otro</button>
+    <button class="theme-btn" onclick="toggleTheme()">☀️</button>
   </div>
 </nav>
 
@@ -363,6 +365,10 @@ function renderProfit() {
 
 /* ─── Boot ───────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => setupPnlDrop());
+</script>
+<script>
+function toggleTheme(){const h=document.documentElement,l=h.dataset.theme==='light';if(l){delete h.dataset.theme;localStorage.removeItem('fb-theme');}else{h.dataset.theme='light';localStorage.setItem('fb-theme','light');}document.querySelectorAll('.theme-btn').forEach(b=>b.textContent=document.documentElement.dataset.theme==='light'?'🌙':'☀️');}
+document.querySelectorAll('.theme-btn').forEach(b=>b.textContent=document.documentElement.dataset.theme==='light'?'🌙':'☀️');
 </script>
 </body>
 </html>

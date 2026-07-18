@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FreskaBox — Dashboard</title>
+  <script>(function(){if(localStorage.getItem('fb-theme')==='light')document.documentElement.dataset.theme='light';})()</script>
   <link rel="stylesheet" href="/shared.css">
   <style>
     :root {
@@ -45,6 +46,10 @@
       flex-shrink: 0; border-bottom: 1px solid var(--border);
       box-shadow: 0 1px 0 rgba(37,99,235,.12), 0 2px 12px rgba(0,0,0,.5);
     }
+    [data-theme="light"] #header { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); box-shadow: 0 1px 0 rgba(37,99,235,.1), 0 2px 8px rgba(0,0,0,.06); }
+    [data-theme="light"] .brand { text-shadow: none; color: var(--brand); }
+    [data-theme="light"] .stat-val { color: var(--text); }
+    [data-theme="light"] .stat-lbl { color: var(--text3); }
     .brand { color: var(--brand); font-weight: 800; font-size: 15px; letter-spacing: .5px;
       text-shadow: 0 0 20px rgba(37,99,235,.5); }
     .stats-bar { display: flex; gap: 24px; margin-left: auto; }
@@ -1259,6 +1264,7 @@
   <button id="pipeline-btn" onclick="openPipeline()">📊 Pipeline</button>
   <button id="ab-btn" onclick="openAB()">🧪 A/B</button>
   <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
+  <button class="theme-btn" onclick="toggleTheme()" id="theme-toggle-btn">☀️</button>
   <div class="sse-pill">
     <div class="sse-dot" id="sse-dot"></div>
     <span id="sse-lbl">Conectando…</span>
@@ -3839,5 +3845,9 @@ async function newProduct() {
   </div>
 </div>
 <input type="file" id="cat-file-input" style="display:none" accept="image/*,video/*" multiple onchange="handleCatFileInput(event)">
+<script>
+function toggleTheme(){const h=document.documentElement,l=h.dataset.theme==='light';if(l){delete h.dataset.theme;localStorage.removeItem('fb-theme');}else{h.dataset.theme='light';localStorage.setItem('fb-theme','light');}document.querySelectorAll('.theme-btn').forEach(b=>b.textContent=document.documentElement.dataset.theme==='light'?'🌙':'☀️');}
+document.querySelectorAll('.theme-btn').forEach(b=>b.textContent=document.documentElement.dataset.theme==='light'?'🌙':'☀️');
+</script>
 </body>
 </html>

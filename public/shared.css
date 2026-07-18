@@ -185,3 +185,39 @@ textarea { resize: vertical; min-height: 80px; }
 .empty-state p { font-size: 14px; }
 .section-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
 [hidden] { display: none !important; }
+
+/* ─── Light theme ─────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg0: #f1f5f9;
+  --bg1: #ffffff;
+  --bg2: #f8fafc;
+  --bg3: #f1f5f9;
+  --border: #e2e8f0;
+  --border-hi: #cbd5e1;
+  --brand: #2563eb;
+  --brand-dark: #1d4ed8;
+  --brand-glow: rgba(37,99,235,.2);
+  --text: #0f172a;
+  --text2: #475569;
+  --text3: #94a3b8;
+  --shadow: 0 4px 20px rgba(0,0,0,.1);
+}
+[data-theme="light"] .topnav { background: rgba(255,255,255,.97); }
+[data-theme="light"] .btn-ghost:hover { background: var(--bg3); border-color: var(--border); }
+[data-theme="light"] .tbl td { border-bottom-color: var(--border); }
+[data-theme="light"] .badge-blue   { color: #1d4ed8; }
+[data-theme="light"] .badge-green  { color: #047857; }
+[data-theme="light"] .badge-amber  { color: #92400e; }
+[data-theme="light"] .badge-red    { color: #b91c1c; }
+[data-theme="light"] .badge-purple { color: #5b21b6; }
+[data-theme="light"] .badge-gray   { color: #374151; }
+[data-theme="light"] .badge-cyan   { color: #0e7490; }
+
+/* ─── Theme toggle button ─────────────────────────────────────────────── */
+.theme-btn {
+  background: var(--bg2); border: 1px solid var(--border);
+  color: var(--text2); border-radius: var(--radius-sm);
+  padding: 5px 9px; cursor: pointer; font-size: 15px; line-height: 1;
+  transition: all .15s; display: flex; align-items: center;
+}
+.theme-btn:hover { border-color: var(--brand); color: var(--brand); }
