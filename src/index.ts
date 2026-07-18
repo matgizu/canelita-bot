@@ -35,6 +35,10 @@ app.use(express.json({ limit: "2mb" }));
 app.use("/api", apiRouter);
 app.use("/api/test", testRouter);
 
+app.get("/catalog", (_req, res) => res.sendFile(path.resolve(__dirname, "..", "public", "catalog.html")));
+app.get("/audit",   (_req, res) => res.sendFile(path.resolve(__dirname, "..", "public", "audit.html")));
+app.get("/pnl",     (_req, res) => res.sendFile(path.resolve(__dirname, "..", "public", "pnl.html")));
+
 app.get("/health", (_req, res) => {
   res.json({ ok: true, ts: Date.now() });
 });

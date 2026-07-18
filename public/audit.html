@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditoría — FreskaBox</title>
+  <link rel="stylesheet" href="/shared.css">
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .page { flex: 1; }
+
+    /* Audit-specific */
+    .aud-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    @media (max-width: 900px) { .aud-cards { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .aud-cards { grid-template-columns: 1fr; } }
+
+    .aud-card { background: var(--bg1); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .aud-card h3 { color: var(--text); font-size: 13px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .aud-metric { display: flex; align-items: baseline; justify-content: space-between; padding: 7px 0; border-top: 1px solid rgba(28,48,80,.5); }
+    .aud-metric:first-of-type { border-top: none; }
+    .aud-metric .lbl { font-size: 11px; color: var(--text3); }
+    .aud-metric .val { font-size: 14px; font-weight: 700; color: var(--text); }
+    .aud-metric .val.big { font-size: 22px; font-weight: 800; }
+    .aud-trend { font-size: 10px; font-weight: 700; margin-left: 6px; }
+    .aud-trend.up   { color: var(--success); }
+    .aud-trend.down { color: var(--danger); }
+    .aud-trend.flat { color: var(--text3); }
+
+    .aud-two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px) { .aud-two { grid-template-columns: 1fr; } }
+
+    .aud-section { background: var(--bg1); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .aud-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .aud-table th { text-align: left; color: var(--text3); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--bg2); }
+    .aud-table td { padding: 9px 10px; color: var(--text2); border-bottom: 1px solid rgba(28,48,80,.4); }
+    .aud-table td.num, .aud-table th.num { text-align: right; }
+    .aud-table tr.lead td { color: var(--text); font-weight: 700; }
+    .aud-table .adid { font-family: ui-monospace, monospace; color: #93c5fd; font-size: 11px; }
+    .aud-movers { display: flex; flex-direction: column; gap: 8px; }
+    .aud-mover { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text2); padding: 6px 0; border-bottom: 1px solid rgba(28,48,80,.3); }
+    .aud-mover .adid { font-family: ui-monospace, monospace; color: #93c5fd; font-size: 11px; flex: 1; }
+    .aud-mover .chg { font-weight: 700; }
+    .aud-note { font-size: 12px; color: var(--text3); line-height: 1.6; padding: 16px 0; }
+
+    #audit-content { display: flex; flex-direction: column; gap: 20px; }
+    .loading { text-align: center; color: var(--text3); padding: 60px; font-size: 14px; }
+    .error { text-align: center; color: var(--danger); padding: 60px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- Top nav -->
+<nav class="topnav">
+  <a class="topnav-brand" href="/">📦 Freska<span class="brand-accent">Box</span></a>
+  <div class="topnav-links">
+    <a class="topnav-link" href="/catalog">🏪 Catálogo</a>
+    <a class="topnav-link active" href="/audit">🔍 Auditoría</a>
+    <a class="topnav-link" href="/pnl">💵 P&L</a>
+    <a class="topnav-link" href="/">💬 Dashboard</a>
+  </div>
+  <div class="topnav-right">
+    <button class="btn btn-secondary btn-sm" onclick="doLoad()">↻ Actualizar</button>
+    <span id="audit-sub" style="font-size:12px;color:var(--text3)"></span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🔍 Auditoría & Analytics</div>
+      <div class="page-sub">Tendencias vs período anterior · Últimos 3d / 7d / 30d</div>
+    </div>
+  </div>
+  <div class="page-body">
+    <div id="audit-content">
+      <div class="loading">Cargando auditoría…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── Helpers ─────────────────────────────────────────────────────────── */
+function x(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+function audCop(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
+function audPct(v) { return (v * 100).toFixed(1) + '%'; }
+
+function audTrend(cur, prev, goodUp = true) {
+  if (prev === 0) {
+    if (cur === 0) return '<span class="aud-trend flat">–</span>';
+    return `<span class="aud-trend ${goodUp ? 'up' : 'down'}">▲ nuevo</span>`;
+  }
+  const chg = (cur - prev) / prev * 100;
+  if (Math.abs(chg) < 0.5) return '<span class="aud-trend flat">≈</span>';
+  const up = chg > 0;
+  const cls = up === goodUp ? 'up' : 'down';
+  return `<span class="aud-trend ${cls}">${up ? '▲' : '▼'} ${Math.abs(chg).toFixed(0)}%</span>`;
+}
+
+function audCard(p) {
+  const c = p.cur, pr = p.prev;
+  return `<div class="aud-card">
+    <h3>${p.label}</h3>
+    <div class="aud-metric"><span class="lbl">Ventas</span><span><span class="val big">${c.sales}</span>${audTrend(c.sales, pr.sales)}</span></div>
+    <div class="aud-metric"><span class="lbl">Facturado</span><span><span class="val">${audCop(c.revenue)}</span>${audTrend(c.revenue, pr.revenue)}</span></div>
+    <div class="aud-metric"><span class="lbl">Conversión</span><span><span class="val">${audPct(c.convRate)}</span>${audTrend(c.convRate, pr.convRate)}</span></div>
+    <div class="aud-metric"><span class="lbl">Leads nuevos</span><span><span class="val">${c.leads}</span>${audTrend(c.leads, pr.leads)}</span></div>
+    <div class="aud-metric"><span class="lbl">Ticket prom.</span><span class="val">${c.sales ? audCop(c.ticket) : '—'}</span></div>
+    <div class="aud-metric"><span class="lbl">Respondieron</span><span><span class="val">${audPct(c.respRate)}</span>${audTrend(c.respRate, pr.respRate)}</span></div>
+    <div class="aud-metric"><span class="lbl">No respondieron</span><span><span class="val">${audPct(c.noRespRate)}</span>${audTrend(c.noRespRate, pr.noRespRate, false)}</span></div>
+    <div class="aud-metric"><span class="lbl">Llegan al cierre</span><span class="val">${c.reachedFunnel}</span></div>
+    <div class="aud-metric"><span class="lbl">Abandonan cierre</span><span class="val">${c.abandonFunnel}</span></div>
+  </div>`;
+}
+
+function renderAudit(d) {
+  const since = d.dataSince ? new Date(d.dataSince).toLocaleDateString('es-CO', { day:'numeric', month:'long', year:'numeric' }) : '—';
+  document.getElementById('audit-sub').textContent = 'Tendencia vs período anterior';
+
+  const cards = `<div class="aud-cards">${d.periods.map(audCard).join('')}</div>`;
+
+  const adsRows = d.ads30.map((a, i) => `
+    <tr class="${i === 0 ? 'lead' : ''}">
+      <td><span class="adid">${x(a.ad)}</span></td>
+      <td class="num">${a.sales}</td>
+      <td class="num">${audCop(a.revenue)}</td>
+      <td class="num">${a.leads}</td>
+      <td class="num">${audPct(a.convRate)}</td>
+    </tr>`).join('');
+  const adsTable = `<div class="aud-section">
+    <div class="section-title" style="margin-bottom:14px">Anuncios — últimos 30 días</div>
+    <table class="aud-table">
+      <thead><tr><th>ID Anuncio</th><th class="num">Ventas</th><th class="num">Facturado</th><th class="num">Leads</th><th class="num">Conv.</th></tr></thead>
+      <tbody>${adsRows || '<tr><td colspan="5" style="color:var(--text3)">Sin datos</td></tr>'}</tbody>
+    </table>
+  </div>`;
+
+  const movers = d.movers.slice(0, 8).map(m => {
+    const cls = m.delta > 0 ? 'up' : m.delta < 0 ? 'down' : 'flat';
+    const sign = m.delta > 0 ? '+' : '';
+    return `<div class="aud-mover"><span class="adid">${x(m.ad)}</span>
+      <span>${m.prev} → ${m.now}</span>
+      <span class="chg aud-trend ${cls}">${sign}${m.delta}</span></div>`;
+  }).join('');
+  const moversBlock = `<div class="aud-section">
+    <div class="section-title" style="margin-bottom:14px">Tendencia por anuncio (ventas: 7 días vs 7 previos)</div>
+    <div class="aud-movers">${movers || '<div style="color:var(--text3);font-size:12px">Sin datos</div>'}</div>
+  </div>`;
+
+  const note = `<div class="aud-note">
+    📅 Datos desde ${x(since)}. Las ventanas son móviles (últimos N días) y se comparan con el período inmediatamente anterior.<br>
+    💡 El ROAS real requiere el gasto de Meta por anuncio (aún no disponible por el conector); aquí se muestra facturación por anuncio.
+  </div>`;
+
+  const two = `<div class="aud-two">${adsTable}${moversBlock}</div>`;
+
+  document.getElementById('audit-content').innerHTML = cards + two + note;
+}
+
+/* ─── Load ───────────────────────────────────────────────────────────── */
+async function doLoad() {
+  document.getElementById('audit-content').innerHTML = '<div class="loading">Cargando auditoría…</div>';
+  document.getElementById('audit-sub').textContent = '';
+  try {
+    const res = await fetch('/api/audit');
+    if (!res.ok) throw new Error('error');
+    renderAudit(await res.json());
+  } catch {
+    document.getElementById('audit-content').innerHTML = '<div class="error">Error cargando la auditoría</div>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', doLoad);
+</script>
+</body>
+</html>

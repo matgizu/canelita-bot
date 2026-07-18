@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FreskaBox — Dashboard</title>
+  <link rel="stylesheet" href="/shared.css">
   <style>
     :root {
       --bg: #060d1a;
@@ -1081,6 +1082,159 @@
     .tog-slider:before { position:absolute;content:"";height:14px;width:14px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.2s; }
     .tog input:checked + .tog-slider { background:var(--success);border-color:var(--success);box-shadow:0 0 8px rgba(16,185,129,.4); }
     .tog input:checked + .tog-slider:before { transform:translateX(16px); }
+
+    /* ═══════════════════════════════════
+       VISUAL REDESIGN OVERRIDES
+    ═══════════════════════════════════ */
+
+    /* Header — glass effect */
+    #header {
+      background: rgba(7,13,26,.96) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
+      height: 52px !important;
+      gap: 4px !important;
+      box-shadow: none !important;
+      padding: 0 14px !important;
+      border-bottom: 1px solid #1c3050 !important;
+    }
+    .brand {
+      color: #e2e8f0 !important;
+      font-size: 15px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0 !important;
+      text-shadow: none !important;
+      margin-right: 8px !important;
+    }
+    .brand::after { content: ''; }
+
+    /* Stats bar — compact */
+    .stats-bar { gap: 12px !important; margin-left: 8px !important; }
+    .stat { background: rgba(28,48,80,.5); border: 1px solid #1c3050; border-radius: 8px; padding: 4px 10px; }
+    .stat-val { font-size: 15px !important; font-weight: 700 !important; }
+    .stat-lbl { font-size: 9px !important; letter-spacing: .3px !important; }
+
+    /* SSE pill */
+    .sse-pill { background: rgba(28,48,80,.5); border: 1px solid #1c3050; border-radius: 20px; padding: 4px 10px; }
+
+    /* Toolbar buttons — unified ghost style */
+    #templates-btn, #orders-btn, #pipeline-btn, #ab-btn, #test-btn {
+      display: inline-flex !important; align-items: center !important; gap: 5px !important;
+      padding: 5px 11px !important; border-radius: 6px !important;
+      font-size: 12px !important; font-weight: 500 !important; cursor: pointer !important;
+      transition: all .15s !important;
+      background: transparent !important; color: #4a6280 !important;
+      border: 1px solid transparent !important; white-space: nowrap !important;
+    }
+    #templates-btn:hover, #orders-btn:hover, #pipeline-btn:hover, #ab-btn:hover, #test-btn:hover {
+      background: #0f1d35 !important; color: #e2e8f0 !important;
+      border-color: rgba(255,255,255,.06) !important;
+    }
+
+    /* Metrics bar — KPI strip */
+    #metrics-bar {
+      height: 44px !important; background: #0b1527 !important;
+      gap: 0 !important; padding: 0 14px !important;
+      border-bottom: 1px solid #1c3050 !important;
+    }
+    .metric-item {
+      flex-direction: column !important; align-items: flex-start !important;
+      padding: 0 14px !important; gap: 1px !important;
+      border-right: 1px solid #1c3050 !important;
+    }
+    .metric-item:first-child { padding-left: 4px !important; }
+    .metric-label { font-size: 9px !important; margin: 0 !important; color: #4a6280 !important; }
+    .metric-value {
+      font-size: 14px !important; font-weight: 700 !important;
+      background: none !important; border: none !important;
+      padding: 0 !important; line-height: 1.1 !important;
+    }
+    .metric-value.green  { color: #34d399 !important; background: none !important; border: none !important; }
+    .metric-value.orange { color: #fbbf24 !important; background: none !important; border: none !important; }
+    .metric-value.red    { color: #f87171 !important; background: none !important; border: none !important; }
+    .metric-value.gray   { color: #94a3b8 !important; background: none !important; border: none !important; }
+    .metric-divider { display: none !important; }
+
+    /* Sidebar */
+    #sidebar { width: 300px !important; background: #070d1a !important; }
+    .search-box input, .search-box select {
+      background: #0f1d35 !important; border-color: #1c3050 !important; font-size: 12px !important;
+    }
+
+    /* Conv items — card style */
+    .conv-item {
+      margin: 2px 8px !important; border-radius: 8px !important;
+      border-bottom: none !important; padding: 10px 12px !important;
+    }
+    .conv-item:hover { background: #0f1d35 !important; }
+    .conv-item.active {
+      background: rgba(59,130,246,.08) !important;
+      border: 1px solid rgba(59,130,246,.2) !important;
+      border-left-width: 1px !important; padding-left: 12px !important;
+      box-shadow: none !important;
+    }
+
+    /* Avatars — gradient */
+    .ava {
+      background: linear-gradient(135deg, #1d4ed8, #7c3aed) !important;
+      box-shadow: none !important; border-radius: 50% !important;
+    }
+
+    /* State badges */
+    .sbadge {
+      border-radius: 20px !important; padding: 2px 7px !important;
+      font-size: 10px !important; font-weight: 600 !important; border: 1px solid !important;
+    }
+    .sbadge.s-CLOSED            { background: rgba(16,185,129,.12) !important; color: #6ee7b7 !important; border-color: rgba(16,185,129,.3) !important; }
+    .sbadge.s-GREETING          { background: rgba(124,58,237,.12) !important; color: #c4b5fd !important; border-color: rgba(124,58,237,.3) !important; }
+    .sbadge.s-INTEREST          { background: rgba(59,130,246,.12) !important; color: #93c5fd !important; border-color: rgba(59,130,246,.3) !important; }
+    .sbadge.s-VARIANT_SELECTION { background: rgba(124,58,237,.12) !important; color: #c4b5fd !important; border-color: rgba(124,58,237,.3) !important; }
+    .sbadge.s-QUANTITY          { background: rgba(245,158,11,.12) !important; color: #fcd34d !important; border-color: rgba(245,158,11,.3) !important; }
+    .sbadge.s-OBJECTION_HANDLING{ background: rgba(239,68,68,.12) !important;  color: #fca5a5 !important; border-color: rgba(239,68,68,.3) !important; }
+    .sbadge.s-CONFIRM_ORDER     { background: rgba(59,130,246,.12) !important; color: #93c5fd !important; border-color: rgba(59,130,246,.3) !important; }
+    .sbadge.s-ADDRESS_COLLECTION{ background: rgba(6,182,212,.12) !important;  color: #67e8f9 !important; border-color: rgba(6,182,212,.3) !important; }
+    .sbadge.s-PAYMENT_METHOD    { background: rgba(245,158,11,.12) !important; color: #fcd34d !important; border-color: rgba(245,158,11,.3) !important; }
+
+    /* Chat area */
+    #chat-header { background: #0b1527 !important; padding: 10px 16px !important; }
+    #messages {
+      background: #070d1a !important;
+      background-image: radial-gradient(rgba(30,60,100,.3) 1px, transparent 1px) !important;
+      background-size: 24px 24px !important;
+    }
+    .mw.outbound .bubble {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
+      border: none !important; color: #fff !important;
+      border-radius: 16px 16px 4px 16px !important;
+      box-shadow: 0 2px 8px rgba(37,99,235,.3) !important;
+    }
+    .mw.inbound .bubble {
+      background: #0f1d35 !important; border: 1px solid #1c3050 !important;
+      border-radius: 16px 16px 16px 4px !important;
+    }
+    #composer { background: #0b1527 !important; }
+    #msg-input { background: #0f1d35 !important; border-color: #1c3050 !important; border-radius: 8px !important; }
+    #send-btn { border-radius: 8px !important; }
+    #media-btn, #qr-btn, #mic-btn { border-radius: 8px !important; background: #0f1d35 !important; }
+
+    /* Info panel */
+    #info-panel { background: #0b1527 !important; }
+    .isec-title {
+      font-size: 10px !important; font-weight: 600 !important; letter-spacing: .5px !important;
+      color: #94a3b8 !important; text-transform: uppercase !important;
+      border-bottom: 1px solid #1c3050 !important; padding-bottom: 6px !important; margin-bottom: 8px !important;
+    }
+    .tabs { background: #0b1527 !important; }
+    .tab.active { background: rgba(59,130,246,.08) !important; }
+
+    /* Overlay panels */
+    #orders-panel, #templates-panel, #test-panel { border-radius: 14px !important; }
+    #orders-header, #templates-header, #test-header { background: #0b1527 !important; }
+    #orders-table thead th { background: #0f1d35 !important; }
+
+    /* Pipeline board */
+    .pl-card { background: #0f1d35 !important; border-color: #1c3050 !important; }
+    .pl-card:hover { background: #142340 !important; border-color: #2a4a70 !important; }
   </style>
 </head>
 <body>
@@ -1097,11 +1251,11 @@
     <div class="stat"><span class="stat-val" id="st-open">—</span><span class="stat-lbl">En proceso</span></div>
     <div class="stat"><span class="stat-val" id="st-closed">—</span><span class="stat-lbl">Cerrados</span></div>
   </div>
-  <button id="catalog-btn" onclick="openCatalog()">🏪 Catálogo</button>
+  <a id="catalog-btn" href="/catalog" class="btn btn-ghost btn-sm">🏪 Catálogo</a>
   <button id="templates-btn" onclick="openTemplates()">📋 Plantillas</button>
   <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
-  <button id="audit-btn" onclick="openAudit()">🔍 Auditoría</button>
-  <button id="pnl-btn" onclick="openPnl()">💵 Estado de resultados</button>
+  <a id="audit-btn" href="/audit" class="btn btn-ghost btn-sm">🔍 Auditoría</a>
+  <a id="pnl-btn" href="/pnl" class="btn btn-ghost btn-sm">💵 P&L</a>
   <button id="pipeline-btn" onclick="openPipeline()">📊 Pipeline</button>
   <button id="ab-btn" onclick="openAB()">🧪 A/B</button>
   <button id="test-btn" onclick="openTest()">🧪 Probar bot</button>
