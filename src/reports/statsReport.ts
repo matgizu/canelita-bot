@@ -17,7 +17,8 @@ async function periodBlock(label: string, from: Date): Promise<string> {
     prisma.conversation.count({ where: { createdAt: { gte: from }, adSource: { not: null } } }),
     prisma.message.count({ where: { createdAt: { gte: from }, direction: "inbound" } }),
     prisma.message.count({ where: { createdAt: { gte: from }, direction: "outbound" } }),
-    prisma.conversation.count({ where: { state: "CLOSED", updatedAt: { gte: from } } }),
+    // Cerradas en el periodo: por closedAt (fecha real de cierre), no updatedAt.
+    prisma.conversation.count({ where: { closedAt: { gte: from } } }),
     prisma.order.findMany({ where: { createdAt: { gte: from }, status: { not: "CANCELLED" } }, select: { total: true } }),
     prisma.$queryRaw<[{ count: bigint }]>`
       SELECT COUNT(*) AS count FROM (

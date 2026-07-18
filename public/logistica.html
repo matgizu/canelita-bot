@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logística — FreskaBox</title>
+  <script>(function(){if(localStorage.getItem('fb-theme')==='light')document.documentElement.dataset.theme='light';})()</script>
+  <link rel="stylesheet" href="/shared.css">
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .page { flex: 1; }
+    .log-wrap { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+    .rate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 860px) { .rate-grid { grid-template-columns: repeat(2, 1fr); } }
+    .rate-card { background: var(--bg1); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; position: relative; overflow: hidden; }
+    .rate-card .rc-top { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .rate-card .rc-lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 10px; }
+    .rate-card .rc-val { font-size: 30px; font-weight: 800; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+    .rate-card .rc-sub { font-size: 11px; color: var(--text3); margin-top: 8px; }
+
+    .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+    .mini { background: var(--bg1); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+    .mini .m-val { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .mini .m-lbl { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+    .carrier-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; }
+    .carrier-row .cn { width: 130px; color: var(--text2); }
+    .carrier-row .bar { flex: 1; height: 8px; background: var(--bg2); border-radius: 4px; overflow: hidden; }
+    .carrier-row .bar > i { display: block; height: 100%; background: var(--brand); border-radius: 4px; }
+    .carrier-row .cc { width: 34px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
+
+    .filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .pill { padding: 5px 11px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+            border: 1px solid var(--border); background: var(--bg1); color: var(--text2); white-space: nowrap; transition: all .12s; }
+    .pill:hover { border-color: var(--border-hi); color: var(--text); }
+    .pill.on { background: rgba(59,130,246,.14); border-color: var(--brand); color: #93c5fd; }
+    .filters .grow { flex: 1; min-width: 160px; }
+
+    .msg-cell { max-width: 380px; }
+    .msg-txt { font-size: 12px; color: var(--text2); white-space: pre-wrap; line-height: 1.45;
+               display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+    .msg-txt.open { -webkit-line-clamp: unset; }
+    .msg-none { color: var(--text3); font-size: 12px; }
+    .cust { font-weight: 600; color: var(--text); }
+    .sub2 { font-size: 11px; color: var(--text3); }
+    .cod-tag { font-size: 10px; color: #6ee7b7; }
+
+    .view-tabs { display: flex; gap: 6px; margin-bottom: 4px; }
+    .vtab { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer;
+            border: 1px solid var(--border); background: var(--bg1); color: var(--text2); font-family: inherit; transition: all .12s; }
+    .vtab:hover { border-color: var(--border-hi); color: var(--text); }
+    .vtab.on { background: rgba(59,130,246,.14); border-color: var(--brand); color: #93c5fd; }
+
+    .cat-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; border: 1px solid; }
+    .cat-revisar   { background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.4); color: #fca5a5; }
+    .cat-pendiente { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.3); color: #fcd34d; }
+    .cat-no_cerrada, .cat-no_viable, .cat-interna { background: rgba(100,116,139,.12); border-color: rgba(100,116,139,.3); color: #94a3b8; }
+
+    .spin { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.3);
+            border-top-color: #fff; border-radius: 50%; animation: sp .7s linear infinite; }
+    @keyframes sp { to { transform: rotate(360deg); } }
+    .loading { text-align: center; color: var(--text2); padding: 60px; }
+  </style>
+</head>
+<body>
+<nav class="topnav">
+  <a class="topnav-brand" href="/">📦 Freska<span class="brand-accent">Box</span></a>
+  <div class="topnav-links">
+    <a class="topnav-link" href="/catalog">🏪 Catálogo</a>
+    <a class="topnav-link" href="/audit">🔍 Auditoría</a>
+    <a class="topnav-link" href="/pnl">💵 P&L</a>
+    <a class="topnav-link active" href="/logistica">🚚 Logística</a>
+    <a class="topnav-link" href="/">💬 Dashboard</a>
+  </div>
+  <div class="topnav-right">
+    <span class="sub2" id="updated"></span>
+    <button class="btn btn-primary btn-sm" id="refresh-btn" onclick="refresh()">↻ Refrescar</button>
+    <button class="theme-btn" onclick="toggleTheme()">☀️</button>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🚚 Logística</div>
+      <div class="page-sub">Estados de guías y mensajes a clientes · datos de Dropi</div>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="log-wrap">
+      <div class="view-tabs">
+        <button class="vtab on" id="tab-ops" onclick="switchView('ops')">📦 Operación</button>
+        <button class="vtab" id="tab-recon" onclick="switchView('recon')">🔀 Conciliación bot ↔ Dropi</button>
+      </div>
+      <div id="root"><div class="loading">Cargando…</div></div>
+      <div id="recon" hidden><div class="loading">Cargando conciliación…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleTheme() {
+    const isLight = document.documentElement.dataset.theme === 'light';
+    if (isLight) { delete document.documentElement.dataset.theme; localStorage.setItem('fb-theme','dark'); }
+    else { document.documentElement.dataset.theme = 'light'; localStorage.setItem('fb-theme','light'); }
+  }
+
+  // Etiqueta + color por etapa.
+  const STAGE = {
+    DELIVERED:        ['Entregado',        'green'],
+    OUT_FOR_DELIVERY: ['En reparto',       'blue'],
+    SHIPPED:          ['En camino',        'cyan'],
+    ARRIVED:          ['En tu ciudad',     'cyan'],
+    CONFIRMED:        ['Alistando',        'gray'],
+    PENDING:          ['Pendiente',        'gray'],
+    DELIVERY_ATTEMPT: ['Intento entrega',  'amber'],
+    PICKUP_OFFICE:    ['En oficina',       'amber'],
+    RETURNING:        ['Devolución',       'red'],
+    REJECTED:         ['Rechazado',        'red'],
+    INCIDENT:         ['⚠️ Novedad',       'red'],
+    CANCELLED:        ['Cancelado',        'gray'],
+    UNKNOWN:          ['Otro',             'gray'],
+  };
+  const pct = (x) => (x * 100).toFixed(1) + '%';
+  const esc = (s) => (s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  let DATA = null;
+  let filterStage = 'ALL';
+  let onlyPending = false;
+  let query = '';
+
+  async function load(refresh) {
+    const btn = document.getElementById('refresh-btn');
+    btn.disabled = true;
+    btn.innerHTML = refresh ? '<span class="spin"></span> Sincronizando…' : '<span class="spin"></span>';
+    try {
+      const res = await fetch('/api/logistics/' + (refresh ? 'refresh' : 'data'), { method: refresh ? 'POST' : 'GET' });
+      DATA = await res.json();
+      if (DATA.error) throw new Error(DATA.error);
+      render();
+    } catch (e) {
+      document.getElementById('root').innerHTML =
+        '<div class="empty-state"><div class="empty-icon">⚠️</div><p>No se pudo cargar: ' + esc(e.message) + '</p></div>';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '↻ Refrescar';
+    }
+  }
+  function refresh() { if (view === 'recon') { RECON = null; loadRecon(); } else { load(true); } }
+
+  function render() {
+    const s = DATA.summary;
+    const carriers = Object.entries(s.byCarrier).sort((a,b) => b[1]-a[1]);
+    const maxC = Math.max(1, ...carriers.map(c => c[1]));
+
+    // último update
+    const d = new Date(DATA.generatedAt);
+    document.getElementById('updated').textContent = 'Actualizado ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+    // aviso si el envío está apagado
+    const banner = !DATA.sendEnabled
+      ? '<div class="pnl-warn" style="background:rgba(120,80,10,.25);border:1px solid rgba(245,158,11,.3);color:#fcd34d;border-radius:10px;padding:10px 14px;font-size:12px">⚠️ El envío automático a clientes está <b>apagado</b> (DROPI_SEND_ENABLED=false). El panel muestra los estados y los mensajes que se enviarían, pero no se está mandando nada todavía.</div>'
+      : '';
+
+    const rateCard = (lbl, val, sub, color) =>
+      `<div class="rate-card"><div class="rc-top" style="background:${color}"></div>
+        <div class="rc-lbl">${lbl}</div><div class="rc-val">${val}</div><div class="rc-sub">${sub}</div></div>`;
+
+    const mini = (val, lbl, cls) => `<div class="mini"><div class="m-val ${cls||''}">${val}</div><div class="m-lbl">${lbl}</div></div>`;
+
+    // filtros: etapas presentes
+    const stagesPresent = [...new Set(DATA.shipments.map(x => x.stage))];
+    const order = ['INCIDENT','OUT_FOR_DELIVERY','DELIVERY_ATTEMPT','PICKUP_OFFICE','SHIPPED','ARRIVED','CONFIRMED','PENDING','DELIVERED','RETURNING','REJECTED','CANCELLED','UNKNOWN'];
+    stagesPresent.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+    const pills = ['<div class="pill ' + (filterStage==='ALL'?'on':'') + '" onclick="setStage(\'ALL\')">Todos ' + DATA.shipments.length + '</div>']
+      .concat(stagesPresent.map(st => {
+        const n = DATA.shipments.filter(x => x.stage === st).length;
+        return '<div class="pill ' + (filterStage===st?'on':'') + '" onclick="setStage(\'' + st + '\')">' + STAGE[st][0] + ' ' + n + '</div>';
+      })).join('');
+
+    document.getElementById('root').innerHTML = `
+      ${banner}
+      <div class="rate-grid">
+        ${rateCard('Tasa de entrega', pct(s.deliveryRate), s.delivered + ' de ' + s.resolved + ' resueltos', 'var(--success)')}
+        ${rateCard('Tasa de devolución', pct(s.returnRate), (s.returned + s.rejected) + ' devueltos/rechazados', 'var(--danger)')}
+        ${rateCard('Pedidos con novedad', s.incidents, 'requieren tu atención', 'var(--warning)')}
+        ${rateCard('En reparto hoy', s.outForDelivery, 'saliendo a entrega', 'var(--brand)')}
+      </div>
+
+      <div class="card">
+        <div class="mini-grid">
+          ${mini(s.total, 'Total activos', '')}
+          ${mini(s.inTransit, 'En camino', 'kpi-trend-up')}
+          ${mini(s.deliveryAttempt, 'Intentos fallidos', '')}
+          ${mini(s.preparing, 'Alistando', '')}
+          ${mini(s.delivered, 'Entregados', 'pos')}
+          ${mini(s.returned, 'Devoluciones', 'neg')}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">📦 Por transportadora</div></div>
+        ${carriers.map(([name, n]) => `
+          <div class="carrier-row">
+            <span class="cn">${esc(name)}</span>
+            <span class="bar"><i style="width:${(n/maxC*100).toFixed(0)}%"></i></span>
+            <span class="cc">${n}</span>
+          </div>`).join('') || '<div class="muted">Sin datos</div>'}
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Pedidos y mensajes al cliente</div>
+        </div>
+        <div class="filters" style="margin-bottom:14px">
+          ${pills}
+          <div style="flex:1"></div>
+          <div class="pill ${onlyPending?'on':''}" onclick="togglePending()">✉️ Solo con mensaje pendiente</div>
+          <input class="grow" type="search" id="q" placeholder="Buscar cliente, ciudad, guía…" value="${esc(query)}" oninput="setQuery(this.value)" style="max-width:240px">
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr>
+              <th>Pedido</th><th>Cliente</th><th>Estado</th><th>Mensaje al cliente</th><th></th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    renderRows();
+  }
+
+  function renderRows() {
+    let list = DATA.shipments;
+    if (filterStage !== 'ALL') list = list.filter(x => x.stage === filterStage);
+    if (onlyPending) list = list.filter(x => x.message && !x.sent);
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(x => [x.customerName, x.city, x.guide, x.carrier, x.phone, String(x.dropiOrderId)]
+        .some(v => (v ?? '').toString().toLowerCase().includes(q)));
+    }
+
+    const rowsEl = document.getElementById('rows');
+    if (!list.length) { rowsEl.innerHTML = '<tr><td colspan="5"><div class="empty-state"><p>Sin pedidos que coincidan</p></div></td></tr>'; return; }
+
+    rowsEl.innerHTML = list.map(x => {
+      const [lbl, color] = STAGE[x.stage] || STAGE.UNKNOWN;
+      const badge = `<span class="badge badge-${color}">${lbl}</span>`;
+      const msg = x.message
+        ? `<div class="msg-cell"><div class="msg-txt" onclick="this.classList.toggle('open')">${esc(x.message)}</div></div>`
+        : `<span class="msg-none">${x.alertOwner ? '⚠️ Requiere gestión manual' : '— sin mensaje automático'}</span>`;
+      const sentBadge = x.message
+        ? (x.sent ? '<span class="badge badge-green">✓ Enviado</span>' : '<span class="badge badge-amber">Pendiente</span>')
+        : '';
+      return `<tr>
+        <td><b>#${x.dropiOrderId}</b><div class="sub2">${x.guide ? 'Guía ' + esc(x.guide) : 'sin guía'}</div></td>
+        <td><div class="cust">${esc(x.customerName) || '—'}</div>
+            <div class="sub2">${esc(x.city) || '—'} · ${esc(x.carrier) || '—'}${x.cod ? ' · <span class="cod-tag">COD $' + x.total.toLocaleString('es-CO') + '</span>' : ''}</div></td>
+        <td>${badge}<div class="sub2" style="margin-top:4px">${esc(x.status)}</div></td>
+        <td>${msg}</td>
+        <td>${sentBadge}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function setStage(st) { filterStage = st; render(); }
+  function togglePending() { onlyPending = !onlyPending; render(); }
+  function setQuery(v) { query = v; renderRows(); }
+
+  // ── Vistas: Operación / Conciliación ──
+  let view = 'ops';
+  let RECON = null;
+  function switchView(v) {
+    view = v;
+    document.getElementById('tab-ops').classList.toggle('on', v === 'ops');
+    document.getElementById('tab-recon').classList.toggle('on', v === 'recon');
+    document.getElementById('root').hidden = v !== 'ops';
+    document.getElementById('recon').hidden = v !== 'recon';
+    if (v === 'recon' && !RECON) loadRecon();
+  }
+
+  async function loadRecon() {
+    const btn = document.getElementById('refresh-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+    document.getElementById('recon').innerHTML = '<div class="loading"><span class="spin"></span> Cruzando bot ↔ Dropi…</div>';
+    try {
+      const r = await fetch('/api/logistics/reconcile');
+      RECON = await r.json();
+      if (RECON.error) throw new Error(RECON.error);
+      renderRecon();
+    } catch (e) {
+      document.getElementById('recon').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>No se pudo cruzar: ' + esc(e.message) + '</p></div>';
+    } finally { btn.disabled = false; btn.innerHTML = '↻ Refrescar'; }
+  }
+
+  const CAT_ORDER = ['revisar','pendiente','interna','no_viable','no_cerrada'];
+  function renderRecon() {
+    const c = RECON.counts;
+    const cop = (n) => '$' + (n||0).toLocaleString('es-CO');
+    const mini = (v, l, cls) => `<div class="mini"><div class="m-val ${cls||''}">${v}</div><div class="m-lbl">${l}</div></div>`;
+
+    // agrupar onlyBot por categoría
+    const groups = {};
+    for (const o of RECON.onlyBot) (groups[o.category.key] = groups[o.category.key] || []).push(o);
+
+    const botRows = (list) => list.map(o => `
+      <tr>
+        <td><b>#${o.id}</b><div class="sub2">${new Date(o.createdAt).toLocaleDateString('es-CO',{day:'2-digit',month:'short'})}</div></td>
+        <td><div class="cust">${esc(o.name)||'—'}</div><div class="sub2">${esc(o.city)||'—'} · ${o.phone}</div></td>
+        <td class="num">${cop(o.total)}</td>
+        <td><span class="cat-tag cat-${o.category.key}">${o.category.label}</span>
+            ${o.labels.length ? '<div class="sub2" style="margin-top:3px">'+o.labels.map(esc).join(', ')+'</div>' : ''}</td>
+      </tr>`).join('');
+
+    document.getElementById('recon').innerHTML = `
+      <div class="card" style="margin-bottom:20px">
+        <div class="mini-grid">
+          ${mini(c.bot, 'Pedidos bot', '')}
+          ${mini(c.dropi, 'Pedidos Dropi', '')}
+          ${mini(c.inBoth, 'En ambos ✅', 'pos')}
+          ${mini(c.onlyBot, 'Solo en bot', '')}
+          ${mini(c.onlyDropi, 'Solo en Dropi', '')}
+          ${mini(c.revisar, '🔴 A revisar', 'neg')}
+        </div>
+        <div class="sub2" style="margin-top:12px">Ventana ${RECON.window.from} → ${RECON.window.until} · cruzado por teléfono (WhatsApp + alternos).
+          ${c.revisar ? '<b style="color:#fca5a5">'+c.revisar+' pedido(s) cerrado(s) sin explicación por '+cop(RECON.revisarValue)+' — revisar si se subieron a Dropi.</b>' : 'Todo lo "solo en bot" tiene explicación 👏'}</div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><div class="card-title">🔴 Solo en el bot (no están en Dropi)</div></div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Pedido</th><th>Cliente</th><th class="num">Valor</th><th>Motivo</th></tr></thead>
+            <tbody>${
+              CAT_ORDER.filter(k => groups[k]).map(k => botRows(groups[k])).join('')
+              || '<tr><td colspan="4"><div class="empty-state"><p>Todos los pedidos del bot están en Dropi ✅</p></div></td></tr>'
+            }</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">🟡 Solo en Dropi (no vienen del bot)</div></div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Dropi</th><th>Cliente</th><th class="num">Valor</th><th>Estado</th></tr></thead>
+            <tbody>${
+              RECON.onlyDropi.map(d => `<tr>
+                <td><b>#${d.id}</b></td>
+                <td><div class="cust">${esc(d.name)||'—'}</div><div class="sub2">${esc(d.city)||'—'} · ${d.phone}</div></td>
+                <td class="num">${cop(d.total)}</td>
+                <td>${esc(d.status)}</td></tr>`).join('')
+              || '<tr><td colspan="4"><div class="empty-state"><p>Ninguno</p></div></td></tr>'
+            }</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  load(false);
+</script>
+</body>
+</html>

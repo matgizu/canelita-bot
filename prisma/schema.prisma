@@ -173,6 +173,7 @@ model DropiShipment {
   previousStatus   String?
   stage            String    // etapa derivada (ver statusMap.ts)
   lastNotifiedStage String?  // última etapa por la que SÍ se notificó al cliente
+  lastAlertedStage String?   // última etapa por la que SÍ se alertó al dueño
   notifyCount      Int       @default(0)
   lastNotifiedAt   DateTime?
   statusChangedAt  DateTime? // updated_at de Dropi cuando cambió el estado

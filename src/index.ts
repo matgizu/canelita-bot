@@ -11,6 +11,8 @@ import { notifyOwner } from "./owner";
 import { sweepHotLeads } from "./bot/hotRecovery";
 import { sendStatsToOwner } from "./reports/statsReport";
 import { runDropiSync } from "./dropi/tracker";
+import { sendReconcileAlert } from "./dropi/reconcile";
+import { logisticsRouter } from "./api/logistics";
 
 const app = express();
 
@@ -34,10 +36,12 @@ app.use("/webhook", webhookRouter);
 app.use(express.json({ limit: "2mb" }));
 app.use("/api", apiRouter);
 app.use("/api/test", testRouter);
+app.use("/api/logistics", logisticsRouter);
 
 app.get("/catalog", (_req, res) => res.sendFile(path.resolve(__dirname, "..", "public", "catalog.html")));
 app.get("/audit",   (_req, res) => res.sendFile(path.resolve(__dirname, "..", "public", "audit.html")));
 app.get("/pnl",     (_req, res) => res.sendFile(path.resolve(__dirname, "..", "public", "pnl.html")));
+app.get("/logistica", (_req, res) => res.sendFile(path.resolve(__dirname, "..", "public", "logistica.html")));
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, ts: Date.now() });
@@ -62,7 +66,9 @@ async function sendDailyReport(): Promise<void> {
         _sum:   { total: true },
       }),
       prisma.conversation.count({ where: { createdAt: { gte: yesterdayColMidnight, lt: todayColMidnight } } }),
-      prisma.conversation.count({ where: { state: "CLOSED", updatedAt: { gte: yesterdayColMidnight, lt: todayColMidnight } } }),
+      // Ventas cerradas AYER: por closedAt (fecha real de cierre), no por
+      // updatedAt — que cambia con cualquier mensaje/etiqueta e infla el conteo.
+      prisma.conversation.count({ where: { closedAt: { gte: yesterdayColMidnight, lt: todayColMidnight } } }),
       prisma.$queryRaw<Array<{ objectionType: string; count: bigint }>>`
         SELECT "objectionType", COUNT(*) AS count
         FROM "Message"
@@ -208,4 +214,18 @@ if (config.dropi.enabled) {
     setInterval(() => runDropiSync().catch((e) => console.error("[dropi.sync]", e.message)), everyMs).unref();
   }, 30_000).unref();
   console.log(`[dropi.sync] activo — cada ${config.dropi.pollMinutes} min (envío: ${config.dropi.sendEnabled ? "ON" : "DRY-RUN"})`);
+
+  // Aviso diario de conciliación: pedidos cerrados en el bot sin subir a Dropi.
+  // 8pm COL = 01:00 UTC (del día siguiente).
+  const scheduleReconAlert = () => {
+    const now = new Date();
+    const next = new Date(now);
+    next.setUTCHours(1, 0, 0, 0);
+    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1);
+    setTimeout(() => {
+      sendReconcileAlert().catch((e) => console.error("[dropi.reconcileAlert]", e.message));
+      setInterval(() => sendReconcileAlert().catch(() => {}), 24 * 60 * 60 * 1000).unref();
+    }, next.getTime() - now.getTime()).unref();
+  };
+  scheduleReconAlert();
 }

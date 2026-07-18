@@ -51,6 +51,36 @@ export const config = {
     defaultCost: Number(optional("SHIPPING_COST_DEFAULT", "0")),
   },
 
+  // Integración con la API interna (no oficial) de Dropi para notificar a los
+  // clientes el estado de su guía. Ver src/dropi/.
+  dropi: {
+    email: optional("DROPI_EMAIL"),
+    password: optional("DROPI_PASSWORD"),
+    whiteBrandId: Number(optional("DROPI_WHITE_BRAND_ID", "1")),
+    // Token pegado a mano desde el navegador (localStorage.DROPI_LoginResult.token).
+    // Necesario porque la cuenta tiene 2FA y el login por password no basta.
+    // Dura ~12h; cuando vence, el bot avisa al dueño para pegar uno nuevo.
+    token: optional("DROPI_TOKEN"),
+    // Master switch — con DROPI_TRACKING_ENABLED=false no se corre el poller.
+    enabled: optional("DROPI_TRACKING_ENABLED", "false") === "true",
+    // Cada cuántos minutos barre los pedidos activos.
+    pollMinutes: Number(optional("DROPI_POLL_MINUTES", "30")),
+    // Cuántos días hacia atrás mirar (por fecha de creación) en cada barrido.
+    lookbackDays: Number(optional("DROPI_LOOKBACK_DAYS", "20")),
+    // Mapa etapa→plantilla Meta aprobada (para clientes fuera de la ventana 24h).
+    // Si una plantilla no está configurada, fuera de ventana solo se registra.
+    templates: {
+      shipped: optional("DROPI_TPL_SHIPPED"),
+      outForDelivery: optional("DROPI_TPL_OUT_FOR_DELIVERY"),
+      delivered: optional("DROPI_TPL_DELIVERED"),
+      deliveryAttempt: optional("DROPI_TPL_DELIVERY_ATTEMPT"),
+      pickupOffice: optional("DROPI_TPL_PICKUP_OFFICE"),
+    } as Record<string, string>,
+    templateLang: optional("DROPI_TPL_LANG", "es"),
+    // Si es true, manda mensajes de verdad. En false hace dry-run (solo log).
+    sendEnabled: optional("DROPI_SEND_ENABLED", "false") === "true",
+  },
+
   greeting: {
     imageUrls: optional("GREETING_IMAGE_URLS")
       .split(",")

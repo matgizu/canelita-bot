@@ -6,6 +6,7 @@ import { markOwnerWindowOpen } from "../owner";
 import { getConfig, setConfig } from "../botConfig";
 import { formatCOP } from "../products";
 import { anthropicHttpsAgent } from "../claude/httpAgent";
+import { handleOwner2faCode } from "../dropi/auth";
 
 // maxRetries: el SDK reintenta con backoff exponencial + jitter ante errores de
 // conexión ("Premature close" / socket cerrado) y 408/409/429/5xx.
@@ -235,6 +236,10 @@ const MAX_HISTORY = 12;
 export async function handleOwnerMessage(text: string): Promise<void> {
   markOwnerWindowOpen();
   if (!text.trim()) return;
+
+  // Si estamos esperando el código 2FA de Dropi y el dueño mandó 6 dígitos, lo
+  // procesamos aquí y no seguimos al asistente de IA.
+  if (await handleOwner2faCode(text)) return;
 
   let statsContext = "";
   try {
