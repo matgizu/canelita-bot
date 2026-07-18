@@ -1,4 +1,5 @@
 import "dotenv/config";
+import fs from "node:fs";
 import path from "node:path";
 import express from "express";
 import { apiRouter } from "./api/routes";
@@ -21,6 +22,11 @@ app.use(express.static(path.resolve(__dirname, "..", "public"), {
     }
   },
 }));
+
+// Serve uploaded product media from Railway Volume (or local UPLOADS_DIR)
+const UPLOADS_DIR = process.env.UPLOADS_DIR ?? "/app/uploads";
+fs.mkdirSync(path.join(UPLOADS_DIR, "products"), { recursive: true });
+app.use("/uploads", express.static(UPLOADS_DIR, { maxAge: "7d" }));
 
 app.use("/webhook", webhookRouter);
 

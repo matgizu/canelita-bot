@@ -988,6 +988,49 @@
     .pl-col.PAYMENT_METHOD  .pl-col-label  { color: #34d399; }
     .pl-col.CLOSED          .pl-col-header { background: #0a1a0f; }
     .pl-col.CLOSED          .pl-col-label  { color: #6ee7b7; }
+
+    /* ── Product Catalog overlay ─────────────────────────────── */
+    #catalog-overlay { position:fixed;inset:0;z-index:1100;display:flex;background:var(--bg,#0f1923);overflow:hidden; }
+    .cat-sidebar { width:260px;min-width:220px;border-right:1px solid var(--border,#1e2a3a);display:flex;flex-direction:column;height:100%; }
+    .cat-sidebar-hdr { padding:14px 16px;font-weight:700;font-size:15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
+    .cat-sidebar-hdr button { background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px; }
+    .cat-sidebar-hdr button:hover { color:#fff; }
+    .cat-prod-list { flex:1;overflow-y:auto;padding:8px 0; }
+    .cat-prod-item { padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;border-radius:8px;margin:2px 8px; }
+    .cat-prod-item:hover { background:var(--sidebar-hover,#1a2234); }
+    .cat-prod-item.active { background:#1e2a3a; }
+    .cat-prod-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+    .cat-prod-dot.on { background:#22c55e; }
+    .cat-prod-dot.off { background:#64748b; }
+    .cat-prod-name { font-size:13px;flex:1; }
+    .cat-sidebar-footer { padding:12px;border-top:1px solid var(--border); }
+    .cat-sidebar-footer button { width:100%;padding:9px;background:var(--brand,#3b82f6);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600; }
+    .cat-detail { flex:1;overflow-y:auto;padding:24px 32px;display:flex;flex-direction:column;gap:24px; }
+    .cat-detail-hdr { display:flex;align-items:center;justify-content:space-between; }
+    .cat-detail-hdr h2 { font-size:18px;font-weight:700;margin:0; }
+    .cat-form { display:flex;flex-direction:column;gap:14px; }
+    .cat-form label { font-size:12px;color:var(--muted);display:block;margin-bottom:4px; }
+    .cat-form input,.cat-form textarea { width:100%;background:#1a2234;border:1px solid var(--border);color:#e2e8f0;border-radius:8px;padding:8px 10px;font-size:13px;box-sizing:border-box; }
+    .cat-form textarea { resize:vertical;min-height:80px; }
+    .cat-toggle-row { display:flex;align-items:center;gap:12px; }
+    .cat-toggle-label { font-size:13px; }
+    .cat-actions { display:flex;gap:10px; }
+    .cat-actions button { padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600; }
+    .cat-btn-save { background:var(--brand);color:#fff; }
+    .cat-btn-save:hover { background:#2563eb; }
+    .cat-btn-del { background:#1e2a3a;color:#f87171; }
+    .cat-btn-del:hover { background:#2d1f1f; }
+    .cat-media-section h3 { font-size:14px;font-weight:600;margin:0 0 12px; }
+    .cat-media-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px; }
+    .cat-media-item { position:relative;border-radius:8px;overflow:hidden;background:#1a2234;aspect-ratio:1; }
+    .cat-media-item img,.cat-media-item video { width:100%;height:100%;object-fit:cover;display:block; }
+    .cat-media-del { position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:none;color:#f87171;cursor:pointer;border-radius:50%;width:22px;height:22px;font-size:12px;display:flex;align-items:center;justify-content:center; }
+    .cat-media-del:hover { background:rgba(200,0,0,.8);color:#fff; }
+    .cat-media-type { position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.6);color:#94a3b8;font-size:10px;padding:2px 5px;border-radius:4px; }
+    .cat-upload-btn { aspect-ratio:1;border:2px dashed var(--border);border-radius:8px;background:#1a2234;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:11px;gap:4px;transition:border-color .2s; }
+    .cat-upload-btn:hover { border-color:var(--brand);color:#fff; }
+    .cat-upload-btn .cat-plus { font-size:22px; }
+    .cat-empty { color:var(--muted);font-size:13px;text-align:center;padding:60px 0; }
   </style>
 </head>
 <body>
@@ -1004,6 +1047,7 @@
     <div class="stat"><span class="stat-val" id="st-open">—</span><span class="stat-lbl">En proceso</span></div>
     <div class="stat"><span class="stat-val" id="st-closed">—</span><span class="stat-lbl">Cerrados</span></div>
   </div>
+  <button id="catalog-btn" onclick="openCatalog()">🏪 Catálogo</button>
   <button id="templates-btn" onclick="openTemplates()">📋 Plantillas</button>
   <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
   <button id="audit-btn" onclick="openAudit()">🔍 Auditoría</button>
@@ -3407,6 +3451,189 @@ function relTime(date) {
   const d = Math.floor(h / 24);
   return `Hace ${d}d`;
 }
+
+// ── Product Catalog ───────────────────────────────────────────────────────
+let catProducts = [];
+let catSelectedId = null;
+let catCurrentProductId = null;
+
+async function openCatalog() {
+  document.getElementById('catalog-overlay').hidden = false;
+  await loadCatalog();
+}
+function closeCatalog() {
+  document.getElementById('catalog-overlay').hidden = true;
+}
+async function loadCatalog() {
+  const r = await fetch('/api/products');
+  catProducts = await r.json();
+  renderCatSidebar();
+  if (catSelectedId) {
+    const p = catProducts.find(pr => pr.id === catSelectedId);
+    if (p) renderCatDetail(p); else renderCatEmpty();
+  } else {
+    renderCatEmpty();
+  }
+}
+function renderCatSidebar() {
+  const el = document.getElementById('cat-prod-list');
+  if (!catProducts.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:16px">Sin productos aún</div>';
+    return;
+  }
+  el.innerHTML = catProducts.map(p => `
+    <div class="cat-prod-item${catSelectedId===p.id?' active':''}" onclick="selectCatProduct(${p.id})">
+      <span class="cat-prod-dot ${p.isActive?'on':'off'}"></span>
+      <span class="cat-prod-name">${x(p.name)}</span>
+    </div>
+  `).join('');
+}
+function renderCatEmpty() {
+  document.getElementById('cat-detail').innerHTML = '<div class="cat-empty">Selecciona un producto o crea uno nuevo</div>';
+}
+function selectCatProduct(id) {
+  catSelectedId = id;
+  renderCatSidebar();
+  const p = catProducts.find(pr => pr.id === id);
+  if (p) renderCatDetail(p);
+}
+function renderCatDetail(p) {
+  const cfg = p.config || {};
+  const cfgStr = typeof cfg === 'string' ? cfg : JSON.stringify(cfg, null, 2);
+  const mediaHtml = (p.media || []).sort((a,b) => a.sortOrder - b.sortOrder).map(m => `
+    <div class="cat-media-item" id="cat-m-${m.id}">
+      ${m.type==='video'
+        ? `<video src="${m.url}" muted loop playsinline></video>`
+        : `<img src="${m.url}" loading="lazy" alt="">`}
+      <span class="cat-media-type">${m.type==='video'?'▶ Video':'📷 Foto'}</span>
+      <button class="cat-media-del" onclick="deleteCatMedia(${p.id},${m.id})" title="Eliminar">✕</button>
+    </div>
+  `).join('');
+  document.getElementById('cat-detail').innerHTML = `
+    <div class="cat-detail-hdr">
+      <h2>${x(p.name)}</h2>
+      <div class="cat-toggle-row">
+        <span class="cat-toggle-label" style="color:${p.isActive?'#22c55e':'#64748b'}">${p.isActive?'Activo':'Inactivo'}</span>
+        <label class="tog" title="Activar/desactivar">
+          <input type="checkbox" id="cat-active-chk" ${p.isActive?'checked':''} onchange="toggleCatProduct(${p.id},this.checked)">
+          <span class="tog-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="cat-form">
+      <div>
+        <label>Nombre del producto</label>
+        <input id="cat-name" value="${x(p.name)}" placeholder="Ej: Cajones organizadores nevera">
+      </div>
+      <div>
+        <label>Descripción corta</label>
+        <textarea id="cat-desc" placeholder="Descripción breve para el catálogo">${x(p.description||'')}</textarea>
+      </div>
+      <div>
+        <label>Config adicional (JSON) — precios, colores, etc.</label>
+        <textarea id="cat-config" style="font-family:monospace;font-size:11px;min-height:120px">${x(cfgStr)}</textarea>
+      </div>
+      <div class="cat-actions">
+        <button class="cat-btn-save" onclick="saveCatProduct(${p.id})">Guardar cambios</button>
+        <button class="cat-btn-del" onclick="deleteCatProduct(${p.id})">Eliminar producto</button>
+      </div>
+    </div>
+    <div class="cat-media-section">
+      <h3>Fotos y videos (${p.media?p.media.length:0})</h3>
+      <div class="cat-media-grid" id="cat-media-grid">
+        ${mediaHtml}
+        <label class="cat-upload-btn" for="cat-file-input" onclick="catCurrentProductId=${p.id}" title="Subir foto o video">
+          <span class="cat-plus">+</span><span>Subir</span>
+        </label>
+      </div>
+    </div>
+  `;
+}
+async function handleCatFileInput(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length || !catCurrentProductId) return;
+  e.target.value = '';
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(`/api/products/${catCurrentProductId}/media`, { method: 'POST', body: fd });
+    if (!r.ok) { alert('Error subiendo archivo: ' + file.name); }
+  }
+  await loadCatalog();
+  const p = catProducts.find(pr => pr.id === catCurrentProductId);
+  if (p) renderCatDetail(p);
+}
+async function toggleCatProduct(id, active) {
+  await fetch(`/api/products/${id}`, {
+    method: 'PATCH', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ isActive: active })
+  });
+  await loadCatalog();
+  const p = catProducts.find(pr => pr.id === id);
+  if (p) renderCatDetail(p);
+}
+async function saveCatProduct(id) {
+  const name = document.getElementById('cat-name').value.trim();
+  if (!name) { alert('El nombre no puede estar vacío'); return; }
+  const description = document.getElementById('cat-desc').value.trim();
+  let config;
+  try { config = JSON.parse(document.getElementById('cat-config').value || '{}'); }
+  catch { alert('El JSON de config no es válido'); return; }
+  const r = await fetch(`/api/products/${id}`, {
+    method: 'PATCH', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, description, config })
+  });
+  if (!r.ok) { alert('Error guardando'); return; }
+  await loadCatalog();
+  const p = catProducts.find(pr => pr.id === id);
+  if (p) renderCatDetail(p);
+}
+async function deleteCatProduct(id) {
+  if (!confirm('¿Eliminar este producto y todos sus archivos? Esta acción no se puede deshacer.')) return;
+  await fetch(`/api/products/${id}`, { method: 'DELETE' });
+  catSelectedId = null;
+  await loadCatalog();
+  renderCatEmpty();
+}
+async function deleteCatMedia(productId, mediaId) {
+  await fetch(`/api/products/${productId}/media/${mediaId}`, { method: 'DELETE' });
+  const el = document.getElementById(`cat-m-${mediaId}`);
+  if (el) el.remove();
+  await loadCatalog();
+  const p = catProducts.find(pr => pr.id === productId);
+  if (p) renderCatDetail(p);
+}
+async function newProduct() {
+  const name = prompt('Nombre del nuevo producto:');
+  if (!name || !name.trim()) return;
+  const r = await fetch('/api/products', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name: name.trim() })
+  });
+  if (!r.ok) { alert('Error creando producto'); return; }
+  const p = await r.json();
+  catSelectedId = p.id;
+  await loadCatalog();
+  const found = catProducts.find(pr => pr.id === p.id);
+  if (found) renderCatDetail(found);
+}
 </script>
+
+<div id="catalog-overlay" hidden>
+  <div class="cat-sidebar">
+    <div class="cat-sidebar-hdr">
+      <span>🏪 Catálogo de productos</span>
+      <button onclick="closeCatalog()" title="Cerrar">✕</button>
+    </div>
+    <div class="cat-prod-list" id="cat-prod-list"></div>
+    <div class="cat-sidebar-footer">
+      <button onclick="newProduct()">+ Nuevo producto</button>
+    </div>
+  </div>
+  <div class="cat-detail" id="cat-detail">
+    <div class="cat-empty">Selecciona un producto o crea uno nuevo</div>
+  </div>
+</div>
+<input type="file" id="cat-file-input" style="display:none" accept="image/*,video/*" multiple onchange="handleCatFileInput(event)">
 </body>
 </html>

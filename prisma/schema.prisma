@@ -129,3 +129,28 @@ model Tag {
   name      String   @unique
   createdAt DateTime @default(now())
 }
+
+// Catálogo de productos. Cada producto puede tener fotos y videos subidos
+// desde el panel. Solo los productos activos (isActive=true) se usarán en
+// la integración con el bot (pendiente de implementar).
+model Product {
+  id          Int            @id @default(autoincrement())
+  name        String
+  description String?
+  isActive    Boolean        @default(false)
+  config      Json           @default("{}")
+  sortOrder   Int            @default(0)
+  media       ProductMedia[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model ProductMedia {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  type      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}

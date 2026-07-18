@@ -1,4 +1,7 @@
 import axios from "axios";
+import fs from "node:fs";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import multer from "multer";
 import { prisma } from "../db";
@@ -19,6 +22,20 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 16 * 1024 * 1024 }, // 16 MB
 });
+
+const UPLOADS_DIR = process.env.UPLOADS_DIR ?? "/app/uploads";
+const productStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const dir = path.join(UPLOADS_DIR, "products");
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || ".bin";
+    cb(null, `${randomUUID()}${ext}`);
+  },
+});
+const uploadProduct = multer({ storage: productStorage, limits: { fileSize: 200 * 1024 * 1024 } });
 
 export const apiRouter = Router();
 
@@ -704,6 +721,130 @@ apiRouter.get("/metrics/strategies", async (_req, res) => {
   } catch (e: any) {
     console.error("[metrics.strategies]", e.message);
     res.status(500).json({ error: "fetch_failed" });
+  }
+});
+
+// ── Product catalog ────────────────────────────────────────────────────────
+
+apiRouter.get("/products", async (_req, res) => {
+  try {
+    const products = await prisma.product.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: { media: { orderBy: { sortOrder: "asc" } } },
+    });
+    res.json(products);
+  } catch (e: any) {
+    console.error("[products.list]", e.message);
+    res.status(500).json({ error: "fetch_failed" });
+  }
+});
+
+apiRouter.post("/products", async (req, res) => {
+  try {
+    const { name, description, config: cfg } = req.body;
+    if (!name?.trim()) { res.status(400).json({ error: "name_required" }); return; }
+    const product = await prisma.product.create({
+      data: { name: name.trim(), description: description ?? null, config: cfg ?? {} },
+      include: { media: true },
+    });
+    res.json(product);
+  } catch (e: any) {
+    console.error("[products.create]", e.message);
+    res.status(500).json({ error: "create_failed" });
+  }
+});
+
+apiRouter.patch("/products/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { name, description, isActive, config: cfg, sortOrder } = req.body;
+    const data: Record<string, unknown> = {};
+    if (name !== undefined)        data.name        = String(name).trim();
+    if (description !== undefined) data.description = description || null;
+    if (isActive !== undefined)    data.isActive    = Boolean(isActive);
+    if (cfg !== undefined)         data.config      = cfg;
+    if (sortOrder !== undefined)   data.sortOrder   = Number(sortOrder);
+    const product = await prisma.product.update({
+      where: { id },
+      data,
+      include: { media: { orderBy: { sortOrder: "asc" } } },
+    });
+    res.json(product);
+  } catch (e: any) {
+    console.error("[products.update]", e.message);
+    res.status(500).json({ error: "update_failed" });
+  }
+});
+
+apiRouter.delete("/products/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    // Fetch media first to delete files from disk
+    const media = await prisma.productMedia.findMany({ where: { productId: id } });
+    for (const m of media) {
+      const filename = path.basename(m.url);
+      const filepath = path.join(UPLOADS_DIR, "products", filename);
+      try { fs.unlinkSync(filepath); } catch { /* file may not exist */ }
+    }
+    await prisma.product.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("[products.delete]", e.message);
+    res.status(500).json({ error: "delete_failed" });
+  }
+});
+
+apiRouter.post("/products/:id/media", uploadProduct.single("file"), async (req, res) => {
+  try {
+    const productId = Number(req.params.id);
+    if (!req.file) { res.status(400).json({ error: "no_file" }); return; }
+    const mime = req.file.mimetype;
+    const type = mime.startsWith("video/") ? "video" : "image";
+    const url  = `/uploads/products/${req.file.filename}`;
+    // Determine next sortOrder
+    const last = await prisma.productMedia.findFirst({
+      where: { productId }, orderBy: { sortOrder: "desc" },
+    });
+    const sortOrder = (last?.sortOrder ?? -1) + 1;
+    const media = await prisma.productMedia.create({
+      data: { productId, url, type, sortOrder },
+    });
+    res.json(media);
+  } catch (e: any) {
+    console.error("[products.media.upload]", e.message);
+    res.status(500).json({ error: "upload_failed" });
+  }
+});
+
+apiRouter.patch("/products/:id/media/:mediaId", async (req, res) => {
+  try {
+    const id = Number(req.params.mediaId);
+    const { sortOrder, type } = req.body;
+    const data: Record<string, unknown> = {};
+    if (sortOrder !== undefined) data.sortOrder = Number(sortOrder);
+    if (type !== undefined)      data.type      = String(type);
+    const media = await prisma.productMedia.update({ where: { id }, data });
+    res.json(media);
+  } catch (e: any) {
+    console.error("[products.media.update]", e.message);
+    res.status(500).json({ error: "update_failed" });
+  }
+});
+
+apiRouter.delete("/products/:id/media/:mediaId", async (req, res) => {
+  try {
+    const id = Number(req.params.mediaId);
+    const media = await prisma.productMedia.findUnique({ where: { id } });
+    if (media) {
+      const filename = path.basename(media.url);
+      const filepath = path.join(UPLOADS_DIR, "products", filename);
+      try { fs.unlinkSync(filepath); } catch { /* file may not exist */ }
+      await prisma.productMedia.delete({ where: { id } });
+    }
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("[products.media.delete]", e.message);
+    res.status(500).json({ error: "delete_failed" });
   }
 });
 
