@@ -198,9 +198,23 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
   // Stickers/reactions/location without any content: nothing actionable.
   if (ev.type === "other" && !text.trim() && !placeholder) return;
 
-  // Media without caption (image, video, document): use the placeholder as the
-  // text so Claude can respond contextually ("[imagen]", "[video]", etc.).
-  // An empty string would cause a Claude 400 error and break the conversation.
+  // Image without caption outside of PAYMENT_METHOD → fixed fridge upsell.
+  // We can't see the image, but we assume it's their fridge and push the x6.
+  if (ev.type === "image" && !text.trim() && session.state !== "PAYMENT_METHOD") {
+    if (!(await isAutomationPaused(ev.waId))) {
+      const msg = "En tu nevera pueden caber 6 organizadores aproximadamente 🌿 Ya me dices cuántos te mando";
+      await sendText(ev.waId, msg);
+      await persistOutbound(session, msg, session.state);
+      events.emitDashboard({
+        type: "message", waId: ev.waId, direction: "outbound",
+        body: msg, messageType: "text", at: Date.now(),
+      });
+    }
+    return;
+  }
+
+  // For all other media without caption (video, doc, or image in PAYMENT_METHOD):
+  // pass the placeholder to Claude so it can respond contextually.
   const textForClaude = text.trim() || placeholder;
   if (!textForClaude) return;
 

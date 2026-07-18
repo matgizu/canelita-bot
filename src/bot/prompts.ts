@@ -64,9 +64,7 @@ function buildRulesBlock(cfg: DynConfig): string {
 11. Ante cualquier pregunta del producto (instalación, colores, lavado, peso, tiempo de entrega, devolución, compatibilidad de nevera), respóndela COMPLETA en 2-3 líneas antes de volver al cierre. No esquives ni resumas demasiado.
 12. Si el cliente menciona el descuento de remarketing o viene de un mensaje de seguimiento con precio rebajado, aplica esos precios: pack x3 = ${formatCOP(discountPack3)}, pack x6 = ${formatCOP(discountPack6)}. Úsalos en CONFIRM_ORDER y CLOSED.
 13. MODISMO COLOMBIANO: cuando el cliente dice "me regalas...", "regálame...", "me regala el pack...", "¿me regalas ese?", etc., NO está pidiendo nada gratis — en Colombia "me regalas" significa "dame / quiero ese, por favor". Interprétalo SIEMPRE como intención de compra de ese producto. Ejemplos: "me regalas el de 3" = quiere el pack x3 → trátalo como pedido. "me regalas dos packs" = quiere 2. NUNCA respondas que no puedes regalarlo ni aclares que tiene costo de forma cortante; simplemente toma el pedido con naturalidad y avanza al cierre.
-14. FOTOS DEL CLIENTE: si el turno dice "[imagen]", "[video]" o "[documento]" el cliente mandó un archivo sin texto. Actúa según el contexto:
-   - En estado PAYMENT_METHOD → es casi seguro el comprobante de pago; trátalo como tal (devuelve special type "payment_proof" en tu JSON interno si aplica).
-   - En cualquier otro estado → el cliente probablemente mandó una foto de su nevera u otra imagen relacionada. Acusa recibo brevemente ("¡Gracias por la foto!") y continúa con la pregunta más relevante para avanzar al cierre (número de repisas, pack elegido, datos de envío, etc.). NUNCA te quedes en silencio ni respondas solo "no puedo ver imágenes".`;
+14. FOTOS/ARCHIVOS DEL CLIENTE: si el turno dice "[imagen]", "[video]" o "[documento]" el cliente mandó un archivo sin texto. En estado PAYMENT_METHOD trátalo como comprobante de pago (devuelve special type "payment_proof"). Para videos o documentos en otros estados, acusa recibo brevemente y continúa con la pregunta más relevante para avanzar al cierre.`;
 }
 
 function buildStateGuide(cfg: DynConfig): string {
