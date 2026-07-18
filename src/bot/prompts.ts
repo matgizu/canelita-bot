@@ -143,9 +143,13 @@ Valentina: {"message":"Sin problema, aquí estaré cuando quieras. ¡Que tengas 
 Cliente: ¿cómo se pone eso en la nevera?
 Valentina: {"message":"Súper fácil: estiras el cajón al ancho de tu repisa (entre 23 y 35 cm), lo enganchas desde arriba en el borde inferior del estante, y listo — queda fijo sin tornillos ni pegamento. Para quitarlo solo lo levantas levemente y deslizas.\\n\\n¿Te lo mandamos?","state":"INTEREST","cartUpdate":null,"fields":{"fullName":null,"idNumber":null,"email":null,"city":null,"department":null,"address":null,"reference":null,"altPhone":null},"reminder":null}
 
-═══ EJEMPLO 6 — Pregunta de tiempo de entrega ═══
+═══ EJEMPLO 6A — Pregunta de tiempo de entrega (sin saber ciudad) ═══
 Cliente: ¿cuánto tarda en llegar?
-Valentina: {"message":"Depende de dónde estés 🇨🇴 Si eres de Bogotá o Soacha y pedimos antes de las 2 PM, te llega hoy mismo 📦 Para el resto del país son 2 a 3 días hábiles (lunes a viernes). Pagas cuando te lo entregan, sin riesgo. ¿De qué ciudad eres?","state":"INTEREST","cartUpdate":null,"fields":{"fullName":null,"idNumber":null,"email":null,"city":null,"department":null,"address":null,"reference":null,"altPhone":null},"reminder":null}
+Valentina: {"message":"Depende de dónde estés 🇨🇴 Si eres de Bogotá o Soacha y pedimos antes de las 2 PM, te llega hoy mismo 📦 Para el resto del país el pedido sale hoy y llegaría en 2-3 días hábiles (lunes a viernes). Pagas cuando te lo entregan, sin riesgo. ¿De qué ciudad eres?","state":"INTEREST","cartUpdate":null,"fields":{"fullName":null,"idNumber":null,"email":null,"city":null,"department":null,"address":null,"reference":null,"altPhone":null},"reminder":null}
+
+═══ EJEMPLO 6B — Pregunta de entrega, ciudad fuera de Bogotá/Soacha (usa fechas del bloque) ═══
+Cliente: ¿cuánto demora en llegar a Cali?
+Valentina: {"message":"A Cali el pedido sale [DESPACHO del bloque] 📦 [AVISO SÁBADO si aplica] Llegaría entre [FECHA_MIN] y [FECHA_MAX] — solo días hábiles lunes a viernes. Pagas cuando lo recibes, sin adelantar nada. ¿Lo pedimos?","state":"INTEREST","cartUpdate":null,"fields":{"fullName":null,"idNumber":null,"email":null,"city":"Cali","department":null,"address":null,"reference":null,"altPhone":null},"reminder":null}
 
 ═══ EJEMPLO 7 — Pregunta de devolución ═══
 Cliente: ¿y si llega y no me gusta o no me cabe?
@@ -199,19 +203,75 @@ function buildDeliveryBlock(): string {
     return d;
   };
 
-  const bogotaStr = (isWeekday && before2pm)
-    ? `HOY MISMO (${fmt(col)})`
-    : fmt(addBizDays(col, 1));
+  const nextCal = (from: Date): Date => {
+    const d = new Date(from);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d;
+  };
 
-  const restMin = addBizDays(col, 2);
-  const restMax = addBizDays(col, 3);
+  // ── Bogotá / Soacha ──
+  const bogotaDate = (isWeekday && before2pm) ? col : addBizDays(col, 1);
+  const bogotaLine = (isWeekday && before2pm)
+    ? `HOY MISMO (${fmt(col)}) ✅ — pedido antes de las 2 PM`
+    : `${fmt(bogotaDate)} — ya pasaron las 2 PM o es fin de semana`;
+
+  // ── Resto del país ──
+  // Cutoff 2 PM: antes → despacha hoy (si día hábil); después → despacha mañana.
+  // Sábado/domingo son días de despacho pero las transportadoras NO recogen fines de semana.
+  let dispatchDate: Date;
+  let dispatchLabel: string;
+  let satCaveat = "";
+  let transitStart: Date;
+
+  if (isWeekday && before2pm) {
+    // Día hábil antes de 2 PM → despacha hoy
+    dispatchDate = col;
+    dispatchLabel = `hoy mismo (${fmt(col)})`;
+    transitStart = col;
+  } else if (isWeekday && !before2pm) {
+    // Día hábil después de 2 PM → despacha mañana
+    dispatchDate = nextCal(col);
+    const dDow = dispatchDate.getUTCDay();
+    if (dDow === 6) {
+      // Mañana es sábado (hoy es viernes tarde)
+      dispatchLabel = `mañana (${fmt(dispatchDate)})`;
+      satCaveat = `⚠ Muchas transportadoras no recogen en sábado — el tránsito empieza el lunes.`;
+      transitStart = addBizDays(col, 1); // lunes siguiente
+    } else {
+      dispatchLabel = `mañana (${fmt(dispatchDate)})`;
+      transitStart = dispatchDate;
+    }
+  } else if (dow === 6) {
+    // Hoy es sábado
+    dispatchDate = col;
+    dispatchLabel = `hoy mismo (sábado ${fmt(col)})`;
+    satCaveat = `⚠ Las transportadoras no recogen en sábado — el tránsito empieza el lunes.`;
+    transitStart = addBizDays(col, 1); // lunes
+  } else {
+    // Hoy es domingo → despacha mañana lunes
+    dispatchDate = nextCal(col);
+    dispatchLabel = `mañana lunes (${fmt(dispatchDate)})`;
+    transitStart = dispatchDate;
+  }
+
+  const restMin = addBizDays(transitStart, 2);
+  const restMax = addBizDays(transitStart, 3);
 
   const nowStr = `${DAYS[dow]} ${col.getUTCDate()} de ${MONTHS[col.getUTCMonth()]}, ${String(hour).padStart(2, "0")}:${String(col.getUTCMinutes()).padStart(2, "0")} hora Colombia`;
 
   return `TIEMPOS DE ENTREGA (ahora: ${nowStr}):
-▸ Bogotá y Soacha: ${bogotaStr}${isWeekday && before2pm ? " — pedido antes de las 2 PM ✅" : " — ya pasaron las 2 PM o es fin de semana"}
-▸ Resto del país (cualquier otra ciudad o municipio): entre ${fmt(restMin)} y ${fmt(restMax)} — 2 a 3 días hábiles, solo lunes a viernes, sin contar sábado ni domingo
-REGLA OBLIGATORIA: al cerrar venta o responder sobre envío, usa SIEMPRE estas fechas exactas. Nunca inventes otras fechas ni digas "2-4 días hábiles" de forma genérica.`;
+
+▸ Bogotá y Soacha (entrega el mismo día si es antes de las 2 PM):
+  → ${bogotaLine}
+
+▸ Resto del país (todas las demás ciudades y municipios):
+  → Despacho: ${dispatchLabel}
+  ${satCaveat ? `→ ${satCaveat}` : ""}→ Entrega estimada: entre ${fmt(restMin)} y ${fmt(restMax)} (2-3 días hábiles lunes-viernes)
+
+REGLAS DE USO OBLIGATORIO:
+- Para Bogotá o Soacha: cita SIEMPRE la fecha exacta de arriba.
+- Para cualquier otra ciudad: explica cuándo despacha, añade el aviso del sábado si aplica, y da el rango de fechas exacto.
+- NUNCA digas "2-4 días hábiles" genérico sin acompañarlo de las fechas calculadas.`;
 }
 
 export function buildSystemPrompt(cfg: DynConfig, strategy: "A" | "B" = "A"): string {
