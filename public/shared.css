@@ -187,7 +187,8 @@ textarea { resize: vertical; min-height: 80px; }
 [hidden] { display: none !important; }
 
 /* ─── Light theme ─────────────────────────────────────────────────────── */
-[data-theme="light"] {
+/* Use html[data-theme="light"] (specificity 0,0,1,1) to beat :root (0,0,1,0) in page-local styles */
+html[data-theme="light"] {
   --bg0: #f1f5f9;
   --bg1: #ffffff;
   --bg2: #f8fafc;
@@ -202,16 +203,16 @@ textarea { resize: vertical; min-height: 80px; }
   --text3: #94a3b8;
   --shadow: 0 4px 20px rgba(0,0,0,.1);
 }
-[data-theme="light"] .topnav { background: rgba(255,255,255,.97); }
-[data-theme="light"] .btn-ghost:hover { background: var(--bg3); border-color: var(--border); }
-[data-theme="light"] .tbl td { border-bottom-color: var(--border); }
-[data-theme="light"] .badge-blue   { color: #1d4ed8; }
-[data-theme="light"] .badge-green  { color: #047857; }
-[data-theme="light"] .badge-amber  { color: #92400e; }
-[data-theme="light"] .badge-red    { color: #b91c1c; }
-[data-theme="light"] .badge-purple { color: #5b21b6; }
-[data-theme="light"] .badge-gray   { color: #374151; }
-[data-theme="light"] .badge-cyan   { color: #0e7490; }
+html[data-theme="light"] .topnav { background: rgba(255,255,255,.97); }
+html[data-theme="light"] .btn-ghost:hover { background: var(--bg3); border-color: var(--border); }
+html[data-theme="light"] .tbl td { border-bottom-color: var(--border); }
+html[data-theme="light"] .badge-blue   { background: rgba(37,99,235,.1);  border-color: rgba(37,99,235,.3);  color: #1d4ed8; }
+html[data-theme="light"] .badge-green  { background: rgba(5,150,105,.1);  border-color: rgba(5,150,105,.3);  color: #047857; }
+html[data-theme="light"] .badge-amber  { background: rgba(217,119,6,.1);  border-color: rgba(217,119,6,.3);  color: #92400e; }
+html[data-theme="light"] .badge-red    { background: rgba(220,38,38,.1);  border-color: rgba(220,38,38,.3);  color: #b91c1c; }
+html[data-theme="light"] .badge-purple { background: rgba(109,40,217,.1); border-color: rgba(109,40,217,.3); color: #5b21b6; }
+html[data-theme="light"] .badge-gray   { background: rgba(55,65,81,.08);  border-color: rgba(55,65,81,.2);   color: #374151; }
+html[data-theme="light"] .badge-cyan   { background: rgba(8,145,178,.1);  border-color: rgba(8,145,178,.3);  color: #0e7490; }
 
 /* ─── Theme toggle button ─────────────────────────────────────────────── */
 .theme-btn {

@@ -46,10 +46,36 @@
       flex-shrink: 0; border-bottom: 1px solid var(--border);
       box-shadow: 0 1px 0 rgba(37,99,235,.12), 0 2px 12px rgba(0,0,0,.5);
     }
-    [data-theme="light"] #header { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); box-shadow: 0 1px 0 rgba(37,99,235,.1), 0 2px 8px rgba(0,0,0,.06); }
-    [data-theme="light"] .brand { text-shadow: none; color: var(--brand); }
-    [data-theme="light"] .stat-val { color: var(--text); }
-    [data-theme="light"] .stat-lbl { color: var(--text3); }
+    /* ── Light theme overrides (needs html[] for higher specificity than :root) ── */
+    html[data-theme="light"] {
+      --bg: #f8fafc;
+      --bg2: #ffffff;
+      --bg3: #f1f5f9;
+      --bg4: #e8edf5;
+      --border: #e2e8f0;
+      --border-b: #cbd5e1;
+      --text: #0f172a;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+      --sidebar: #ffffff;
+      --sidebar-hover: #f1f5f9;
+      --card: #ffffff;
+    }
+    html[data-theme="light"] #header { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); box-shadow: 0 1px 0 rgba(37,99,235,.1), 0 2px 8px rgba(0,0,0,.06); }
+    html[data-theme="light"] .brand { text-shadow: none; }
+    html[data-theme="light"] .stat-val { color: var(--text); }
+    html[data-theme="light"] .stat-lbl { color: var(--muted); }
+    html[data-theme="light"] .conv-item.active { background: #dbeafe; border-left-color: var(--brand); box-shadow: none; }
+    html[data-theme="light"] .mw.outbound .bubble { background: rgba(37,99,235,.1); border-color: rgba(37,99,235,.2); }
+    html[data-theme="light"] .mw.outbound .audio-player { background: rgba(37,99,235,.08); border-color: rgba(37,99,235,.18); }
+    html[data-theme="light"] #messages { background-image: radial-gradient(circle at 1px 1px, rgba(37,99,235,.06) 1px, transparent 0); }
+    html[data-theme="light"] .conv-item { border-bottom-color: rgba(226,232,240,.8); }
+    html[data-theme="light"] #qr-menu { box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    html[data-theme="light"] .metric-value.green  { background: rgba(5,150,105,.1);  color: #065f46; border-color: rgba(5,150,105,.2); }
+    html[data-theme="light"] .metric-value.orange { background: rgba(217,119,6,.1);  color: #92400e; border-color: rgba(217,119,6,.2); }
+    html[data-theme="light"] .metric-value.red    { background: rgba(220,38,38,.1);  color: #991b1b; border-color: rgba(220,38,38,.2); }
+    html[data-theme="light"] .metric-value.gray   { color: var(--muted); }
+    html[data-theme="light"] .review-divider { background: rgba(245,158,11,.08); }
     .brand { color: var(--brand); font-weight: 800; font-size: 15px; letter-spacing: .5px;
       text-shadow: 0 0 20px rgba(37,99,235,.5); }
     .stats-bar { display: flex; gap: 24px; margin-left: auto; }
