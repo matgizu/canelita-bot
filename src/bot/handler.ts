@@ -195,15 +195,18 @@ export async function handleInbound(ev: InboundEvent): Promise<void> {
 
   if (!session.automationEnabled) return;
 
-  // Media sin texto (imagen/video/documento/sticker sin caption) se muestra en
-  // el panel pero NO dispara respuesta automática: el bot no puede "leerla" y un
-  // texto vacío rompería la llamada a la API de Claude (400) y dejaría un turno
-  // vacío en el historial que tumbaría toda la conversación.
-  if (ev.type !== "text" && !text.trim()) return;
+  // Stickers/reactions/location without any content: nothing actionable.
+  if (ev.type === "other" && !text.trim() && !placeholder) return;
+
+  // Media without caption (image, video, document): use the placeholder as the
+  // text so Claude can respond contextually ("[imagen]", "[video]", etc.).
+  // An empty string would cause a Claude 400 error and break the conversation.
+  const textForClaude = text.trim() || placeholder;
+  if (!textForClaude) return;
 
   enqueueInbound(
     ev.waId,
-    text,
+    textForClaude,
     (combined, hi, mid) => processCombined(session, combined, hi, mid),
     { hasImage, imageMediaId },
   );
