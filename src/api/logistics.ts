@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { runDropiSync } from "../dropi/tracker";
 import { reconcile } from "../dropi/reconcile";
+import { computeFinance } from "../dropi/finance";
 import { STAGE_CONFIG, type OrderView, type Stage } from "../dropi/statusMap";
 import { config } from "../config";
 
@@ -88,11 +89,14 @@ async function buildData() {
     };
   });
 
+  const finance = await computeFinance();
+
   return {
     generatedAt: new Date().toISOString(),
     sendEnabled: config.dropi.sendEnabled,
     trackingEnabled: config.dropi.enabled,
     summary,
+    finance,
     shipments: rows,
   };
 }

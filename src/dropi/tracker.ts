@@ -134,6 +134,8 @@ export async function runDropiSync(opts: SyncOptions = {}): Promise<SyncSummary>
         city: o.city ?? null,
         rateType: o.rate_type ?? null,
         total: Math.round(Number(o.total_order ?? 0)) || 0,
+        profit: Math.round(Number(o.dropshipper_amount_to_win ?? 0)) || 0,
+        shippingCost: Math.round(Number(o.shipping_amount ?? 0)) || 0,
         status: o.status,
         stage,
         statusChangedAt,

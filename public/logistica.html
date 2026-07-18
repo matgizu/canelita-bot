@@ -46,6 +46,21 @@
     .sub2 { font-size: 11px; color: var(--text3); }
     .cod-tag { font-size: 10px; color: #6ee7b7; }
 
+    .proj-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 720px) { .proj-grid { grid-template-columns: 1fr; } }
+    .proj { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; background: var(--bg2); }
+    .proj.realista { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand-glow); }
+    .proj.optimista { border-color: rgba(16,185,129,.4); }
+    .proj.pesimista { border-color: rgba(239,68,68,.3); }
+    .proj-lbl { font-size: 13px; font-weight: 700; color: var(--text); }
+    .proj-rate { font-size: 11px; color: var(--text3); margin-bottom: 12px; }
+    .proj-line { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; color: var(--text2); border-top: 1px solid rgba(28,48,80,.4); }
+    .proj-line b { color: var(--text); font-variant-numeric: tabular-nums; }
+    .proj-line.total { border-top: 2px solid var(--border-hi); margin-top: 4px; padding-top: 9px; font-weight: 700; }
+    .proj-line.total b { font-size: 15px; }
+    .proj.optimista .proj-line.total b { color: #34d399; }
+    .proj.pesimista .proj-line.total b { color: #f87171; }
+
     .view-tabs { display: flex; gap: 6px; margin-bottom: 4px; }
     .vtab { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer;
             border: 1px solid var(--border); background: var(--bg1); color: var(--text2); font-family: inherit; transition: all .12s; }
@@ -154,6 +169,35 @@
     const carriers = Object.entries(s.byCarrier).sort((a,b) => b[1]-a[1]);
     const maxC = Math.max(1, ...carriers.map(c => c[1]));
 
+    // ── Recaudo, utilidad y proyección ──
+    const f = DATA.finance;
+    const money = (n) => '$' + Math.round(n||0).toLocaleString('es-CO');
+    const financeCards = f ? `
+      <div class="card">
+        <div class="card-header"><div class="card-title">💰 Recaudo y utilidad</div></div>
+        <div class="mini-grid">
+          <div class="mini"><div class="m-val pos">${money(f.delivered.collected)}</div><div class="m-lbl">Ya recaudado · ${f.delivered.count} entregados</div></div>
+          <div class="mini"><div class="m-val pos">${money(f.netRealized)}</div><div class="m-lbl">Utilidad realizada (neta)</div></div>
+          <div class="mini"><div class="m-val">${money(f.inTransit.potential)}</div><div class="m-lbl">Falta por recaudar · ${f.inTransit.count} en tránsito</div></div>
+          <div class="mini"><div class="m-val">${money(f.inTransit.potentialProfit)}</div><div class="m-lbl">Utilidad potencial pendiente</div></div>
+        </div>
+      </div>
+      ${f.projection ? `
+      <div class="card">
+        <div class="card-header"><div class="card-title">📈 Proyección de los ${f.inTransit.count} en tránsito</div></div>
+        <div class="proj-grid">
+          ${f.projection.map(p => `
+            <div class="proj ${p.key}">
+              <div class="proj-lbl">${p.label}</div>
+              <div class="proj-rate">${(p.rate*100).toFixed(0)}% de entrega</div>
+              <div class="proj-line"><span>Entregas esperadas</span><b>${Math.round(p.deliveredExpected)}</b></div>
+              <div class="proj-line"><span>Recaudo esperado</span><b>${money(p.collectExpected)}</b></div>
+              <div class="proj-line total"><span>Utilidad neta total</span><b>${money(p.totalNet)}</b></div>
+            </div>`).join('')}
+        </div>
+        <div class="sub2" style="margin-top:10px">Utilidad neta = realizada (${money(f.netRealized)}) + la que se realice de lo en tránsito − pérdidas por devolución. Escenarios por intervalo de confianza sobre la tasa observada (${(f.deliveryRate*100).toFixed(1)}%).</div>
+      </div>` : ''}` : '';
+
     // último update
     const d = new Date(DATA.generatedAt);
     document.getElementById('updated').textContent = 'Actualizado ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
@@ -198,6 +242,8 @@
           ${mini(s.returned, 'Devoluciones', 'neg')}
         </div>
       </div>
+
+      ${financeCards}
 
       <div class="card">
         <div class="card-header"><div class="card-title">📦 Por transportadora</div></div>

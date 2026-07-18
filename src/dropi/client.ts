@@ -75,6 +75,7 @@ export interface DropiOrder {
   state: string | null;       // departamento
   total_order: string | null; // valor a recaudar (COD), viene como string
   shipping_amount: string | null;
+  dropshipper_amount_to_win: string | null; // utilidad si se entrega
   rate_type: string | null;   // "CON RECAUDO" | "SIN RECAUDO"
   shipping_company: string | null; // nombre plano: ENVIA, INTERRAPIDISIMO…
   distribution_company?: { id: number; name: string } | null;

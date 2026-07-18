@@ -168,7 +168,9 @@ model DropiShipment {
   carrier          String?
   city             String?
   rateType         String?   // CON RECAUDO | SIN RECAUDO
-  total            Int       @default(0)
+  total            Int       @default(0)  // valor a recaudar (COD)
+  profit           Int       @default(0)  // dropshipper_amount_to_win (utilidad si se entrega)
+  shippingCost     Int       @default(0)  // flete (shipping_amount)
   status           String    // estado crudo actual de Dropi
   previousStatus   String?
   stage            String    // etapa derivada (ver statusMap.ts)
