@@ -1,4 +1,5 @@
 import { prisma } from "../db";
+import { config } from "../config";
 import type { Stage } from "./statusMap";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,19 +41,41 @@ export interface FinanceScenario {
 
 export interface FinanceResult {
   delivered: { count: number; collected: number; profit: number };
+  internal: { count: number; collected: number; profit: number }; // mensajería interna (fuera de Dropi)
   lost: { count: number; returnLoss: number };
   inTransit: { count: number; potential: number; potentialProfit: number };
   resolved: number;
-  deliveryRate: number;        // observada (entregados / resueltos)
-  netRealized: number;         // utilidad ya realizada (entregados − pérdidas de devoluciones)
+  deliveryRate: number;        // observada (entregados / resueltos) — SOLO Dropi
+  netRealized: number;         // utilidad ya realizada (entregados Dropi + internos − pérdidas)
   projection: FinanceScenario[] | null;
 }
 
-export async function computeFinance(): Promise<FinanceResult> {
-  const rows = await prisma.dropiShipment.findMany({
-    where: { stage: { not: "CANCELLED" } },
-    select: { stage: true, total: true, profit: true, shippingCost: true },
+// Cuenta los pedidos despachados por mensajería interna (cerrados, con la
+// etiqueta configurada). No pasan por Dropi; se toman como entregados sin
+// devolución, con utilidad fija (config.dropi.internalProfit).
+async function internalOrders(): Promise<{ count: number; collected: number; profit: number }> {
+  const pat = config.dropi.internalLabel.toUpperCase();
+  const unit = config.dropi.internalProfit;
+  const convs = await prisma.conversation.findMany({
+    where: { state: "CLOSED" },
+    select: { labels: true, orders: { select: { total: true } } },
   });
+  let count = 0, collected = 0;
+  for (const c of convs) {
+    if (!c.labels.some((l) => l.toUpperCase().includes(pat))) continue;
+    for (const o of c.orders) { count++; collected += o.total; }
+  }
+  return { count, collected, profit: count * unit };
+}
+
+export async function computeFinance(): Promise<FinanceResult> {
+  const [rows, internal] = await Promise.all([
+    prisma.dropiShipment.findMany({
+      where: { stage: { not: "CANCELLED" } },
+      select: { stage: true, total: true, profit: true, shippingCost: true },
+    }),
+    internalOrders(),
+  ]);
 
   const D = { count: 0, collected: 0, profit: 0 };
   const L = { count: 0, returnLoss: 0 };
@@ -70,9 +93,11 @@ export async function computeFinance(): Promise<FinanceResult> {
     }
   }
 
+  // La tasa de entrega y la proyección son SOLO de Dropi (los internos no tienen
+  // esa incertidumbre). Pero su utilidad SÍ suma a lo ya realizado.
   const resolved = D.count + L.count;
   const deliveryRate = resolved ? D.count / resolved : 0;
-  const netRealized = D.profit - L.returnLoss;
+  const netRealized = D.profit - L.returnLoss + internal.profit;
   const avgReturnLoss = L.count ? L.returnLoss / L.count : 0;
 
   let projection: FinanceScenario[] | null = null;
@@ -99,7 +124,7 @@ export async function computeFinance(): Promise<FinanceResult> {
   }
 
   return {
-    delivered: D, lost: L, inTransit: T,
+    delivered: D, internal, lost: L, inTransit: T,
     resolved, deliveryRate, netRealized, projection,
   };
 }

@@ -79,6 +79,10 @@ export const config = {
     templateLang: optional("DROPI_TPL_LANG", "es"),
     // Si es true, manda mensajes de verdad. En false hace dry-run (solo log).
     sendEnabled: optional("DROPI_SEND_ENABLED", "false") === "true",
+    // Pedidos despachados por mensajería interna (no pasan por Dropi). Se cuentan
+    // en las finanzas como entregados sin devolución, con esta utilidad fija.
+    internalLabel: optional("DROPI_INTERNAL_LABEL", "MENSAJERIA INTERNA"),
+    internalProfit: Number(optional("DROPI_INTERNAL_PROFIT", "5000")),
   },
 
   greeting: {

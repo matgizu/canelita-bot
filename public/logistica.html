@@ -176,11 +176,12 @@
       <div class="card">
         <div class="card-header"><div class="card-title">💰 Recaudo y utilidad</div></div>
         <div class="mini-grid">
-          <div class="mini"><div class="m-val pos">${money(f.delivered.collected)}</div><div class="m-lbl">Ya recaudado · ${f.delivered.count} entregados</div></div>
+          <div class="mini"><div class="m-val pos">${money(f.delivered.collected + f.internal.collected)}</div><div class="m-lbl">Ya recaudado · ${f.delivered.count + f.internal.count} entregados</div></div>
           <div class="mini"><div class="m-val pos">${money(f.netRealized)}</div><div class="m-lbl">Utilidad realizada (neta)</div></div>
           <div class="mini"><div class="m-val">${money(f.inTransit.potential)}</div><div class="m-lbl">Falta por recaudar · ${f.inTransit.count} en tránsito</div></div>
           <div class="mini"><div class="m-val">${money(f.inTransit.potentialProfit)}</div><div class="m-lbl">Utilidad potencial pendiente</div></div>
         </div>
+        ${f.internal.count ? `<div class="sub2" style="margin-top:10px">Incluye ${f.internal.count} pedido(s) por <b>mensajería interna</b> (fuera de Dropi): +${money(f.internal.collected)} recaudo, +${money(f.internal.profit)} utilidad.</div>` : ''}
       </div>
       ${f.projection ? `
       <div class="card">
