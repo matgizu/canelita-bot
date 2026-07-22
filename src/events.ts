@@ -51,7 +51,16 @@ export type DashboardEvent =
       at: number;
     }
   | { type: "owner_window_expired"; at: number }
-  | { type: "owner_window_open"; at: number };
+  | { type: "owner_window_open"; at: number }
+  | {
+      type: "campaign_progress";
+      templateName: string;
+      sent: number;
+      failed: number;
+      total: number;
+      done: boolean;
+      at: number;
+    };
 
 class TypedEmitter extends EventEmitter {
   emitDashboard(e: DashboardEvent) {

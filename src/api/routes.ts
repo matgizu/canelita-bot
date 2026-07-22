@@ -15,6 +15,7 @@ import { deleteMessage, mimeToMediaType, sendInParts, sendMedia, uploadMedia } f
 import { transcodeToWhatsappVoice } from "../whatsapp/audio";
 import { sanitizeOutput } from "../bot/blocklist";
 import { submitToMeta, syncFromMeta, sendTemplate } from "../whatsapp/templates";
+import { campaignStatus, findRecipients, startCampaign, suggestedVars } from "./campaigns";
 import { buildAuditData } from "../reports/audit";
 import { computeDropiPnl } from "../reports/dropiPnl";
 
@@ -320,6 +321,59 @@ apiRouter.post("/conversations/:waId/send-template", async (req, res) => {
   });
 
   res.json({ ok: true, msgId });
+});
+
+/* ── Campañas (envío masivo de plantillas por etiquetas) ────────────────── */
+
+apiRouter.get("/campaigns/status", (_req, res) => {
+  res.json(campaignStatus());
+});
+
+apiRouter.get("/campaigns/suggest", (req, res) => {
+  res.json({ variables: suggestedVars(String(req.query.template ?? "")) });
+});
+
+apiRouter.post("/campaigns/preview", async (req, res) => {
+  const labels: string[] = (req.body?.labels ?? []).map(String).filter(Boolean);
+  if (!labels.length) { res.status(400).json({ error: "labels_required" }); return; }
+  try {
+    const recipients = await findRecipients({
+      labels,
+      matchAll: !!req.body?.matchAll,
+      excludeClosed: req.body?.excludeClosed !== false,
+    });
+    res.json({
+      total: recipients.length,
+      recipients: recipients.slice(0, 200).map((r) => ({
+        waId: r.waId,
+        name: r.fullName ?? r.customerName ?? null,
+        state: r.state,
+        labels: r.labels,
+      })),
+    });
+  } catch (e: any) {
+    console.error("[campaigns.preview]", e.message);
+    res.status(500).json({ error: "preview_failed" });
+  }
+});
+
+apiRouter.post("/campaigns/send", async (req, res) => {
+  const labels: string[] = (req.body?.labels ?? []).map(String).filter(Boolean);
+  const templateName = String(req.body?.templateName ?? "");
+  const variables: string[] = (req.body?.variables ?? []).map(String);
+  if (!templateName) { res.status(400).json({ error: "templateName_required" }); return; }
+  try {
+    const result = await startCampaign(templateName, variables, {
+      labels,
+      matchAll: !!req.body?.matchAll,
+      excludeClosed: req.body?.excludeClosed !== false,
+    });
+    if (result.error) { res.status(400).json(result); return; }
+    res.json(result);
+  } catch (e: any) {
+    console.error("[campaigns.send]", e.message);
+    res.status(500).json({ error: "send_failed" });
+  }
 });
 
 apiRouter.get("/conversations", async (_req, res) => {

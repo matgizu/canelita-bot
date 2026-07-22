@@ -678,6 +678,84 @@
     }
     #templates-btn:hover { background: rgba(167,139,250,.18); }
 
+    /* ── Campaign overlay ── */
+    #campaign-btn {
+      padding: 6px 14px; background: rgba(251,191,36,.08); color: #fbbf24;
+      border: 1px solid rgba(251,191,36,.2); border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    #campaign-btn:hover { background: rgba(251,191,36,.18); }
+    #campaign-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.7); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #campaign-panel {
+      width: 680px; max-width: 97vw; height: 84vh;
+      background: var(--bg2); border: 1px solid var(--border-b); border-radius: 16px;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,.6);
+    }
+    #campaign-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px;
+      background: linear-gradient(135deg, #040b16, #081223);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    #campaign-header h2 { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
+    #campaign-close {
+      width: 30px; height: 30px; background: var(--bg3); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 6px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #campaign-close:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+    #campaign-body { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; background: var(--bg2); }
+    .camp-section {
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 8px; background: var(--bg3);
+    }
+    .camp-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    #camp-tpl {
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 12px; outline: none; background: var(--bg); color: var(--text);
+    }
+    #camp-vars { display: flex; flex-direction: column; gap: 6px; }
+    #camp-vars input {
+      padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 12px; outline: none; background: var(--bg); color: var(--text);
+    }
+    #camp-vars input:focus { border-color: var(--brand); }
+    .camp-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+      background: var(--bg); color: var(--muted2); border: 1px solid var(--border);
+      cursor: pointer; user-select: none;
+    }
+    .camp-tag:hover { border-color: var(--brand); }
+    .camp-tag.sel { background: rgba(251,191,36,.14); color: #fbbf24; border-color: rgba(251,191,36,.45); }
+    .camp-tag .cnt { font-weight: 400; opacity: .6; font-size: 10px; }
+    .camp-check { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted2); cursor: pointer; }
+    #camp-preview-btn {
+      padding: 7px 14px; background: var(--bg4); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+      align-self: flex-start;
+    }
+    #camp-preview-btn:hover { border-color: var(--brand); }
+    #camp-recipients { max-height: 180px; overflow: auto; display: flex; flex-direction: column; gap: 3px; }
+    .camp-rcpt { font-size: 11px; color: var(--muted2); display: flex; gap: 8px; padding: 3px 6px; border-radius: 5px; background: var(--bg); }
+    .camp-rcpt .st { color: var(--muted); font-size: 10px; }
+    #camp-count { font-size: 13px; font-weight: 700; color: #fbbf24; }
+    #camp-send-btn {
+      padding: 10px 16px; background: #25d366; color: #fff;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    #camp-send-btn:hover:not(:disabled) { background: #1da851; }
+    #camp-send-btn:disabled { opacity: .35; cursor: default; }
+    #camp-progress { display: flex; flex-direction: column; gap: 6px; }
+    #camp-progress-bar { height: 8px; border-radius: 4px; background: var(--bg); overflow: hidden; border: 1px solid var(--border); }
+    #camp-progress-fill { height: 100%; width: 0%; background: #25d366; transition: width .4s; }
+    #camp-progress-txt { font-size: 12px; color: var(--muted2); }
+
     /* ── Labels ── */
     .labels-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
     .label-chip {
@@ -1340,6 +1418,7 @@
   </div>
   <a id="catalog-btn" href="/catalog" class="btn btn-ghost btn-sm">🏪 Catálogo</a>
   <button id="templates-btn" onclick="openTemplates()">📋 Plantillas</button>
+  <button id="campaign-btn" onclick="openCampaign()">📣 Campaña</button>
   <button id="orders-btn" onclick="openOrders()">📦 Pedidos</button>
   <a id="audit-btn" href="/audit" class="btn btn-ghost btn-sm">🔍 Auditoría</a>
   <a id="pnl-btn" href="/pnl" class="btn btn-ghost btn-sm">💵 P&L</a>
@@ -1529,6 +1608,42 @@
       </div>
       <!-- Template list -->
       <div id="tpl-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Campaign overlay -->
+<div id="campaign-overlay" hidden>
+  <div id="campaign-panel">
+    <div id="campaign-header">
+      <h2>📣 Campaña de plantillas</h2>
+      <button id="campaign-close" onclick="closeCampaign()">✕</button>
+    </div>
+    <div id="campaign-body">
+      <div class="camp-section">
+        <div class="camp-label">1 · Plantilla (solo aprobadas por Meta)</div>
+        <select id="camp-tpl" onchange="campTplChanged()"></select>
+        <div id="camp-tpl-body" class="tpl-body" hidden></div>
+        <div id="camp-vars"></div>
+      </div>
+      <div class="camp-section">
+        <div class="camp-label">2 · Etiquetas de los destinatarios</div>
+        <div id="camp-tags" class="labels-wrap"></div>
+        <label class="camp-check"><input type="checkbox" id="camp-matchall" onchange="campInvalidate()"> Exigir <b>todas</b> las etiquetas seleccionadas (no solo una)</label>
+        <label class="camp-check"><input type="checkbox" id="camp-exclude-closed" checked onchange="campInvalidate()"> Excluir ventas cerradas</label>
+      </div>
+      <div class="camp-section">
+        <div class="camp-label">3 · Destinatarios</div>
+        <button id="camp-preview-btn" onclick="campPreview()">👀 Calcular destinatarios</button>
+        <div id="camp-count" hidden></div>
+        <div id="camp-recipients"></div>
+      </div>
+      <div id="camp-progress" class="camp-section" hidden>
+        <div class="camp-label">Progreso</div>
+        <div id="camp-progress-bar"><div id="camp-progress-fill"></div></div>
+        <div id="camp-progress-txt"></div>
+      </div>
+      <button id="camp-send-btn" disabled onclick="campSend()">Enviar campaña</button>
     </div>
   </div>
 </div>
@@ -1910,6 +2025,12 @@ function connectSSE() {
 
   es.addEventListener('owner_window_expired', () => {
     document.getElementById('owner-window-bar').hidden = false;
+  });
+
+  es.addEventListener('campaign_progress', e => {
+    const d = JSON.parse(e.data);
+    showCampProgress(d.sent, d.failed, d.total, d.done);
+    if (d.done) campInvalidate();
   });
   es.addEventListener('owner_window_open', () => {
     document.getElementById('owner-window-bar').hidden = true;
@@ -2628,6 +2749,156 @@ async function sendTplToConv(templateName) {
   const c = convs.find(c => c.waId === selected);
   if (c) c.windowExpired = false;
   updateWindowExpiredBar();
+}
+
+/* ── Campañas ─────────────────────────────────────────────────────────── */
+
+let campTemplates = [];
+let campSelectedTags = new Set();
+let campPreviewCount = null; // null = sin vista previa vigente
+
+async function openCampaign() {
+  document.getElementById('campaign-overlay').hidden = false;
+  campPreviewCount = null;
+  updateCampSendBtn();
+  const [templates, tags, status] = await Promise.all([
+    fetch('/api/templates').then(r => r.json()),
+    fetch('/api/tags').then(r => r.json()),
+    fetch('/api/campaigns/status').then(r => r.json()),
+  ]);
+  campTemplates = templates.filter(t => t.status === 'APPROVED');
+
+  const sel = document.getElementById('camp-tpl');
+  sel.innerHTML = '<option value="">— Elige una plantilla —</option>' +
+    campTemplates.map(t => `<option value="${x(t.name)}">${x(t.name)}</option>`).join('');
+  document.getElementById('camp-tpl-body').hidden = true;
+  document.getElementById('camp-vars').innerHTML = '';
+
+  const tagsWrap = document.getElementById('camp-tags');
+  if (!tags.length) {
+    tagsWrap.innerHTML = '<span style="font-size:11px;color:var(--muted)">No hay etiquetas aún. Ponle etiquetas a los contactos desde su ficha.</span>';
+  } else {
+    tagsWrap.innerHTML = tags.map(t =>
+      `<span class="camp-tag${campSelectedTags.has(t.name) ? ' sel' : ''}" data-tag="${x(t.name)}" onclick="campToggleTag(this)">${x(t.name)} <span class="cnt">${t.count}</span></span>`
+    ).join('');
+  }
+
+  if (status.running) showCampProgress(status.sent, status.failed, status.total, false);
+  else document.getElementById('camp-progress').hidden = true;
+}
+
+function closeCampaign() {
+  document.getElementById('campaign-overlay').hidden = true;
+}
+
+function campToggleTag(el) {
+  const tag = el.dataset.tag;
+  if (campSelectedTags.has(tag)) { campSelectedTags.delete(tag); el.classList.remove('sel'); }
+  else { campSelectedTags.add(tag); el.classList.add('sel'); }
+  campInvalidate();
+}
+
+async function campTplChanged() {
+  const name = document.getElementById('camp-tpl').value;
+  const tpl = campTemplates.find(t => t.name === name);
+  const bodyEl = document.getElementById('camp-tpl-body');
+  const varsEl = document.getElementById('camp-vars');
+  campInvalidate();
+  if (!tpl) { bodyEl.hidden = true; varsEl.innerHTML = ''; return; }
+  bodyEl.hidden = false;
+  bodyEl.textContent = tpl.body;
+  const varCount = new Set([...tpl.body.matchAll(/\{\{(\d+)\}\}/g)].map(m => m[1])).size;
+  let suggested = [];
+  try {
+    suggested = (await fetch(`/api/campaigns/suggest?template=${encodeURIComponent(name)}`).then(r => r.json())).variables || [];
+  } catch {}
+  varsEl.innerHTML = Array.from({ length: varCount }, (_, i) =>
+    `<input id="camp-var-${i + 1}" type="text" placeholder="Valor para {{${i + 1}}}" value="${x(suggested[i] || '')}" oninput="campInvalidate()">`
+  ).join('');
+}
+
+// Cualquier cambio de configuración invalida la vista previa: obliga a
+// recalcular destinatarios antes de poder enviar.
+function campInvalidate() {
+  campPreviewCount = null;
+  document.getElementById('camp-count').hidden = true;
+  document.getElementById('camp-recipients').innerHTML = '';
+  updateCampSendBtn();
+}
+
+function updateCampSendBtn() {
+  const btn = document.getElementById('camp-send-btn');
+  btn.disabled = !(campPreviewCount > 0 && document.getElementById('camp-tpl').value);
+  btn.textContent = campPreviewCount > 0
+    ? `📣 Enviar a ${campPreviewCount} contacto${campPreviewCount === 1 ? '' : 's'}`
+    : 'Enviar campaña';
+}
+
+function campFilterBody() {
+  return {
+    labels: [...campSelectedTags],
+    matchAll: document.getElementById('camp-matchall').checked,
+    excludeClosed: document.getElementById('camp-exclude-closed').checked,
+  };
+}
+
+async function campPreview() {
+  if (!campSelectedTags.size) { alert('Selecciona al menos una etiqueta.'); return; }
+  const res = await fetch('/api/campaigns/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(campFilterBody()),
+  });
+  const data = await res.json();
+  if (!res.ok) { alert('Error: ' + (data.error || 'no se pudo calcular')); return; }
+  campPreviewCount = data.total;
+  const cnt = document.getElementById('camp-count');
+  cnt.hidden = false;
+  cnt.textContent = data.total === 0
+    ? 'Ningún contacto coincide con esas etiquetas.'
+    : `${data.total} contacto${data.total === 1 ? '' : 's'} recibirá${data.total === 1 ? '' : 'n'} la plantilla:`;
+  document.getElementById('camp-recipients').innerHTML = data.recipients.map(r =>
+    `<div class="camp-rcpt"><span>${x(r.name || r.waId)}</span><span class="st">${x(r.state)}</span><span class="st">${(r.labels || []).map(x).join(', ')}</span></div>`
+  ).join('') + (data.total > data.recipients.length
+    ? `<div class="camp-rcpt">… y ${data.total - data.recipients.length} más</div>` : '');
+  updateCampSendBtn();
+}
+
+async function campSend() {
+  const templateName = document.getElementById('camp-tpl').value;
+  if (!templateName || !campPreviewCount) return;
+  const varInputs = [...document.querySelectorAll('#camp-vars input')];
+  const variables = varInputs.map(i => i.value.trim());
+  if (variables.some(v => !v)) { alert('Completa todas las variables de la plantilla.'); return; }
+  if (!confirm(`📣 ¿Enviar la plantilla "${templateName}" a ${campPreviewCount} contactos?\n\nEsto no se puede deshacer.`)) return;
+
+  const res = await fetch('/api/campaigns/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ templateName, variables, ...campFilterBody() }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const msgs = {
+      campaign_already_running: 'Ya hay una campaña en curso. Espera a que termine.',
+      template_not_approved: 'La plantilla aún no está aprobada por Meta.',
+      no_recipients: 'Ningún contacto coincide con el filtro.',
+    };
+    alert(msgs[data.error] || 'Error: ' + (data.error || 'no se pudo enviar'));
+    return;
+  }
+  showCampProgress(0, 0, data.total, false);
+  document.getElementById('camp-send-btn').disabled = true;
+}
+
+function showCampProgress(sent, failed, total, done) {
+  const wrap = document.getElementById('camp-progress');
+  wrap.hidden = false;
+  const pct = total ? Math.round(((sent + failed) / total) * 100) : 0;
+  document.getElementById('camp-progress-fill').style.width = pct + '%';
+  document.getElementById('camp-progress-txt').textContent = done
+    ? `✅ Campaña terminada: ${sent} enviados, ${failed} fallidos de ${total}.`
+    : `Enviando… ${sent + failed}/${total} (${sent} ok, ${failed} fallidos)`;
 }
 
 function isWindowExpired(conv) {

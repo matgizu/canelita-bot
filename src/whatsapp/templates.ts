@@ -10,9 +10,24 @@ function headers() {
 
 // ─── Meta API calls ─────────────────────────────────────────────────────────
 
-export async function submitToMeta(name: string, category: string, language: string, body: string) {
+export async function submitToMeta(
+  name: string,
+  category: string,
+  language: string,
+  body: string,
+  examples: string[] = [],
+) {
   const wabaId = config.whatsapp.wabaId;
   if (!wabaId) throw new Error("WHATSAPP_WABA_ID not configured");
+
+  // Meta rechaza con INVALID_FORMAT cualquier body con {{n}} sin ejemplos.
+  // Si el caller no los da, se generan genéricos según cuántas variables haya.
+  const varCount = new Set(Array.from(body.matchAll(/\{\{(\d+)\}\}/g), (m) => m[1])).size;
+  if (varCount > 0 && examples.length === 0) {
+    examples = Array.from({ length: varCount }, (_, i) => `ejemplo${i + 1}`);
+  }
+  const component: Record<string, any> = { type: "BODY", text: body };
+  if (examples.length > 0) component.example = { body_text: [examples] };
 
   const res = await axios.post(
     `${baseURL}/${wabaId}/message_templates`,
@@ -20,11 +35,30 @@ export async function submitToMeta(name: string, category: string, language: str
       name,
       category,
       language,
-      components: [{ type: "BODY", text: body }],
+      // Si Meta clasifica distinto (p.ej. UTILITY→MARKETING) acepta el cambio
+      // en vez de rechazar con INCORRECT_CATEGORY.
+      allow_category_change: true,
+      components: [component],
     },
     { headers: headers(), timeout: 15_000 },
   );
-  return res.data as { id: string; status: string };
+  return res.data as { id: string; status: string; category?: string };
+}
+
+export async function deleteFromMeta(name: string): Promise<boolean> {
+  const wabaId = config.whatsapp.wabaId;
+  if (!wabaId) throw new Error("WHATSAPP_WABA_ID not configured");
+  try {
+    await axios.delete(`${baseURL}/${wabaId}/message_templates`, {
+      params: { name },
+      headers: headers(),
+      timeout: 15_000,
+    });
+    return true;
+  } catch (e: any) {
+    console.error("[templates.delete]", e.response?.data ?? e.message);
+    return false;
+  }
 }
 
 export async function syncFromMeta(): Promise<void> {
