@@ -287,7 +287,7 @@ export const OBJECTIONS: Objection[] = [
     ],
     validate: "",
     rebut:
-      "Vienen en beige, verde menta y amarillo pastel — tonos suaves que quedan bonitos en cualquier nevera. El pack trae los colores surtidos, no se elige un color específico.",
+      "Vienen en blanco, verde menta y rosado — tonos suaves que quedan bonitos en cualquier nevera. El pack sale surtido con los tres, y si los prefieres todos de un mismo color también se puede: solo me dices cuál.",
     followUp: "¿Te mandamos el pack?",
   },
   {
