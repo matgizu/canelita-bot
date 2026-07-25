@@ -1633,6 +1633,11 @@
         <label class="camp-check"><input type="checkbox" id="camp-exclude-closed" checked onchange="campInvalidate()"> Excluir ventas cerradas</label>
       </div>
       <div class="camp-section">
+        <div class="camp-label">2b · O por estado de la conversación (opcional)</div>
+        <div id="camp-states" class="labels-wrap"></div>
+        <div style="font-size:11px;color:var(--muted)">Si eliges estados, el filtro trae SOLO contactos en esos estados (combinable con etiquetas). Si eliges "Cerrado", el checkbox de excluir cerradas no aplica.</div>
+      </div>
+      <div class="camp-section">
         <div class="camp-label">3 · Destinatarios</div>
         <button id="camp-preview-btn" onclick="campPreview()">👀 Calcular destinatarios</button>
         <div id="camp-count" hidden></div>
@@ -2755,7 +2760,14 @@ async function sendTplToConv(templateName) {
 
 let campTemplates = [];
 let campSelectedTags = new Set();
+let campSelectedStates = new Set();
 let campPreviewCount = null; // null = sin vista previa vigente
+
+const CAMP_STATES = [
+  ['GREETING', 'Saludo'], ['INTEREST', 'Interés'], ['QUANTITY', 'Cantidad'],
+  ['OBJECTION_HANDLING', 'Objeción'], ['CONFIRM_ORDER', 'Confirmar'],
+  ['ADDRESS_COLLECTION', 'Datos'], ['PAYMENT_METHOD', 'Pago'], ['CLOSED', '✓ Cerrado'],
+];
 
 async function openCampaign() {
   document.getElementById('campaign-overlay').hidden = false;
@@ -2783,8 +2795,19 @@ async function openCampaign() {
     ).join('');
   }
 
+  document.getElementById('camp-states').innerHTML = CAMP_STATES.map(([val, label]) =>
+    `<span class="camp-tag${campSelectedStates.has(val) ? ' sel' : ''}" data-state="${val}" onclick="campToggleState(this)">${label}</span>`
+  ).join('');
+
   if (status.running) showCampProgress(status.sent, status.failed, status.total, false);
   else document.getElementById('camp-progress').hidden = true;
+}
+
+function campToggleState(el) {
+  const st = el.dataset.state;
+  if (campSelectedStates.has(st)) { campSelectedStates.delete(st); el.classList.remove('sel'); }
+  else { campSelectedStates.add(st); el.classList.add('sel'); }
+  campInvalidate();
 }
 
 function closeCampaign() {
@@ -2837,13 +2860,14 @@ function updateCampSendBtn() {
 function campFilterBody() {
   return {
     labels: [...campSelectedTags],
+    states: [...campSelectedStates],
     matchAll: document.getElementById('camp-matchall').checked,
     excludeClosed: document.getElementById('camp-exclude-closed').checked,
   };
 }
 
 async function campPreview() {
-  if (!campSelectedTags.size) { alert('Selecciona al menos una etiqueta.'); return; }
+  if (!campSelectedTags.size && !campSelectedStates.size) { alert('Selecciona al menos una etiqueta o un estado.'); return; }
   const res = await fetch('/api/campaigns/preview', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -2883,6 +2907,7 @@ async function campSend() {
       campaign_already_running: 'Ya hay una campaña en curso. Espera a que termine.',
       template_not_approved: 'La plantilla aún no está aprobada por Meta.',
       no_recipients: 'Ningún contacto coincide con el filtro.',
+      filter_required: 'Selecciona al menos una etiqueta o un estado.',
     };
     alert(msgs[data.error] || 'Error: ' + (data.error || 'no se pudo enviar'));
     return;

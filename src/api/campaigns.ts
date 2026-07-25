@@ -8,15 +8,21 @@ import { sleep } from "../whatsapp/client";
 
 export interface CampaignFilter {
   labels: string[];
+  states?: string[]; // si viene, filtra por estos estados exactos
   matchAll?: boolean; // true = debe tener TODAS las etiquetas; false = alguna
   excludeClosed?: boolean;
 }
 
 export async function findRecipients(filter: CampaignFilter) {
-  const where: Record<string, any> = {
-    labels: filter.matchAll ? { hasEvery: filter.labels } : { hasSome: filter.labels },
-  };
-  if (filter.excludeClosed !== false) where.state = { not: "CLOSED" };
+  const where: Record<string, any> = {};
+  if (filter.labels.length) {
+    where.labels = filter.matchAll ? { hasEvery: filter.labels } : { hasSome: filter.labels };
+  }
+  if (filter.states?.length) {
+    where.state = { in: filter.states };
+  } else if (filter.excludeClosed !== false) {
+    where.state = { not: "CLOSED" };
+  }
   return prisma.conversation.findMany({
     where,
     orderBy: { lastInboundAt: "desc" },
@@ -69,7 +75,7 @@ export async function startCampaign(
   filter: CampaignFilter,
 ): Promise<StartResult> {
   if (status.running) return { error: "campaign_already_running" };
-  if (!filter.labels?.length) return { error: "labels_required" };
+  if (!filter.labels?.length && !filter.states?.length) return { error: "filter_required" };
 
   const tpl = await prisma.template.findUnique({ where: { name: templateName } });
   if (!tpl) return { error: "template_not_found" };

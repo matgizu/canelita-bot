@@ -335,10 +335,12 @@ apiRouter.get("/campaigns/suggest", (req, res) => {
 
 apiRouter.post("/campaigns/preview", async (req, res) => {
   const labels: string[] = (req.body?.labels ?? []).map(String).filter(Boolean);
-  if (!labels.length) { res.status(400).json({ error: "labels_required" }); return; }
+  const states: string[] = (req.body?.states ?? []).map(String).filter(Boolean);
+  if (!labels.length && !states.length) { res.status(400).json({ error: "filter_required" }); return; }
   try {
     const recipients = await findRecipients({
       labels,
+      states,
       matchAll: !!req.body?.matchAll,
       excludeClosed: req.body?.excludeClosed !== false,
     });
@@ -365,6 +367,7 @@ apiRouter.post("/campaigns/send", async (req, res) => {
   try {
     const result = await startCampaign(templateName, variables, {
       labels,
+      states: (req.body?.states ?? []).map(String).filter(Boolean),
       matchAll: !!req.body?.matchAll,
       excludeClosed: req.body?.excludeClosed !== false,
     });
