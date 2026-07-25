@@ -287,8 +287,17 @@ apiRouter.post("/conversations/:waId/send-template", async (req, res) => {
   if (!template) { res.status(404).json({ error: "template_not_found" }); return; }
   if (template.status !== "APPROVED") { res.status(400).json({ error: "template_not_approved" }); return; }
 
+  // Meta rechaza con #132000 si el número de variables no coincide con los {{n}} del body.
+  const expectedVars = new Set(Array.from(template.body.matchAll(/\{\{(\d+)\}\}/g), (m) => m[1])).size;
+  if (variables.length !== expectedVars) {
+    res.status(400).json({ error: "variables_mismatch", expected: expectedVars, got: variables.length });
+    return;
+  }
+
   const msgId = await sendTemplate(waId, templateName, template.language, variables);
   if (!msgId) { res.status(502).json({ error: "send_failed" }); return; }
+
+  const renderedBody = template.body.replace(/\{\{(\d+)\}\}/g, (_, n: string) => variables[Number(n) - 1] ?? "");
 
   // Reset window expired flag
   await prisma.conversation
@@ -309,14 +318,14 @@ apiRouter.post("/conversations/:waId/send-template", async (req, res) => {
         conversationId: conv.id,
         direction: "outbound",
         type: "template",
-        body: `[plantilla: ${templateName}]\n${template.body}`,
+        body: `[plantilla: ${templateName}]\n${renderedBody}`,
       },
     });
   } catch {}
 
   events.emitDashboard({
     type: "message", waId, direction: "outbound",
-    body: `[plantilla: ${templateName}]\n${template.body}`,
+    body: `[plantilla: ${templateName}]\n${renderedBody}`,
     messageType: "template", at: Date.now(),
   });
 

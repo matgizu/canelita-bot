@@ -640,6 +640,12 @@
     .tpl-badge.SUBMITTED { background: rgba(37,99,235,.15); color: #93c5fd; }
     .tpl-body { font-size: 12px; color: var(--text); white-space: pre-wrap; background: var(--bg); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); }
     .tpl-reason { font-size: 11px; color: var(--danger); }
+    .tpl-vars { display: flex; flex-direction: column; gap: 5px; }
+    .tpl-vars input {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 7px;
+      font-size: 12px; outline: none; background: var(--bg); color: var(--text);
+    }
+    .tpl-vars input:focus { border-color: var(--brand); }
     .tpl-actions { display: flex; gap: 8px; margin-top: 4px; }
     .tpl-send-btn {
       padding: 5px 12px; background: #25d366; color: #fff;
@@ -2679,10 +2685,32 @@ async function loadTemplates() {
       list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Sin plantillas aún. Crea una arriba.</div>`;
       return;
     }
+    // Nombre del cliente seleccionado, para prellenar {{1}} en modo envío
+    const firstName = tplPickMode && detail
+      ? ((detail.fullName || detail.customerName || '').trim().split(/\s+/)[0] || '')
+      : '';
+    let suggestions = {};
+    if (tplPickMode) {
+      const sugPairs = await Promise.all(templates
+        .filter(t => t.status === 'APPROVED')
+        .map(t => fetch(`/api/campaigns/suggest?template=${encodeURIComponent(t.name)}`)
+          .then(r => r.json()).then(d => [t.name, d.variables || []]).catch(() => [t.name, []])));
+      suggestions = Object.fromEntries(sugPairs);
+    }
     list.innerHTML = templates.map(t => {
       const canSend = t.status === 'APPROVED' && tplPickMode && selected;
+      const varCount = new Set([...t.body.matchAll(/\{\{(\d+)\}\}/g)].map(m => m[1])).size;
+      let varInputs = '';
+      if (canSend && varCount > 0) {
+        const sug = suggestions[t.name] || [];
+        varInputs = `<div class="tpl-vars">` + Array.from({ length: varCount }, (_, i) => {
+          // {{1}} suele ser el nombre; si no hay sugerencia usa el nombre del cliente
+          const val = sug[i] ?? (i === 0 ? firstName : '');
+          return `<input id="tpl-var-${t.id}-${i + 1}" type="text" placeholder="Valor para {{${i + 1}}}" value="${x(val)}">`;
+        }).join('') + `</div>`;
+      }
       const sendBtn = canSend
-        ? `<button class="tpl-send-btn" onclick="sendTplToConv('${t.name}')">📤 Enviar ahora</button>`
+        ? `<button class="tpl-send-btn" onclick="sendTplToConv('${t.name}', ${t.id}, ${varCount})">📤 Enviar ahora</button>`
         : '';
       return `
         <div class="tpl-card">
@@ -2692,6 +2720,7 @@ async function loadTemplates() {
             <span style="font-size:10px;color:var(--muted)">${t.category} · ${t.language}</span>
           </div>
           <div class="tpl-body">${x(t.body)}</div>
+          ${varInputs}
           ${t.rejectionReason ? `<div class="tpl-reason">⚠ ${x(t.rejectionReason)}</div>` : ''}
           <div class="tpl-actions">
             ${sendBtn}
@@ -2739,15 +2768,29 @@ async function deleteTemplate(id) {
   await loadTemplates();
 }
 
-async function sendTplToConv(templateName) {
+async function sendTplToConv(templateName, tplId, varCount = 0) {
   if (!selected) return;
+  const variables = [];
+  for (let i = 1; i <= varCount; i++) {
+    const v = (document.getElementById(`tpl-var-${tplId}-${i}`)?.value ?? '').trim();
+    if (!v) { alert(`Completa el valor para {{${i}}} antes de enviar.`); return; }
+    variables.push(v);
+  }
   const res = await fetch(`/api/conversations/${selected}/send-template`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ templateName }),
+    body: JSON.stringify({ templateName, variables }),
   });
   const data = await res.json();
-  if (!res.ok) { alert('Error: ' + (data.error || 'no se pudo enviar')); return; }
+  if (!res.ok) {
+    const msgs = {
+      variables_mismatch: 'La cantidad de variables no coincide con la plantilla.',
+      template_not_approved: 'La plantilla aún no está aprobada por Meta.',
+      send_failed: 'Meta rechazó el envío. Revisa que el número sea válido y que la plantilla esté aprobada.',
+    };
+    alert(msgs[data.error] || 'Error: ' + (data.error || 'no se pudo enviar'));
+    return;
+  }
   closeTemplates();
   // Reset expired flag locally
   if (detail) detail.windowExpired = false;
