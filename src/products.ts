@@ -11,7 +11,11 @@ export interface Combo {
 
 const PRICE_PACK3 = Number(process.env.PRICE_PACK3 ?? 69900);
 const PRICE_PACK6 = Number(process.env.PRICE_PACK6 ?? 119900);
-const PREPAID_DISCOUNT = 5000;
+// Descuento por pago anticipado: 15% del precio, redondeado a la centena.
+export const PREPAID_DISCOUNT_PCT = 0.15;
+export function prepaidDiscount(price: number): number {
+  return Math.round((price * PREPAID_DISCOUNT_PCT) / 100) * 100;
+}
 export const REMARKETING_DISCOUNT = 10000;
 
 export const COMBOS: Combo[] = [
@@ -34,7 +38,7 @@ export const COMBOS: Combo[] = [
 ];
 
 export const PREPAID = {
-  discount: PREPAID_DISCOUNT,
+  pct: PREPAID_DISCOUNT_PCT,
   methods: {
     nequi: process.env.NEQUI_NUMBER ?? "",
     bancolombia: process.env.BANCOLOMBIA_ACCOUNT ?? "",
@@ -72,7 +76,7 @@ export function findCombo(id: string): Combo | undefined {
 
 export function comboSummary(id: VariantId, prepaid = false): string {
   const combo = findCombo(id)!;
-  const total = prepaid ? combo.price - PREPAID_DISCOUNT : combo.price;
+  const total = prepaid ? combo.price - prepaidDiscount(combo.price) : combo.price;
   return `${combo.label} (${combo.units} cajones) — $${total.toLocaleString("es-CO")} COP (envío gratis)`;
 }
 
