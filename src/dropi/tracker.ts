@@ -6,6 +6,7 @@ import { stageOf, STAGE_CONFIG, toOrderView, type Stage } from "./statusMap";
 import { sendText } from "../whatsapp/client";
 import { sendTemplate } from "../whatsapp/templates";
 import { notifyOwner } from "../owner";
+import { events } from "../events";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Motor de notificaciones de estado de guía.
@@ -34,6 +35,32 @@ async function notifyTokenExpired(): Promise<void> {
   await notifyOwner(
     "🔑 *El token de Dropi venció.*\n\nLas notificaciones de estado están pausadas hasta que pegues uno nuevo en `DROPI_TOKEN`.\n\nEn el navegador (consola de Dropi) corre:\n`copy(JSON.parse(localStorage.DROPI_LoginResult).token)`\ny pégalo en el `.env`.",
   ).catch(() => {});
+}
+
+// Deja rastro en la conversación de las notificaciones automáticas de Dropi
+// (texto libre o plantilla), igual que hace el envío manual desde el panel.
+// Sin esto el mensaje sale por WhatsApp pero no aparece en el chat.
+async function persistOutboundNotification(
+  waId: string,
+  body: string,
+  messageType: "text" | "template",
+): Promise<void> {
+  try {
+    const conv = await prisma.conversation.upsert({
+      where: { waId },
+      create: { waId },
+      update: { lastOutboundAt: new Date(), windowExpired: false },
+    });
+    await prisma.message.create({
+      data: { conversationId: conv.id, direction: "outbound", type: messageType, body },
+    });
+  } catch (e: any) {
+    console.error("[dropi.tracker.persistOutboundNotification]", e.message);
+    return;
+  }
+  events.emitDashboard({
+    type: "message", waId, direction: "outbound", body, messageType, at: Date.now(),
+  });
 }
 
 function normPhone(p: string | null | undefined): string {
@@ -176,9 +203,19 @@ export async function runDropiSync(opts: SyncOptions = {}): Promise<SyncSummary>
         const inWindow = await isWithinWindow(phone);
         const templateName = cfg.templateKey ? config.dropi.templates[cfg.templateKey] : undefined;
         if (inWindow && cfg.text) {
-          notified = !!(await sendText(phone, cfg.text(view)));
+          const text = cfg.text(view);
+          notified = !!(await sendText(phone, text));
+          if (notified) await persistOutboundNotification(phone, text, "text");
         } else if (templateName && cfg.templateVars) {
-          notified = !!(await sendTemplate(phone, templateName, config.dropi.templateLang, cfg.templateVars(view)));
+          const vars = cfg.templateVars(view);
+          notified = !!(await sendTemplate(phone, templateName, config.dropi.templateLang, vars));
+          if (notified) {
+            const tplRow = await prisma.template.findUnique({ where: { name: templateName } });
+            const renderedBody = tplRow
+              ? tplRow.body.replace(/\{\{(\d+)\}\}/g, (_, n: string) => vars[Number(n) - 1] ?? "")
+              : vars.join(" · ");
+            await persistOutboundNotification(phone, `[plantilla: ${templateName}]\n${renderedBody}`, "template");
+          }
         } else {
           summary.skippedNoWindow++; // fuera de ventana y sin plantilla
         }
